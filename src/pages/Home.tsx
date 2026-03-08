@@ -10,7 +10,18 @@ export default function Home() {
   const { isAuthenticated, login, refreshSession } = useAuth();
   const navigate = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [tempSettings, setTempSettings] = useState(state.characterSettings);
+  const [tempName, setTempName] = useState(() => {
+    if (typeof state.characterSettings === 'string') return '';
+    return state.characterSettings.name || '';
+  });
+  const [tempGender, setTempGender] = useState(() => {
+    if (typeof state.characterSettings === 'string') return '女';
+    return state.characterSettings.gender || '女';
+  });
+  const [tempSettings, setTempSettings] = useState(() => {
+    if (typeof state.characterSettings === 'string') return state.characterSettings;
+    return state.characterSettings.description || '';
+  });
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleReconnect = async () => {
@@ -45,7 +56,18 @@ export default function Home() {
       return;
     }
     resetGame();
-    updateState({ characterSettings: tempSettings, isFirstRun: true });
+    updateState({ 
+      characterSettings: {
+        name: tempName,
+        gender: tempGender,
+        description: tempSettings,
+        personality: '',
+        background: '',
+        hobbies: '',
+        isFleshedOut: false
+      }, 
+      isFirstRun: true 
+    });
     navigate('/setup');
   };
 
@@ -95,18 +117,58 @@ export default function Home() {
           </div>
 
           {/* Character Settings */}
-          <div className="space-y-2">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-zinc-400 flex items-center gap-2">
                 <Settings className="w-4 h-4" /> 角色设定
               </label>
             </div>
-            <textarea
-              value={tempSettings}
-              onChange={(e) => setTempSettings(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm focus:ring-2 focus:ring-white/20 outline-none resize-none h-24"
-              placeholder="描述 AI 角色..."
-            />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs text-zinc-500">姓名</label>
+                <input
+                  type="text"
+                  value={tempName}
+                  onChange={(e) => setTempName(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm focus:ring-2 focus:ring-white/20 outline-none"
+                  placeholder="例如：林星"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-zinc-500">性别</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: '男', label: '男' },
+                    { value: '女', label: '女' },
+                    { value: '非二元', label: '非二元' },
+                    { value: '保密', label: '保密' }
+                  ].map((g) => (
+                    <button
+                      key={g.value}
+                      onClick={() => setTempGender(g.value)}
+                      className={`p-2 rounded-xl text-xs border transition-colors ${
+                        tempGender === g.value 
+                          ? 'bg-white text-black border-white' 
+                          : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'
+                      }`}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs text-zinc-500">简述</label>
+              <textarea
+                value={tempSettings}
+                onChange={(e) => setTempSettings(e.target.value)}
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm focus:ring-2 focus:ring-white/20 outline-none resize-none h-24"
+                placeholder="描述 AI 角色的大致设定..."
+              />
+            </div>
           </div>
 
           {/* Actions */}

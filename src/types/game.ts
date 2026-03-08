@@ -7,13 +7,22 @@ export interface DebugState {
   lastImageError?: string;
 }
 
+export interface CharacterProfile {
+  name: string;
+  gender: string;
+  description: string;
+  personality: string;
+  background: string;
+  hobbies: string;
+  isFleshedOut: boolean;
+}
+
 export interface GameState {
-  characterSettings: string;
+  characterSettings: string | CharacterProfile;
   worldview: string;
   history: ChatMessage[];
   status: Record<string, any>;
   isFirstRun: boolean;
-  currentSceneVisuals: string;
   summary: string;
   turnsSinceLastSummary: number;
   playerProfile?: PlayerProfile;
@@ -90,7 +99,6 @@ export const INITIAL_STATE: GameState = {
   history: [],
   status: { health: 100, inventory: [] },
   isFirstRun: true,
-  currentSceneVisuals: "",
   summary: "",
   turnsSinceLastSummary: 0,
   loadingMessages: DEFAULT_LOADING_MESSAGES,

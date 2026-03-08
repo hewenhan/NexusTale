@@ -50,12 +50,120 @@ export default function Chat() {
   const [tempGender, setTempGender] = useState<PlayerProfile['gender']>('Male');
   const [tempOrientation, setTempOrientation] = useState<PlayerProfile['orientation']>('Heterosexual');
 
+  // Character Fleshing Out State
+  const [isFleshingOutCharacter, setIsFleshingOutCharacter] = useState(false);
+
   // Check for missing profile on mount
   useEffect(() => {
     if (!state.playerProfile) {
       setShowProfileModal(true);
     }
   }, [state.playerProfile]);
+
+  // Flesh out character settings on mount if needed
+  useEffect(() => {
+    const fleshOutCharacter = async () => {
+      const needsFleshingOut = 
+        typeof state.characterSettings === 'string' || 
+        (typeof state.characterSettings === 'object' && !state.characterSettings.isFleshedOut);
+
+      if (needsFleshingOut && state.worldview && !isFleshingOutCharacter) {
+        setIsFleshingOutCharacter(true);
+        try {
+          let baseName = "";
+          let baseGender = "";
+          let baseDesc = "";
+
+          if (typeof state.characterSettings === 'string') {
+            baseDesc = state.characterSettings;
+          } else {
+            baseName = state.characterSettings.name;
+            baseGender = state.characterSettings.gender;
+            baseDesc = state.characterSettings.description;
+          }
+
+          const prompt = `
+            You are an expert character designer for a roleplay game.
+            
+            Worldview: "${state.worldview}"
+            Initial Character Info:
+            Name: ${baseName || 'Not specified'}
+            Gender: ${baseGender || 'Not specified'}
+            Description: ${baseDesc || 'Not specified'}
+            
+            Task: Flesh out this character to fit perfectly into the worldview.
+            Provide a complete profile including:
+            1. Name (use the initial name if provided, otherwise invent a fitting one)
+            2. Gender (use the initial gender if provided, otherwise invent a fitting one)
+            3. Description (a short summary of who they are)
+            4. Personality (their traits, quirks, how they act)
+            5. Background (their past experiences, how they got here)
+            6. Hobbies/Skills (what they are good at, what they like to do)
+            
+            Return ONLY a JSON object with this structure:
+            {
+              "name": "string",
+              "gender": "string",
+              "description": "string",
+              "personality": "string",
+              "background": "string",
+              "hobbies": "string"
+            }
+            
+            Translate all content to Chinese.
+            No markdown formatting.
+          `;
+          
+          const result = await ai.models.generateContent({
+            model: TEXT_MODEL,
+            contents: [{ role: 'user', parts: [{ text: prompt }] }]
+          });
+
+          const text = result.text;
+          if (text) {
+            const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            const profile = JSON.parse(jsonStr);
+            
+            updateState({ 
+              characterSettings: {
+                ...profile,
+                isFleshedOut: true
+              }
+            });
+            console.log("Character fleshed out successfully!");
+          }
+        } catch (error) {
+          console.error("Failed to flesh out character", error);
+          // If it fails, we just mark it as fleshed out so we don't infinitely retry,
+          // but keep the original data.
+          if (typeof state.characterSettings === 'object') {
+            updateState({
+              characterSettings: {
+                ...state.characterSettings,
+                isFleshedOut: true
+              }
+            });
+          } else {
+            updateState({
+              characterSettings: {
+                name: "未知",
+                gender: "未知",
+                description: state.characterSettings,
+                personality: "未知",
+                background: "未知",
+                hobbies: "未知",
+                isFleshedOut: true
+              }
+            });
+          }
+        } finally {
+          setIsFleshingOutCharacter(false);
+        }
+      }
+    };
+
+    fleshOutCharacter();
+  }, [state.characterSettings, state.worldview]);
 
   // Background task: Fetch custom loading messages if missing (for old saves)
   useEffect(() => {
@@ -176,20 +284,18 @@ export default function Chat() {
       // If history is empty, reset to initial.
       // If message exists but has no state (old save), keep current state to avoid breaking things.
       const newStatus = lastMessage?.status ?? (newHistory.length === 0 ? INITIAL_STATE.status : state.status);
-      const newVisuals = lastMessage?.currentSceneVisuals ?? (newHistory.length === 0 ? INITIAL_STATE.currentSceneVisuals : state.currentSceneVisuals);
 
       console.log('Restoring state to:', { newPacingState, newStatus });
 
       updateState({ 
         history: newHistory,
         pacingState: newPacingState,
-        status: newStatus,
-        currentSceneVisuals: newVisuals
+        status: newStatus
       });
     } else {
       console.error('Invalid index for deletion:', index);
     }
-  }, [state.history, state.pacingState, state.status, state.currentSceneVisuals, updateState]);
+  }, [state.history, state.pacingState, state.status, updateState]);
 
   // Initial greeting trigger
   const hasInitialized = useRef(false);
@@ -283,11 +389,17 @@ export default function Chat() {
       const recentHistory = [...state.history, { role: 'user', text: userInput } as const].slice(-KEEP_RECENT_TURNS);
       const historyText = recentHistory.map(m => `${m.role}: ${m.text}`).join('\n');
 
+      const lastVisuals = [...state.history].reverse().find(m => m.currentSceneVisuals)?.currentSceneVisuals || 'None yet';
+
+      const characterRoleString = typeof state.characterSettings === 'string'
+        ? state.characterSettings
+        : `Name: ${state.characterSettings.name}\nGender: ${state.characterSettings.gender}\nDescription: ${state.characterSettings.description}\nPersonality: ${state.characterSettings.personality}\nBackground: ${state.characterSettings.background}\nHobbies: ${state.characterSettings.hobbies}`;
+
       const systemPrompt = `
-        Role: ${state.characterSettings}
+        Role: ${characterRoleString}
         Current World: ${state.worldview}
         Status (including inventory): ${JSON.stringify(Object.keys(state.status).length ? state.status : { health: 100, inventory: [] })}
-        Current Scene Visual Context: "${state.currentSceneVisuals || 'None yet'}"
+        Current Scene Visual Context: "${lastVisuals}"
         
         PLAYER PROFILE:
         Name: ${state.playerProfile.name}
@@ -460,7 +572,6 @@ export default function Chat() {
       // Update internal status
       updateState({ 
         status: status_update ? { ...state.status, ...status_update } : state.status,
-        currentSceneVisuals: scene_visuals_update || state.currentSceneVisuals,
         pacingState: pacing_update ? pacing_update : {
           tensionLevel: state.pacingState.tensionLevel ?? 1,
           turnsInCurrentLevel: (state.pacingState.turnsInCurrentLevel ?? 0) + 1
@@ -475,7 +586,15 @@ export default function Chat() {
           try {
             const imageResult = await ai.models.generateContent({
               model: IMAGE_MODEL,
-              contents: [{ role: 'user', parts: [{ text: image_prompt }] }]
+              contents: [{ role: 'user', parts: [{ text: image_prompt }] }],
+              config: {
+                imageConfig: {
+                  aspectRatio: "9:16",
+                  // 512px is the closest supported size to 480p
+                  // Note: imageSize requires gemini-3.1-flash-image-preview
+                  imageSize: "512px"
+                }
+              }
             });
             
             const candidates = imageResult.candidates;
@@ -525,7 +644,8 @@ export default function Chat() {
         text: messages[messages.length - 1],
         imageFileName: finalImageFileName,
         timestamp: Date.now(),
-        debugState: newDebugState
+        debugState: newDebugState,
+        currentSceneVisuals: scene_visuals_update || lastVisuals
       });
 
     } catch (error) {
@@ -546,11 +666,15 @@ export default function Chat() {
     a.click();
   };
 
+  const characterName = typeof state.characterSettings === 'string' 
+    ? state.characterSettings.split(' ')[0] 
+    : state.characterSettings.name || 'AI';
+
   return (
     <div className="flex flex-col h-screen bg-zinc-950 text-zinc-100 font-sans relative overflow-hidden">
       {/* Header */}
       <header className="h-14 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-900/50 backdrop-blur-md sticky top-0 z-10">
-        <div className="font-bold text-lg tracking-tight">AI 冒险</div>
+        <div className="font-bold text-lg tracking-tight truncate max-w-[200px] sm:max-w-[300px]">{characterName}</div>
         <div className="flex items-center gap-2">
           {!isAuthenticated && (
              <div className="text-xs text-amber-500 flex items-center gap-1">
@@ -573,7 +697,7 @@ export default function Chat() {
           data={state.history}
           initialTopMostItemIndex={state.history.length - 1}
           followOutput="smooth"
-          context={{ onDelete: handleDeleteMessage, imageUrls, characterName: state.characterSettings.split(' ')[0], onImageLoaded: handleImageLoaded }}
+          context={{ onDelete: handleDeleteMessage, imageUrls, characterName, onImageLoaded: handleImageLoaded }}
           itemContent={(index, msg, context) => (
             <div className="pb-6">
               <ChatMessageItem 
@@ -588,21 +712,31 @@ export default function Chat() {
           components={{
             Footer: () => (
               isProcessing ? (
-                <div className="flex flex-col max-w-3xl mx-auto items-start w-full pb-6 px-4">
-                  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl rounded-tl-sm p-4 flex items-center gap-3">
-                    <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
-                    <AnimatePresence mode="wait">
-                      <motion.span
-                        key={currentLoadingMessage}
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -5 }}
-                        transition={{ duration: 0.2 }}
-                        className="text-sm text-zinc-400"
-                      >
-                        {currentLoadingMessage}
-                      </motion.span>
-                    </AnimatePresence>
+                <div className="flex w-full mx-auto pb-6 px-4 gap-3 justify-start">
+                  {/* AI Avatar Skeleton for Loading */}
+                  <div className="w-10 h-10 rounded-full bg-zinc-800 shrink-0 overflow-hidden border border-zinc-700 flex items-center justify-center mt-5">
+                    <span className="text-zinc-500 text-xs">{characterName[0]}</span>
+                  </div>
+                  
+                  <div className="flex flex-col max-w-[75%] items-start">
+                    <div className="text-xs text-zinc-500 mb-1 px-1">
+                      {characterName}
+                    </div>
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl rounded-tl-sm p-4 flex items-center gap-3 w-fit shadow-sm">
+                      <Loader2 className="w-4 h-4 animate-spin text-zinc-400 shrink-0" />
+                      <AnimatePresence mode="wait">
+                        <motion.span
+                          key={currentLoadingMessage}
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -5 }}
+                          transition={{ duration: 0.2 }}
+                          className="text-sm text-zinc-400 truncate"
+                        >
+                          {currentLoadingMessage}
+                        </motion.span>
+                      </AnimatePresence>
+                    </div>
                   </div>
                 </div>
               ) : null
@@ -660,11 +794,11 @@ export default function Chat() {
               <div className="space-y-6">
                 <div>
                   <h3 className="text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider">物品栏</h3>
-                  {state.inventory.length === 0 ? (
+                  {(!state.status?.inventory || state.status.inventory.length === 0) ? (
                     <div className="text-zinc-600 italic text-sm">空</div>
                   ) : (
                     <ul className="space-y-2">
-                      {state.inventory.map((item, i) => (
+                      {state.status.inventory.map((item: string, i: number) => (
                         <li key={i} className="bg-zinc-950 border border-zinc-800 p-2 rounded-lg text-sm">
                           {item}
                         </li>
@@ -684,6 +818,24 @@ export default function Chat() {
                   <h3 className="text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider">世界观</h3>
                   <div className="bg-zinc-950 border border-zinc-800 p-3 rounded-lg text-sm text-zinc-300">
                     {state.worldview}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider">角色设定</h3>
+                  <div className="bg-zinc-950 border border-zinc-800 p-3 rounded-lg text-sm text-zinc-300 space-y-2">
+                    {typeof state.characterSettings === 'string' ? (
+                      <div>{state.characterSettings}</div>
+                    ) : (
+                      <>
+                        <div><span className="text-zinc-500">姓名：</span>{state.characterSettings.name}</div>
+                        <div><span className="text-zinc-500">性别：</span>{state.characterSettings.gender}</div>
+                        <div><span className="text-zinc-500">简述：</span>{state.characterSettings.description}</div>
+                        {state.characterSettings.personality && <div><span className="text-zinc-500">性格：</span>{state.characterSettings.personality}</div>}
+                        {state.characterSettings.background && <div><span className="text-zinc-500">经历：</span>{state.characterSettings.background}</div>}
+                        {state.characterSettings.hobbies && <div><span className="text-zinc-500">特长/爱好：</span>{state.characterSettings.hobbies}</div>}
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -776,6 +928,29 @@ export default function Chat() {
         )}
       </AnimatePresence>
       
+      {/* Fleshing Out Character Overlay */}
+      <AnimatePresence>
+        {isFleshingOutCharacter && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              className="bg-zinc-900 border border-zinc-800 p-8 rounded-2xl max-w-sm w-full text-center space-y-4 shadow-2xl"
+            >
+              <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mx-auto" />
+              <h3 className="text-lg font-medium">正在融入世界观...</h3>
+              <p className="text-sm text-zinc-400">正在根据世界设定补全角色的详细背景、性格与特长，请稍候。</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <DebugOverlay state={state} />
     </div>
   );

@@ -40,7 +40,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         isFirstRun: parsed.isFirstRun ?? INITIAL_STATE.isFirstRun,
         summary: parsed.summary ?? INITIAL_STATE.summary,
         turnsSinceLastSummary: parsed.turnsSinceLastSummary ?? INITIAL_STATE.turnsSinceLastSummary,
-        currentSceneVisuals: parsed.currentSceneVisuals ?? INITIAL_STATE.currentSceneVisuals,
         playerProfile: parsed.playerProfile,
         loadingMessages: parsed.loadingMessages || DEFAULT_LOADING_MESSAGES,
         
@@ -100,8 +99,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         ...message,
         // Snapshot current game state into the message for rollback/undo support
         pacingState: prev.pacingState,
-        status: prev.status,
-        currentSceneVisuals: prev.currentSceneVisuals
+        status: prev.status
       }]
     }));
   };
