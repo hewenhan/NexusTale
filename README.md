@@ -1,20 +1,63 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 🌌 NexusTale AI RPG (AI 文字冒险引擎)
 
-# Run and deploy your AI Studio app
+这是一个基于大语言模型（LLM）驱动的沉浸式文字冒险游戏引擎。在这里，告别固定脚本与线性流程，玩家可以自定义世界观、角色设定，与 AI 扮演的专属同伴一起踏上充满未知与变数的旅程。
 
-This contains everything you need to run your app locally.
+## ✨ 核心特性
 
-View your app in AI Studio: https://ai.studio/apps/916ead9c-4519-43c1-ab4d-caeb868b2447
+### 🎭 动态 AI 叙事与互动
+* **无限可能的剧情**：AI 根据你的每一次行动和对话实时生成剧情发展、环境描述和 NPC 反馈。
+* **智能上下文管理**：内置长文本自动摘要（Summary）机制，在保证长线剧情连贯性的同时，有效节省 Token 消耗，让冒险可以无限延伸。
 
-## Run Locally
+### 🎲 5级动态紧张度系统 (Tension System)
+游戏内置了从 **0（和平/日常）** 到 **4（灾难/生死存亡）** 的五级危机流转系统，拒绝平淡如水的流水账：
+* **命运之骰（D20）**：玩家的冒险行动会触发暗骰判定。
+* **动态流转**：高点数化险为夷，低点数则可能导致危机升级（如从“探索”升级为“遇袭”）。在危机时刻（Level 2-4）如果选择“无所作为”，系统将自动判定为失败并加剧危险！
 
-**Prerequisites:**  Node.js
+### 🖼️ 实时 AI 场景绘图
+* **视觉沉浸**：随着玩家探索新的地点，系统会在后台调用 AI 图像生成模型，自动绘制当前场景的第一人称视觉画面。
+* **视觉一致性**：在同一场景内活动时，AI 会保持视觉描述的一致性，增强代入感。
 
+### 🎵 沉浸式背景音乐 (BGM)
+* **氛围烘托**：全新加入的 BGM 系统，配合当前的剧情氛围和紧张度级别，为你提供更深度的听觉沉浸体验。
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### ❤️ 细腻的情感与羁绊
+* **定制化关系**：支持自定义玩家与 AI 同伴的性别及性向。
+* **动态互动模式**：系统会根据设定自动适配互动模式。如果性向匹配，将体验到细腻的“慢热型”情感拉扯；如果不匹配，则是纯粹且深厚的战友情谊。AI 被严格指令拒绝“机器人口吻”和“生硬倒贴”。
+
+### 🎒 状态与物品追踪
+* **RPG 面板**：直观的侧边栏 UI，实时追踪你的生命值（HP）、背包物品（Inventory）以及当前的世界状态。
+* **AI 自动管理**：你无需手动添加物品，AI 会在剧情发展中自动解析并更新你的背包状态。
+
+## 🛠️ 技术栈
+
+* **前端框架**: React 18 + Vite
+* **样式引擎**: Tailwind CSS + Lucide React (图标)
+* **AI 驱动**: Google Gemini API (文本生成、摘要、图像生成)
+* **状态管理**: React Context API
+* **虚拟列表**: React Virtuoso (优化长对话历史的渲染性能)
+
+## 🚀 如何开始
+
+1. **克隆项目**
+   \`\`\`bash
+   git clone https://github.com/hewenhan/ai-text-adventure-engine.git
+   cd ai-text-adventure-engine
+   \`\`\`
+
+2. **安装依赖**
+   \`\`\`bash
+   npm install
+   \`\`\`
+
+3. **配置环境变量**
+   复制 \`.env.example\` 为 \`.env\`，并填入你的 API Key：
+   \`\`\`env
+   GEMINI_API_KEY=your_api_key_here
+   \`\`\`
+
+4. **启动开发服务器**
+   \`\`\`bash
+   npm run dev
+   \`\`\`
+   
+打开浏览器访问 \`http://localhost:3000\` 即可开始你的冒险！
