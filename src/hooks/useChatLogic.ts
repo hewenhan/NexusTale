@@ -6,6 +6,20 @@ import { generateSummary, generateTurn, generateImage } from '../services/aiServ
 import { uploadImageToDrive } from '../lib/drive';
 import { SUMMARY_THRESHOLD, KEEP_RECENT_TURNS } from '../types/game';
 
+// Helper to find the index of the Nth-to-last user message
+const getStartIndexForRecentTurns = (messages: { role: string }[], turns: number) => {
+  let count = 0;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'user') {
+      count++;
+      if (count === turns) {
+        return i;
+      }
+    }
+  }
+  return 0;
+};
+
 export function useChatLogic() {
   const { state, addMessage, updateState } = useGame();
   const { isAuthenticated, accessToken } = useAuth();
@@ -54,14 +68,14 @@ export function useChatLogic() {
       let currentSummary = state.summary;
       let turnsCount = state.turnsSinceLastSummary + 1;
 
-      const isLongHistoryWithoutSummary = state.summary === "" && state.history.length > (SUMMARY_THRESHOLD + KEEP_RECENT_TURNS);
+      const isLongHistoryWithoutSummary = state.summary === "" && state.history.filter(m => m.role === 'user').length > (SUMMARY_THRESHOLD + KEEP_RECENT_TURNS);
 
       if (turnsCount >= SUMMARY_THRESHOLD || isLongHistoryWithoutSummary) {
         const allMessages = [...state.history, { role: 'user', text: userInput } as const];
-        const totalMessages = allMessages.length;
+        const recentStartIndex = getStartIndexForRecentTurns(allMessages, KEEP_RECENT_TURNS);
         
-        if (totalMessages > KEEP_RECENT_TURNS) {
-             const messagesToSummarize = allMessages.slice(0, totalMessages - KEEP_RECENT_TURNS);
+        if (recentStartIndex > 0) {
+             const messagesToSummarize = allMessages.slice(0, recentStartIndex);
              const newSummary = await generateSummary(currentSummary, messagesToSummarize as any, state.language);
              if (newSummary) {
                currentSummary = newSummary;
@@ -76,7 +90,9 @@ export function useChatLogic() {
          updateState({ turnsSinceLastSummary: turnsCount });
       }
 
-      const recentHistory = [...state.history, { role: 'user', text: userInput } as const].slice(-KEEP_RECENT_TURNS);
+      const allMessagesForPrompt = [...state.history, { role: 'user', text: userInput } as const];
+      const promptStartIndex = getStartIndexForRecentTurns(allMessagesForPrompt, KEEP_RECENT_TURNS);
+      const recentHistory = allMessagesForPrompt.slice(promptStartIndex);
       const historyText = recentHistory.map(m => `${m.role}: ${m.text}`).join('\n');
       const lastVisuals = [...state.history].reverse().find(m => m.currentSceneVisuals)?.currentSceneVisuals || 'None yet';
 
@@ -162,12 +178,20 @@ export function useChatLogic() {
              - OTHERWISE (e.g., Mismatch in orientation), keep interactions **Strictly Platonic/Friendship**.
              - Do not explicitly state "I am [Gender]", just act accordingly.
 
-        5. **FORMAT & CONCISENESS (CRITICAL)**: 
+        5. **FORMAT & CONCISENESS (CRITICAL - STRICT ENFORCEMENT)**: 
            - **SEQUENCE OF EVENTS**: Break your response into a sequence of rhythmic interactions.
-           - **LENGTH**: Break the response into **5-8 SHORT segments**. Each segment should be **1-2 sentences maximum**.
-           - **STYLE**: Fast-paced, conversational, or punchy. Avoid long paragraphs.
-           - **NO NARRATION OF VISUALS**: The player can SEE the image. Do NOT describe the scene or your actions unless necessary for interaction.
-           - **NO INTERNAL MONOLOGUE**: Do not describe your own facial expressions (e.g., "I smiled softly") or internal thoughts. Just SPEAK.
+           - **IMMERSIVE CHAT MODE (IMPORTANT)**: 
+             - **NO FIRST-PERSON NARRATION**: Do NOT write sentences like "I looked at you", "I gripped the gun", or "I smiled". 
+             - **PURE DIALOGUE**: Convey actions through speech or sound effects. 
+             - *Bad*: "I check the ammo." -> *Good*: "Ammo check... full mag."
+             - *Bad*: "I bandage your wound." -> *Good*: "Hold still, this might sting."
+           - **LENGTH VARIATION RULES (MANDATORY)**:
+             - **THE "MICRO-SEGMENT" RULE**: At least **3-4 segments** MUST be extremely short (under 10 Chinese characters). 
+               - *Good Examples*: "小心！", "那是啥？", "别出声。", "我也听到了。", "等等..."
+             - **THE "ANCHOR" SEGMENT**: You may include **MAXIMUM ONE** slightly longer sentence (2 clauses) to explain a complex situation, BUT IT MUST BE SPOKEN.
+           - **RHYTHM**: The output visual should look "jagged" and uneven. Short -> Short -> Medium -> Short.
+           - **FINAL SEGMENT**: The last item MUST be creative and constructive (question, command, or reaction).
+           - **SEGMENT COUNT**: 5-7 segments total.
 
         6. **INVENTORY**: Update inventory in \`status_update\` if items are gained/lost.
         
@@ -250,9 +274,7 @@ export function useChatLogic() {
         newTension = Math.max(0, Math.min(4, newTension));
         
         const isSameLevel = newTension === prev.pacingState.tensionLevel;
-        console.log(isSameLevel);
         const newTurns = isSameLevel ? (prev.pacingState.turnsInCurrentLevel ?? 0) + 1 : 1;
-        console.log(newTurns);
 
         return {
           status: status_update ? { ...prev.status, ...status_update } : prev.status,
