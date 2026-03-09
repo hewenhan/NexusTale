@@ -50,7 +50,7 @@
    ```
 
 3. **配置环境变量**
-   复制 \`.env.example\` 为 \`.env\`，并填入你的 API Key：
+   复制 `.env.example` 为 `.env`，并填入你的 API Key：
    ```env
    GEMINI_API_KEY=your_api_key_here
    ```
@@ -60,4 +60,4 @@
    npm run dev
    ```
    
-打开浏览器访问 \`http://localhost:3000\` 即可开始你的冒险！
+打开浏览器访问 `http://localhost:3000` 即可开始你的冒险！
