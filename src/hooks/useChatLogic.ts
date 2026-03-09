@@ -105,12 +105,9 @@ export function useChatLogic() {
            - You are a COMPANION, NOT a guide or commander. 
            - **PUSH THE PLOT**: While you shouldn't command the player, you MUST actively introduce new threats, clues, or environment changes. Don't just stand there.
            - **ACTION RESOLUTION (IMPORTANT)**: 
-             - A "Fate Roll" (1-20) is provided below. Use it to determine the success of the player's *risky* actions.
-             - **Current Success Threshold**: ${successThreshold} (Roll >= ${successThreshold} is a Success)
-             - **1-${successThreshold - 1} (FAILURE)**: The action fails, backfires, or has a serious cost.
-             - **${successThreshold}-20 (SUCCESS)**: The action succeeds.
-             - **CRITICAL SUCCESS (19-20)**: Brilliant success.
-             - **CRITICAL RULE**: If the player is just talking or looking around in Level 0 or 1, **IGNORE THE ROLL**. But in Level 2, 3, or 4, inaction is dangerous! If they do nothing during a threat, treat it as a FAILURE.
+             - A "Fate Roll Result" will be provided at the end of the input (Success/Failure).
+             - **YOU MUST FOLLOW THE PROVIDED OUTCOME STRICTLY.** 
+             - Do not recalculate the roll. If the input says "FAILURE", you must narrate a failure, setback, or complication. If it says "SUCCESS", you must narrate a success or victory.
 
         2. **NARRATIVE PACING (5-LEVEL TENSION SYSTEM)**:
            - You MUST manage the game's pacing using the following 5 Tension Levels.
@@ -120,29 +117,19 @@ export function useChatLogic() {
            - **Level 3 (Crisis)**: High threat. Multiple enemies, escalating danger, time pressure.
            - **Level 4 (Disaster)**: EXTREME danger. Boss fight, collapsing structure, life-or-death. (Player actions are harder here).
 
-           **TRANSITION LOGIC (DYNAMIC FLOW - BEST PRACTICE)**:
-           - **Level 0 (Peace)**:
-             - **SAFE ZONE**: Do NOT trigger combat or traps here.
-             - **Transition**: Only move to **Level 1** if the player explicitly decides to leave, travel, or do something risky.
-             - **IGNORE ROLL**: If the player is just talking, expressing emotions, or interacting safely, STAY IN LEVEL 0 regardless of the Fate Roll. Success in Level 0 just means a nice conversation or successful relaxation.
+           **LEVEL SCENARIOS (Narrative Guidance)**:
+           - **Level 0**: Peace. If user initiates adventure -> Switch to Level 1 vibe.
+           - **Level 1**: 
+             - *Success*: Smooth progress, finding loot, safe path.
+             - *Failure*: An accident happens, a trap triggers, or an enemy ambushes (Escalate to Level 2).
+           - **Level 2 & 3**:
+             - *Success*: Threat is pushed back, neutralized, or escaped (Drop to Level 1 for recovery).
+             - *Failure*: You get pinned down, injured, or surrounded (Escalate to next Level).
+           - **Level 4**:
+             - *Success*: HEROIC VICTORY! The boss falls, the collapse stops, the day is saved (Celebration -> Level 0).
+             - *Failure*: CATASTROPHE. You survive but at great cost (Major Injury/Lost Gear). You must retreat to safety (Level 1).
 
-           - **Level 1 (Adventure/Prep)**: The Hub State.
-             - **Success (Roll >= 5)**:
-               - If Player intent is **REST / SOCIALIZE / CAMP**: Drop to **Level 0** (Success = Safe camp established).
-               - If Player intent is **PROGRESS / LOOT / INVESTIGATE**: Gain reward/info, maintain **Level 1**, but describe growing danger (foreshadowing).
-             - **Failure (Roll < 5)**: An accident, ambush, or trap is triggered! Escalate to **Level 2**.
-
-           - **Level 2 (Conflict) & Level 3 (Crisis)**:
-             - **Success (Roll >= 10)**: Threat eliminated/Overcome. Drop to **Level 1** (The aftermath/Looting/Recovery phase).
-             - **Failure (Roll < 10)**: Situation worsens. Escalate one level (2->3, 3->4).
-
-           - **Level 4 (Disaster)**:
-             - **Success (Roll >= 15)**: Heroic victory! Drop to **Level 0** (Celebration/Relief).
-             - **Failure (Roll < 15)**: **CATASTROPHE**. Player takes MAJOR DAMAGE (20+ HP). Forced retreat/Collapse. Drop to **Level 1** (Injured/Recovering state).
-
-           - **Stagnation Rule**: Only if the player is looping in Level 1/2 for >5 turns with no progress, force an external event to change the level.
-
-           - **OUTPUT**: You MUST provide a \`pacing_update\` with the NEW \`tensionLevel\` in the JSON response.
+           - **OUTPUT**: You MUST provide a \`pacing_update\` with the NEW \`tensionLevel\` in the JSON response, based on the **REQUIRED OUTCOME** instruction provided at the end.
 
         3. **NARRATIVE VARIETY & ANTI-REPETITION (CRITICAL)**:
            - **AVOID CLICHÉS**: Do NOT use generic tropes like "a hand suddenly grabs you", "you hear a twig snap", "a shadowy figure appears", or "eyes watching from the dark". These are boring and repetitive.
@@ -207,15 +194,34 @@ export function useChatLogic() {
 
       console.log("Level for AI:", state.pacingState.tensionLevel);
 
+      const isSuccess = actionRoll >= successThreshold;
+      const resultText = isSuccess ? "SUCCESS" : "FAILURE";
+
+      let rollInstruction = "";
+      if (state.pacingState.tensionLevel === 4) {
+        rollInstruction = isSuccess 
+          ? "HEROIC VICTORY! Threat destroyed -> YOU MUST Drop to Level 0 (Celebration)." 
+          : "CATASTROPHIC FAILURE. Player takes MAJOR DAMAGE or forced retreat -> YOU MUST Drop to Level 1 (Injured/Weakened).";
+      } else if (state.pacingState.tensionLevel === 2 || state.pacingState.tensionLevel === 3) {
+        rollInstruction = isSuccess
+          ? "Threat neutralized -> Drop to Level 1 (Recovery/Looting)."
+          : "Situation worsens -> Escalate one level (2->3, 3->4).";
+      } else if (state.pacingState.tensionLevel === 1) {
+        rollInstruction = isSuccess
+          ? "Success -> IF Intent=Rest/Social: Drop to Level 0. IF Intent=Progress/Loot: Maintain Level 1 + Reward."
+          : "Failure -> Escalate to Level 2 (Ambush/Trap).";
+      }
 
       const rollText = state.pacingState.tensionLevel === 0 
-        ? `Fate Roll: ${actionRoll} (IGNORE unless user performs a RISKY action. Otherwise, just chat/relax.)`
-        : `Fate Roll: ${actionRoll} (Use this to determine success/failure of the User Action)`;
+        ? `Fate Roll: ${actionRoll} (IGNORE unless user performs a RISKY action). IF User initiates adventure/travel -> Switch to Level 1.`
+        : `Fate Roll: ${actionRoll} vs Threshold ${successThreshold}. Result: ${resultText}.\nREQUIRED OUTCOME: ${rollInstruction}`;
 
       console.log("actionRoll", actionRoll);
       console.log("successThreshold", successThreshold);
 
       const fullPrompt = `${systemPrompt}\n\nRecent Chat History:\n${historyText}\n\nUser Action: ${userInput}\n${rollText}`;
+
+      console.log(fullPrompt);
 
       const responseJson = await generateTurn(fullPrompt);
       console.log("AI Response JSON:", responseJson);
