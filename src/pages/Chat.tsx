@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { useAuth } from '../contexts/AuthContext';
 import { AnimatePresence, motion } from 'motion/react';
@@ -8,6 +8,7 @@ import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { ChatMessageItem } from '../components/ChatMessageItem';
 import { DebugOverlay } from '../components/DebugOverlay';
 import { useChatLogic } from '../hooks/useChatLogic';
+import { useBGM } from '../hooks/useBGM';
 import { ChatInput } from '../components/ChatInput';
 import { ProfileModal } from '../components/ProfileModal';
 import { StatusSidebar } from '../components/StatusSidebar';
@@ -22,6 +23,15 @@ export default function Chat() {
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   
   const { isProcessing, handleTurn } = useChatLogic();
+
+  // BGM: find the latest bgmKey from chat history
+  const currentBgmKey = useMemo(() => {
+    for (let i = state.history.length - 1; i >= 0; i--) {
+      if (state.history[i].bgmKey) return state.history[i].bgmKey;
+    }
+    return undefined;
+  }, [state.history]);
+  const { volume, changeVolume } = useBGM(currentBgmKey);
 
   // Loading Message State
   const [currentLoadingMessage, setCurrentLoadingMessage] = useState(DEFAULT_LOADING_MESSAGES[0]);
@@ -305,7 +315,7 @@ export default function Chat() {
         />
       </div>
 
-      <ChatInput isProcessing={isProcessing} onSend={handleTurn} />
+      <ChatInput isProcessing={isProcessing} onSend={handleTurn} volume={volume} onVolumeChange={changeVolume} />
 
       <AnimatePresence>
         {showStatus && (

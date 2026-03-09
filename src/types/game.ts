@@ -54,6 +54,7 @@ export interface ChatMessage {
   status?: Record<string, any>;
   currentSceneVisuals?: string;
   debugState?: DebugState;
+  bgmKey?: string; // BGM file path from BGM_LIST, e.g. "levelBGM/level2_1.mp3"
 }
 
 export const DEFAULT_CHARACTER: CharacterProfile = {
@@ -68,6 +69,14 @@ export const DEFAULT_CHARACTER: CharacterProfile = {
 export const SUMMARY_THRESHOLD = 20;
 export const KEEP_RECENT_TURNS = 10;
 export const ENABLE_DEBUG_UI = true;
+
+export const BGM_LIST = {
+  0: ["levelBGM/Level0_1.mp3", "levelBGM/Level0_2.mp3"],
+  1: ["levelBGM/Level1_1.mp3", "levelBGM/Level1_2.mp3", "levelBGM/Level1_3.mp3", "levelBGM/Level1_4.mp3"],
+  2: ["levelBGM/Level2_1.mp3", "levelBGM/Level2_2.mp3"],
+  3: ["levelBGM/Level3_1.mp3", "levelBGM/Level3_2.mp3"],
+  4: ["levelBGM/Level4_1.mp3", "levelBGM/Level4_2.mp3"]
+};
 
 export const DEFAULT_LOADING_MESSAGES = [
   "正在连接神经网络...",

@@ -75,7 +75,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
               pacingState: msg.pacingState,
               status: msg.status ? { ...msg.status, inventory: msg.status.inventory || msg.inventory || [] } : undefined,
               currentSceneVisuals: msg.currentSceneVisuals,
-              debugState: msg.debugState
+              debugState: msg.debugState,
+              bgmKey: msg.bgmKey
             }))
           : []
       };

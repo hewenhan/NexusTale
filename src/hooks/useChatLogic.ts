@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { v4 as uuidv4 } from 'uuid';
 import { generateSummary, generateTurn, generateImage } from '../services/aiService';
 import { uploadImageToDrive } from '../lib/drive';
-import { SUMMARY_THRESHOLD, KEEP_RECENT_TURNS } from '../types/game';
+import { SUMMARY_THRESHOLD, KEEP_RECENT_TURNS, BGM_LIST } from '../types/game';
 
 // Helper to find the index of the Nth-to-last user message
 const getStartIndexForRecentTurns = (messages: { role: string }[], turns: number) => {
@@ -262,24 +262,38 @@ export function useChatLogic() {
         lastImageError: undefined as string | undefined
       };
 
-      updateState(prev => {
-        let newTension: number = prev.pacingState.tensionLevel ?? 1;
-        if (pacing_update && typeof pacing_update.tensionLevel === 'number') {
-          newTension = pacing_update.tensionLevel;
-        } else if (pacing_update && typeof pacing_update.tensionLevel === 'string') {
-          newTension = parseInt(pacing_update.tensionLevel, 10) || newTension;
+      // Determine new tension level for BGM selection
+      let resolvedTension: number = state.pacingState.tensionLevel ?? 1;
+      if (pacing_update && typeof pacing_update.tensionLevel === 'number') {
+        resolvedTension = pacing_update.tensionLevel;
+      } else if (pacing_update && typeof pacing_update.tensionLevel === 'string') {
+        resolvedTension = parseInt(pacing_update.tensionLevel, 10) || resolvedTension;
+      }
+      resolvedTension = Math.max(0, Math.min(4, resolvedTension));
+
+      // Pick a random BGM only if tension level changed; otherwise keep current BGM
+      const tensionChanged = resolvedTension !== state.pacingState.tensionLevel;
+      let selectedBgmKey: string | undefined;
+      if (tensionChanged) {
+        const bgmCandidates = BGM_LIST[resolvedTension as keyof typeof BGM_LIST] || [];
+        selectedBgmKey = bgmCandidates.length > 0
+          ? bgmCandidates[Math.floor(Math.random() * bgmCandidates.length)]
+          : undefined;
+      } else {
+        // Keep the last bgmKey from history
+        for (let i = state.history.length - 1; i >= 0; i--) {
+          if (state.history[i].bgmKey) { selectedBgmKey = state.history[i].bgmKey; break; }
         }
-        
-        // Ensure bounds
-        newTension = Math.max(0, Math.min(4, newTension));
-        
-        const isSameLevel = newTension === prev.pacingState.tensionLevel;
+      }
+
+      updateState(prev => {
+        const isSameLevel = resolvedTension === prev.pacingState.tensionLevel;
         const newTurns = isSameLevel ? (prev.pacingState.turnsInCurrentLevel ?? 0) + 1 : 1;
 
         return {
           status: status_update ? { ...prev.status, ...status_update } : prev.status,
           pacingState: {
-            tensionLevel: newTension as 0 | 1 | 2 | 3 | 4,
+            tensionLevel: resolvedTension as 0 | 1 | 2 | 3 | 4,
             turnsInCurrentLevel: newTurns
           }
         };
@@ -319,7 +333,8 @@ export function useChatLogic() {
           text: messages[0],
           timestamp: Date.now(),
           debugState: newDebugState,
-          currentSceneVisuals: scene_visuals_update || lastVisuals
+          currentSceneVisuals: scene_visuals_update || lastVisuals,
+          bgmKey: selectedBgmKey
         });
 
         if (messages.length === 1) {
@@ -345,6 +360,7 @@ export function useChatLogic() {
             role: 'model',
             text: messages[i],
             timestamp: Date.now() + i,
+            bgmKey: selectedBgmKey
           });
         }
 
@@ -360,7 +376,8 @@ export function useChatLogic() {
           role: 'model',
           text: messages[messages.length - 1],
           timestamp: Date.now() + messages.length - 1,
-          imageFileName: fileName
+          imageFileName: fileName,
+          bgmKey: selectedBgmKey
         });
 
         setIsProcessing(false);

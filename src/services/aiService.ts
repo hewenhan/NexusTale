@@ -42,15 +42,29 @@ export async function generateTurn(fullPrompt: string): Promise<any> {
     responseJson = JSON.parse(cleanedText);
   } catch (e) {
     console.error("JSON Parse Error:", e);
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-       try {
-         responseJson = JSON.parse(jsonMatch[0]);
-       } catch (e2) {
-         throw new Error("Failed to parse JSON response from model.");
-       }
+    // Try to extract the first valid JSON object by matching balanced braces
+    const start = responseText.indexOf('{');
+    if (start !== -1) {
+      let depth = 0;
+      let end = -1;
+      for (let i = start; i < responseText.length; i++) {
+        if (responseText[i] === '{') depth++;
+        else if (responseText[i] === '}') {
+          depth--;
+          if (depth === 0) { end = i; break; }
+        }
+      }
+      if (end !== -1) {
+        try {
+          responseJson = JSON.parse(responseText.slice(start, end + 1));
+        } catch (e2) {
+          throw new Error("Failed to parse JSON response from model.");
+        }
+      } else {
+        throw new Error("Failed to parse JSON response from model.");
+      }
     } else {
-       throw new Error("Invalid JSON format from model.");
+      throw new Error("Invalid JSON format from model.");
     }
   }
   return responseJson;
