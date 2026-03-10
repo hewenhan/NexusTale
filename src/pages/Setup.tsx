@@ -1,15 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { useNavigate } from 'react-router-dom';
 import { ai, PRO_MODEL } from '../lib/gemini';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader2 } from 'lucide-react';
 import { PlayerProfile, DEFAULT_LOADING_MESSAGES } from '../types/game';
+import { FakeProgressBar, FakeProgressBarHandle } from '../components/FakeProgressBar';
+import { ArtStylePicker } from '../components/ArtStylePicker';
+import { ArtStyleOption } from '../types/artStyles';
 
 export default function Setup() {
   const { state, updateState } = useGame();
   const navigate = useNavigate();
-  const [step, setStep] = useState<'profile' | 'world'>('profile');
+  const [step, setStep] = useState<'profile' | 'world' | 'artStyle'>('profile');
   
   // Profile State
   const [name, setName] = useState("");
@@ -21,9 +24,13 @@ export default function Setup() {
   const [loading, setLoading] = useState(false);
   const [options, setOptions] = useState<string[]>([]);
   const [generatedLoadingMessages, setGeneratedLoadingMessages] = useState<string[]>([]);
+  const [selectedWorldview, setSelectedWorldview] = useState<string | null>(null);
 
   // Loading Message State
   const [currentLoadingMessage, setCurrentLoadingMessage] = useState(DEFAULT_LOADING_MESSAGES[0]);
+
+  // Progress bar ref
+  const progressBarRef = useRef<FakeProgressBarHandle>(null);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -93,17 +100,34 @@ export default function Setup() {
       console.error("Failed to generate worldviews", error);
       alert("生成世界观失败，请重试。");
     } finally {
-      setLoading(false);
+      progressBarRef.current?.finish();
+      setTimeout(() => setLoading(false), 600);
     }
   };
 
   const handleSelect = (worldview: string) => {
-    updateState({ 
-      worldview, 
-      isFirstRun: false,
-      // Save the generated loading messages, or fallback to default if empty
-      loadingMessages: generatedLoadingMessages.length > 0 ? generatedLoadingMessages : DEFAULT_LOADING_MESSAGES
-    });
+    setSelectedWorldview(worldview);
+    setStep('artStyle');
+  };
+
+  const handleArtStyleSelect = (option: ArtStyleOption | 'system') => {
+    if (!selectedWorldview) return;
+    if (option === 'system') {
+      // 系统推荐：不设置固定提词，让 AI 自动生成
+      updateState({
+        worldview: selectedWorldview,
+        isFirstRun: false,
+        loadingMessages: generatedLoadingMessages.length > 0 ? generatedLoadingMessages : DEFAULT_LOADING_MESSAGES,
+      });
+    } else {
+      // 使用固定风格提词
+      updateState({
+        worldview: selectedWorldview,
+        isFirstRun: false,
+        artStylePrompt: option.prompt,
+        loadingMessages: generatedLoadingMessages.length > 0 ? generatedLoadingMessages : DEFAULT_LOADING_MESSAGES,
+      });
+    }
     navigate('/chat');
   };
 
@@ -189,6 +213,26 @@ export default function Setup() {
     );
   }
 
+  if (step === 'artStyle') {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6 flex flex-col items-center justify-center font-sans">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-3xl w-full"
+        >
+          <ArtStylePicker onSelect={handleArtStyleSelect} />
+          <button
+            onClick={() => { setSelectedWorldview(null); setStep('world'); }}
+            className="text-zinc-500 hover:text-zinc-300 text-sm mt-6 block mx-auto"
+          >
+            返回选择世界
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6 flex flex-col items-center justify-center font-sans">
       <div className="max-w-2xl w-full space-y-8">
@@ -208,23 +252,36 @@ export default function Setup() {
             <button
               onClick={handleGenerate}
               disabled={loading || !inputWorldview.trim()}
-              className="w-full bg-white text-black py-3 rounded-xl font-medium hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all"
+              className="w-full bg-white text-black py-3 rounded-xl font-medium hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all relative overflow-hidden"
             >
               {loading ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="animate-spin" />
-                  <AnimatePresence mode="wait">
-                    <motion.span
-                      key={currentLoadingMessage}
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -5 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      {currentLoadingMessage}
-                    </motion.span>
-                  </AnimatePresence>
-                </div>
+                <>
+                  <FakeProgressBar
+                    ref={progressBarRef}
+                    duration={50000}
+                    direction="ltr"
+                    gradientColors={['#10b981', '#06b6d4']}
+                    animation="shimmer"
+                    attach="inborder"
+                    xPercent={0}
+                    yPercent={100}
+                    thickness={4}
+                  />
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="animate-spin" />
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={currentLoadingMessage}
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -5 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {currentLoadingMessage}
+                      </motion.span>
+                    </AnimatePresence>
+                  </div>
+                </>
               ) : (
                 "生成选项"
               )}

@@ -21,7 +21,9 @@ export const ChatMessageItem = React.memo(({ msg, characterName, portraitUrl, im
   const { accessToken } = useAuth();
   const [isLoadingImage, setIsLoadingImage] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isAvatarFullscreen, setIsAvatarFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const avatarContainerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
 
   useEffect(() => {
@@ -56,7 +58,10 @@ export const ChatMessageItem = React.memo(({ msg, characterName, portraitUrl, im
     >
       {/* AI Avatar */}
       {msg.role !== 'user' && (
-        <div className="w-20 h-20 rounded-xl bg-zinc-800 shrink-0 overflow-hidden border border-zinc-700 flex items-center justify-center mt-5">
+        <div 
+          className={`w-20 h-20 rounded-xl bg-zinc-800 shrink-0 overflow-hidden border border-zinc-700 flex items-center justify-center mt-5 ${portraitUrl ? 'cursor-pointer hover:ring-2 hover:ring-zinc-500 transition-all' : ''}`}
+          onClick={() => { if (portraitUrl) setIsAvatarFullscreen(true); }}
+        >
           {portraitUrl ? (
             <img src={portraitUrl} alt={characterName} className="w-full h-full object-cover" />
           ) : (
@@ -170,6 +175,42 @@ export const ChatMessageItem = React.memo(({ msg, characterName, portraitUrl, im
                 e.stopPropagation();
                 if (!isDragging.current) {
                   setIsFullscreen(false);
+                }
+              }}
+              draggable={false}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Fullscreen Avatar Overlay */}
+      <AnimatePresence>
+        {isAvatarFullscreen && portraitUrl && (
+          <motion.div
+            ref={avatarContainerRef}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center overflow-hidden touch-none"
+            onClick={() => {
+              if (!isDragging.current) setIsAvatarFullscreen(false);
+            }}
+          >
+            <motion.img
+              src={portraitUrl}
+              alt="Avatar Fullscreen"
+              drag
+              dragConstraints={avatarContainerRef}
+              dragElastic={0.1}
+              onDragStart={() => { isDragging.current = true; }}
+              onDragEnd={() => {
+                setTimeout(() => { isDragging.current = false; }, 150);
+              }}
+              className="cursor-grab active:cursor-grabbing max-w-none max-h-none"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isDragging.current) {
+                  setIsAvatarFullscreen(false);
                 }
               }}
               draggable={false}

@@ -15,6 +15,7 @@ import { StatusSidebar } from '../components/StatusSidebar';
 import { MapOverlay } from '../components/MapOverlay';
 import { FleshingOutOverlay } from '../components/FleshingOutOverlay';
 import { DriveToast } from '../components/DriveToast';
+import { FakeProgressBar, FakeProgressBarHandle } from '../components/FakeProgressBar';
 import { uploadImageToDrive, getImageUrlByName } from '../lib/drive';
 import { fleshOutCharacterProfile, fetchCustomLoadingMessages, generateWorldData, generateMapImage, generateCharacterPortrait } from '../services/aiService';
 
@@ -29,6 +30,10 @@ export default function Chat() {
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [portraitUrl, setPortraitUrl] = useState<string | null>(null);
   
+  // Progress bar refs for loading overlays
+  const worldProgressRef = useRef<FakeProgressBarHandle>(null);
+  const characterProgressRef = useRef<FakeProgressBarHandle>(null);
+
   const { isProcessing, handleTurn } = useChatLogic();
 
   // BGM: find the latest bgmKey from chat history
@@ -130,7 +135,8 @@ export default function Chat() {
             }
           });
         } finally {
-          setIsFleshingOutCharacter(false);
+          characterProgressRef.current?.finish();
+          setTimeout(() => setIsFleshingOutCharacter(false), 600);
         }
       }
     };
@@ -145,16 +151,18 @@ export default function Chat() {
       if (!state.worldData && state.worldview && !isGeneratingWorld) {
         setIsGeneratingWorld(true);
         try {
-          const { worldData, artStylePrompt } = await generateWorldData(state.worldview, state.language);
+          const { worldData, artStylePrompt: aiGeneratedStyle } = await generateWorldData(state.worldview, state.language);
           // Spawn Rule: player starts in first node's first house, force it safe
           const spawnNode = worldData.nodes[0];
           const spawnHouse = spawnNode?.houses[0];
           if (spawnHouse) {
             spawnHouse.safetyLevel = 'safe';
           }
+          // 如果用户已选择了固定风格提词（非系统推荐），保留用户的选择
+          const finalArtStyle = state.artStylePrompt || aiGeneratedStyle;
           updateState({
             worldData,
-            artStylePrompt,
+            artStylePrompt: finalArtStyle,
             currentWorldId: worldData.id,
             currentNodeId: spawnNode?.id || null,
             currentHouseId: spawnHouse?.id || null,
@@ -162,7 +170,7 @@ export default function Chat() {
           });
 
           // Generate map image in background (non-blocking), upload to Drive
-          generateMapImage(worldData, state.worldview, artStylePrompt).then(async base64 => {
+          generateMapImage(worldData, state.worldview, finalArtStyle).then(async base64 => {
             if (base64) {
               if (isAuthenticated && accessToken) {
                 try {
@@ -183,7 +191,8 @@ export default function Chat() {
         } catch (error) {
           console.error("Failed to generate world data", error);
         } finally {
-          setIsGeneratingWorld(false);
+          worldProgressRef.current?.finish();
+          setTimeout(() => setIsGeneratingWorld(false), 600);
         }
       }
     };
@@ -475,7 +484,10 @@ export default function Chat() {
       </AnimatePresence>
       
       <AnimatePresence>
-        {(isFleshingOutCharacter || isGeneratingWorld) && <FleshingOutOverlay />}
+        {isFleshingOutCharacter && <FleshingOutOverlay ref={characterProgressRef} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {isGeneratingWorld && <FleshingOutOverlay ref={worldProgressRef} isWorld />}
       </AnimatePresence>
 
       <DebugOverlay state={state} />

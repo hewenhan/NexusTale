@@ -381,9 +381,14 @@ Return ONLY a JSON object with this EXACT structure (no markdown):
  * Returns base64-encoded PNG data.
  */
 export async function generateMapImage(worldData: WorldData, worldview: string, artStylePrompt?: string): Promise<string | undefined> {
-  const nodeDescriptions = worldData.nodes.map(n =>
-    `${n.name}(${n.type}, ${n.safetyLevel}) 连接: ${n.connections.join(', ')}`
-  ).join('\n');
+  // 只保留有意义的名称和类型信息，去掉 n1, h1 等抽象 ID
+  const nodeDescriptions = worldData.nodes.map(n => {
+    const connNames = n.connections.map(connId => {
+      const connNode = worldData.nodes.find(nn => nn.id === connId);
+      return connNode?.name || '';
+    }).filter(Boolean).join(', ');
+    return `${n.name}(${n.type}, 危险度:${n.safetyLevel}) 连接到: ${connNames}`;
+  }).join('\n');
 
   const styleBlock = artStylePrompt
     ? `\n\nMANDATORY ART STYLE (apply this style to the entire illustration):\n${artStylePrompt}`

@@ -1,5 +1,5 @@
 import { TENSION_ROUTE } from './tensionConfig';
-import type { GameState, IntentResult, NodeData, HouseData } from '../types/game';
+import type { GameState, IntentResult, NodeData, HouseData, SafetyLevel } from '../types/game';
 
 function findNode(state: GameState, nodeId: string | null): NodeData | undefined {
   if (!nodeId || !state.worldData) return undefined;
@@ -32,6 +32,7 @@ export interface TurnResolution {
   narrativeInstruction: string;
   roll: number;
   isSuccess: boolean;
+  houseSafetyUpdate?: { houseId: string; newSafetyLevel: SafetyLevel };
 }
 
 function clampTension(val: number): 0 | 1 | 2 | 3 | 4 {
@@ -177,9 +178,13 @@ function applyMilestoneHook(res: TurnResolution, state: GameState): TurnResoluti
 
   if (progress >= 100 && oldProgress < 100) {
     if (state.currentHouseId) {
+      // house 探索度 100% → 变为 safe, tension 降为 0
       res.newTensionLevel = 0;
+      // 标记 house 安全级别变更（通过返回值让调用方更新 worldData）
+      res.houseSafetyUpdate = { houseId: state.currentHouseId, newSafetyLevel: 'safe' };
       res.narrativeInstruction += '\n【系统强制 - 里程碑】：该建筑威胁已被彻底肃清，变为安全屋，主角可安心休整。';
     } else {
+      // zone 探索度 100% → 触发 boss（但 zone 不变 safe）
       res.newTensionLevel = 4;
       res.narrativeInstruction += '\n【系统强制 - 里程碑】：区域探索度满！惊动了统治该区域的核心危机，进入死斗！';
     }
@@ -194,6 +199,7 @@ export class D20Resolver {
     const tension = state.pacingState.tensionLevel;
     const action = intent.intent;
     const currentNode = findNode(state, state.currentNodeId);
+    const currentHouse = currentNode?.houses.find(h => h.id === state.currentHouseId);
 
     const res: TurnResolution = {
       newHp: state.hp,
@@ -213,6 +219,31 @@ export class D20Resolver {
     // ─── Transit State: 赶路中的特殊处理 ─────
     if (state.transitState) {
       return D20Resolver.resolveTransit(state, intent, roll, res);
+    }
+
+    // ─── Safe Zone Override ─────
+    // 如果当前位于安全级别=safe 的节点或建筑，强制 tension=0，不触发意外和探索
+    const inSafeHouse = currentHouse && currentHouse.safetyLevel === 'safe';
+    const inSafeNode = currentNode && currentNode.safetyLevel === 'safe';
+    const isInSafeZone = inSafeHouse || inSafeNode;
+
+    // Zone 探索度 100% 时，野外不再有危机（但不变成 safe）
+    const nodeProgressKey = state.currentNodeId ? `node_${state.currentNodeId}` : '';
+    const nodeProgress = nodeProgressKey ? (state.progressMap[nodeProgressKey] || 0) : 0;
+    const isNodeFullyExplored = nodeProgress >= 100 && !state.currentHouseId;
+
+    if (isInSafeZone) {
+      // 在安全区域：只允许 idle 和 move，不触发 explore/combat
+      if (action === 'move') {
+        // 允许移动
+      } else {
+        // 强制 tension 0，纯聊天/休整
+        res.newTensionLevel = 0;
+        res.newHp = Math.min(100, state.hp + 5);
+        res.isSuccess = true;
+        res.narrativeInstruction = '【系统强制】：安全区内纯剧情休整，维持现状，略微恢复体力。请描写平静的互动与氛围。';
+        return applyDeathHook(res);
+      }
     }
 
     // 获取配置（优先匹配动作，否则兜底 default）
@@ -258,9 +289,12 @@ export class D20Resolver {
           : `node_${state.currentNodeId}`;
         const progressGain = route.progressDelta[tier];
         res.newProgressMap[progressKey] = Math.min(100, (res.newProgressMap[progressKey] || 0) + progressGain);
-        res.newTensionLevel = clampTension(tension + route.tensionDelta[tier]);
-        res.isSuccess = tier > 0;
-        res.narrativeInstruction = buildT1ExploreNarrative(tier, roll, res.newProgressMap[progressKey]);
+
+        // Zone 探索度 100% 且在野外时，不再触发危机（大失败改为普通）
+        const adjustedTier = (isNodeFullyExplored && tier === 0) ? 1 : tier;
+        res.newTensionLevel = clampTension(tension + route.tensionDelta[adjustedTier]);
+        res.isSuccess = adjustedTier > 0;
+        res.narrativeInstruction = buildT1ExploreNarrative(adjustedTier, roll, res.newProgressMap[progressKey]);
       } else if (action === 'move') {
         const targetId = intent.targetId;
         if (targetId && currentNode?.connections.includes(targetId)) {
@@ -277,9 +311,20 @@ export class D20Resolver {
           const visibleHouses = getVisibleHouses(currentNode, state.progressMap, state.currentObjective);
           const targetHouse = visibleHouses.find(h => h.id === targetId);
           if (targetHouse) {
-            res.newHouseId = targetId;
-            res.isSuccess = true;
-            res.narrativeInstruction = `【系统指令】：玩家进入${targetHouse.name}。请描写进入该建筑的场景。`;
+            // 如果当前在另一个 house 里，需要先出门到野外
+            if (state.currentHouseId && state.currentHouseId !== targetId) {
+              res.newHouseId = null;
+              res.isSuccess = true;
+              // 标记新紧张度：离开安全建筑进入野外，可能提升紧张
+              if (isNodeFullyExplored) {
+                res.newTensionLevel = Math.min(1, tension) as 0 | 1 | 2 | 3 | 4;
+              }
+              res.narrativeInstruction = `【系统指令】：玩家走出当前建筑来到街区野外，正准备前往${targetHouse.name}。请描写走出建筑的场景，暗示接下来要穿过街区。`;
+            } else {
+              res.newHouseId = targetId;
+              res.isSuccess = true;
+              res.narrativeInstruction = `【系统指令】：玩家进入${targetHouse.name}。请描写进入该建筑的场景。`;
+            }
           } else {
             res.isSuccess = false;
             res.narrativeInstruction = '【系统指令】：目标位置未揭盲或不可达。请描写找不到出路的场景。';

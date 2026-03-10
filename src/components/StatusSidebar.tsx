@@ -106,16 +106,20 @@ export function StatusSidebar({ state, onClose }: StatusSidebarProps) {
           </div>
 
           {/* Current Objective */}
-          {state.currentObjective && (
-            <div>
-              <h3 className="text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider flex items-center gap-1">
-                <Target className="w-3.5 h-3.5" /> 当前目标
-              </h3>
+          <div>
+            <h3 className="text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider flex items-center gap-1">
+              <Target className="w-3.5 h-3.5" /> 当前目标
+            </h3>
+            {state.currentObjective ? (
               <div className="bg-amber-950/30 border border-amber-800/50 p-3 rounded-lg text-sm text-amber-200">
                 🎯 {state.currentObjective.description}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="bg-zinc-950 border border-zinc-800 p-3 rounded-lg text-sm text-zinc-500 italic">
+                无目标
+              </div>
+            )}
+          </div>
 
           {/* Inventory */}
           <div>

@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { generateSummary, generateTurn, generateImage, extractIntent, IMAGE_PROHIBITED_SENTINEL } from '../services/aiService';
 import { uploadImageToDrive } from '../lib/drive';
 import { D20Resolver } from '../lib/D20Resolver';
+import { useGrandNotification } from '../components/GrandNotification';
 import {
   SUMMARY_THRESHOLD, KEEP_RECENT_TURNS, BGM_LIST,
   type GameState, type IntentResult, type NodeData, type HouseData
@@ -84,6 +85,7 @@ function getHpDescription(hp: number, language: 'zh' | 'en'): string {
 export function useChatLogic() {
   const { state, addMessage, updateState } = useGame();
   const { isAuthenticated, accessToken } = useAuth();
+  const { show: showNotification } = useGrandNotification();
   const [isProcessing, setIsProcessing] = useState(false);
   
   const hasInitialized = useRef(false);
@@ -174,6 +176,12 @@ export function useChatLogic() {
       console.log("Intent:", intent);
 
       // ── Step 1.5: Director Interceptor (seek_quest) ──
+      // 当 tension=0 且没有目标且长时间闲聊，自动触发 seek_quest
+      if (intent.intent === 'idle' && state.pacingState.tensionLevel === 0 
+          && !state.currentObjective && state.pacingState.turnsInCurrentLevel >= 3) {
+        intent.intent = 'seek_quest';
+      }
+
       let directorNarrativeOverride: string | null = null;
       if (intent.intent === 'seek_quest') {
         if (state.currentObjective !== null) {
@@ -192,6 +200,13 @@ export function useChatLogic() {
               description: `前往【${targetNode.name}】调查【${targetHouse.name}】`
             };
             updateState({ currentObjective: newObjective });
+
+            // 触发华丽通知
+            showNotification({
+              type: 'quest',
+              title: '新任务！',
+              description: newObjective.description,
+            });
 
             directorNarrativeOverride = `【系统强制派发任务】：玩家目前漫无目的。请伴游 NPC 立刻抛出一个极其紧急的新目标：极力劝说玩家前往【${targetNode.name}】寻找【${targetHouse.name}】(这是一个 ${targetHouse.type} 类型的建筑)。\n请你根据该建筑的类型，现场编造一个极其合理的动机（例如：NPC 截获了求救信号、或者想起那里藏有关乎性命的物资）。绝不要提玩家刚才瞎编的地点！敦促玩家看地图找路过去！`;
           }
@@ -217,20 +232,60 @@ export function useChatLogic() {
       const prevTension = state.pacingState.tensionLevel;
       const tensionChanged = resolution.newTensionLevel !== prevTension;
 
-      updateState(prev => ({
-        hp: resolution.newHp,
-        lives: resolution.newLives,
-        isGameOver: resolution.newIsGameOver,
-        inventory: resolution.newInventory,
-        currentNodeId: resolution.newNodeId,
-        currentHouseId: resolution.newHouseId,
-        transitState: resolution.newTransitState,
-        progressMap: resolution.newProgressMap,
-        pacingState: {
-          tensionLevel: resolution.newTensionLevel,
-          turnsInCurrentLevel: tensionChanged ? 1 : (prev.pacingState.turnsInCurrentLevel + 1)
+      updateState(prev => {
+        let worldData = prev.worldData;
+        // 如果有 house 安全级别更新（探索度满 → safe）
+        if (resolution.houseSafetyUpdate && worldData) {
+          worldData = {
+            ...worldData,
+            nodes: worldData.nodes.map(n => ({
+              ...n,
+              houses: n.houses.map(h =>
+                h.id === resolution.houseSafetyUpdate!.houseId
+                  ? { ...h, safetyLevel: resolution.houseSafetyUpdate!.newSafetyLevel }
+                  : h
+              )
+            }))
+          };
         }
-      }));
+        return {
+          hp: resolution.newHp,
+          lives: resolution.newLives,
+          isGameOver: resolution.newIsGameOver,
+          inventory: resolution.newInventory,
+          currentNodeId: resolution.newNodeId,
+          currentHouseId: resolution.newHouseId,
+          transitState: resolution.newTransitState,
+          progressMap: resolution.newProgressMap,
+          worldData,
+          pacingState: {
+            tensionLevel: resolution.newTensionLevel,
+            turnsInCurrentLevel: tensionChanged ? 1 : (prev.pacingState.turnsInCurrentLevel + 1)
+          }
+        };
+      });
+
+      // ── Location Discovery Notification ──
+      // 抵达新节点
+      if (!resolution.newTransitState && state.transitState && resolution.newNodeId !== state.currentNodeId) {
+        const arrivedNode = state.worldData?.nodes.find(n => n.id === resolution.newNodeId);
+        if (arrivedNode) {
+          showNotification({
+            type: 'discovery',
+            title: '发现新地点！',
+            description: `你抵达了【${arrivedNode.name}】`,
+          });
+        }
+      }
+      // 任务目标地点揭盲
+      if (state.currentObjective && resolution.newNodeId === state.currentObjective.targetNodeId 
+          && resolution.newNodeId !== state.currentNodeId) {
+        showNotification({
+          type: 'discovery',
+          title: '目标地点已揭盲！',
+          description: `任务目标所在区域已进入视野`,
+        });
+      }
 
       // ── Build recent history text ──
       const allMessagesForPrompt = [...state.history, { role: 'user', text: userInput } as const];
