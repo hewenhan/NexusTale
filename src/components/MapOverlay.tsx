@@ -1,5 +1,6 @@
-import { motion } from 'motion/react';
-import { X, MapPin, Lock, Eye } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { X, MapPin, Lock, Eye, ArrowRight } from 'lucide-react';
 import { GameState } from '../types/game';
 
 interface MapOverlayProps {
@@ -40,6 +41,9 @@ export function MapOverlay({ state, onClose }: MapOverlayProps) {
 
   const currentNodeId = state.currentNodeId;
   const currentHouseId = state.currentHouseId;
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
+  const fullscreenRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
 
   return (
     <>
@@ -67,26 +71,42 @@ export function MapOverlay({ state, onClose }: MapOverlayProps) {
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
-          {/* Map Image */}
-          {state.mapImageUrl && (
-            <div className="rounded-xl overflow-hidden border border-zinc-800">
-              <img
-                src={state.mapImageUrl}
-                alt="World Map"
-                className="w-full h-auto max-h-80 object-contain bg-zinc-950"
-              />
-            </div>
-          )}
-          {!state.mapImageUrl && (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 text-center text-zinc-500 text-sm">
-              地图图片生成中...
-            </div>
-          )}
+        {/* Content — on mobile: single scroll; on lg+: side-by-side, only cards scroll */}
+        <div className="flex-1 overflow-y-auto lg:overflow-hidden p-4">
+          <div className="flex flex-col lg:flex-row gap-6 lg:h-full">
 
-          {/* Topology Graph */}
-          <div className="space-y-3">
+          {/* Left: Map Image — fixed on desktop, scrolls on mobile */}
+          <div className="w-full lg:flex-[3_1_0%] lg:min-w-0 lg:h-full lg:flex lg:flex-col">
+            {state.mapImageUrl ? (
+              <div className="rounded-xl overflow-hidden border border-zinc-800 lg:flex-1 lg:min-h-0 flex items-center justify-center bg-zinc-950">
+                <img
+                  src={state.mapImageUrl}
+                  alt="World Map"
+                  className="w-full h-auto max-h-80 lg:max-h-full lg:h-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => setIsMapFullscreen(true)}
+                />
+              </div>
+            ) : (
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 text-center text-zinc-500 text-sm">
+                地图图片生成中...
+              </div>
+            )}
+
+            {/* Legend */}
+            <div className="flex flex-wrap gap-2 text-xs text-zinc-500 mt-3 flex-shrink-0">
+              <span className="font-medium text-zinc-400">图例：</span>
+              {Object.entries(SAFETY_LABELS).map(([key, label]) => (
+                <span key={key} className={`px-1.5 py-0.5 rounded border ${SAFETY_COLORS[key]}`}>
+                  {label}
+                </span>
+              ))}
+              <span className="flex items-center gap-1"><Lock className="w-3 h-3" /> 未探索</span>
+              <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-emerald-400" /> 当前位置</span>
+            </div>
+          </div>
+
+          {/* Right: Topology Graph — independently scrollable on desktop */}
+          <div className="w-full lg:flex-[2_1_0%] lg:min-w-[340px] lg:overflow-y-auto lg:h-full space-y-3 pt-3">
             {worldData.nodes.map(node => {
               const isCurrent = node.id === currentNodeId;
               const nodeProgress = state.progressMap[`node_${node.id}`] || 0;
@@ -96,16 +116,23 @@ export function MapOverlay({ state, onClose }: MapOverlayProps) {
               return (
                 <div
                   key={node.id}
-                  className={`rounded-xl border p-4 transition-colors ${
+                  className={`rounded-xl border p-4 transition-all relative ${
                     isCurrent
-                      ? 'border-white/50 bg-white/5 ring-1 ring-white/20'
+                      ? 'border-emerald-500/60 bg-emerald-500/5 ring-2 ring-emerald-500/25 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
                       : 'border-zinc-800 bg-zinc-950'
                   }`}
                 >
+                  {/* Current location badge */}
+                  {isCurrent && (
+                    <div className="absolute -top-2.5 left-4 px-2 py-0.5 bg-emerald-600 text-white text-xs font-medium rounded-full flex items-center gap-1 shadow-lg">
+                      <MapPin className="w-3 h-3" />
+                      当前所在
+                    </div>
+                  )}
+
                   {/* Node Header */}
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      {isCurrent && <MapPin className="w-4 h-4 text-emerald-400" />}
+                  <div className={`flex items-center justify-between mb-2 ${isCurrent ? 'mt-1' : ''}`}>
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium">{node.name}</span>
                       <span className="text-xs text-zinc-500">{TYPE_LABELS[node.type] || node.type}</span>
                       <span className={`text-xs px-1.5 py-0.5 rounded border ${SAFETY_COLORS[node.safetyLevel]}`}>
@@ -126,11 +153,20 @@ export function MapOverlay({ state, onClose }: MapOverlayProps) {
                   </div>
 
                   {/* Connections */}
-                  <div className="text-xs text-zinc-500 mb-2">
-                    连通：{node.connections.map(connId => {
+                  <div className="flex items-center gap-1.5 flex-wrap mb-3 text-xs">
+                    <ArrowRight className="w-3 h-3 text-zinc-500 flex-shrink-0" />
+                    <span className="text-zinc-500">可前往</span>
+                    {node.connections.map(connId => {
                       const connNode = worldData.nodes.find(n => n.id === connId);
-                      return connNode?.name || connId;
-                    }).join(' · ')}
+                      return (
+                        <span
+                          key={connId}
+                          className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700 hover:border-zinc-500 transition-colors"
+                        >
+                          {connNode?.name || connId}
+                        </span>
+                      );
+                    })}
                   </div>
 
                   {/* Houses */}
@@ -176,19 +212,43 @@ export function MapOverlay({ state, onClose }: MapOverlayProps) {
             })}
           </div>
 
-          {/* Legend */}
-          <div className="flex flex-wrap gap-3 text-xs text-zinc-500 pt-2 border-t border-zinc-800">
-            <span className="font-medium text-zinc-400">图例：</span>
-            {Object.entries(SAFETY_LABELS).map(([key, label]) => (
-              <span key={key} className={`px-1.5 py-0.5 rounded border ${SAFETY_COLORS[key]}`}>
-                {label}
-              </span>
-            ))}
-            <span className="flex items-center gap-1"><Lock className="w-3 h-3" /> 未探索</span>
-            <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-emerald-400" /> 当前位置</span>
           </div>
         </div>
       </motion.div>
+
+      {/* Fullscreen Map Image Overlay */}
+      <AnimatePresence>
+        {isMapFullscreen && state.mapImageUrl && (
+          <motion.div
+            ref={fullscreenRef}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center overflow-hidden touch-none"
+            onClick={() => {
+              if (!isDragging.current) setIsMapFullscreen(false);
+            }}
+          >
+            <motion.img
+              src={state.mapImageUrl}
+              alt="Fullscreen Map"
+              drag
+              dragConstraints={fullscreenRef}
+              dragElastic={0.1}
+              onDragStart={() => { isDragging.current = true; }}
+              onDragEnd={() => {
+                setTimeout(() => { isDragging.current = false; }, 150);
+              }}
+              className="cursor-grab active:cursor-grabbing max-w-none max-h-none"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isDragging.current) setIsMapFullscreen(false);
+              }}
+              draggable={false}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
