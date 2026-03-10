@@ -6,6 +6,8 @@ interface AuthContextType {
   login: () => Promise<void>;
   logout: () => void;
   refreshSession: () => Promise<boolean>;
+  reconnectDrive: () => Promise<void>;
+  driveError: boolean;
   user: any | null;
 }
 
@@ -14,6 +16,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [user, setUser] = useState<any | null>(null);
+  const [driveError, setDriveError] = useState(false);
 
   const refreshSession = useCallback(async () => {
     const refreshToken = localStorage.getItem('google_refresh_token');
@@ -35,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setAccessToken(access_token);
       localStorage.setItem('google_access_token', access_token);
+      setDriveError(false);
       
       // Schedule next refresh slightly before expiration (e.g., 5 minutes before)
       const refreshTime = (expires_in - 300) * 1000;
@@ -45,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return true;
     } catch (error) {
       console.error("Failed to refresh session:", error);
-      // If refresh fails, we might want to clear tokens, but let's keep them for manual retry unless it's a fatal error
+      setDriveError(true);
       return false;
     }
   }, []);
@@ -124,16 +128,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('message', handleMessage);
   }, [refreshSession]);
 
+  const reconnectDrive = useCallback(async () => {
+    const hasRefreshToken = !!localStorage.getItem('google_refresh_token');
+    if (hasRefreshToken) {
+      await refreshSession();
+    } else {
+      await login();
+    }
+  }, [refreshSession]);
+
   const logout = () => {
     setAccessToken(null);
     setUser(null);
+    setDriveError(false);
     localStorage.removeItem('google_access_token');
     localStorage.removeItem('google_user');
     localStorage.removeItem('google_refresh_token');
   };
 
   return (
-    <AuthContext.Provider value={{ accessToken, isAuthenticated: !!accessToken, login, logout, refreshSession, user }}>
+    <AuthContext.Provider value={{ accessToken, isAuthenticated: !!accessToken, login, logout, refreshSession, reconnectDrive, driveError, user }}>
       {children}
     </AuthContext.Provider>
   );

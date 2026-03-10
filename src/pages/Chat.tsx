@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { useAuth } from '../contexts/AuthContext';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertCircle, Backpack, Loader2, Map, Save } from 'lucide-react';
+import { AlertCircle, Backpack, Loader2, Map, RefreshCw, Save } from 'lucide-react';
 import { PlayerProfile, DEFAULT_LOADING_MESSAGES, INITIAL_STATE } from '../types/game';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { ChatMessageItem } from '../components/ChatMessageItem';
@@ -14,15 +14,18 @@ import { ProfileModal } from '../components/ProfileModal';
 import { StatusSidebar } from '../components/StatusSidebar';
 import { MapOverlay } from '../components/MapOverlay';
 import { FleshingOutOverlay } from '../components/FleshingOutOverlay';
+import { DriveToast } from '../components/DriveToast';
 import { fleshOutCharacterProfile, fetchCustomLoadingMessages, generateWorldData, generateMapImage } from '../services/aiService';
 
 export default function Chat() {
   const { state, updateState, exportSave } = useGame();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, driveError, reconnectDrive } = useAuth();
   const [showStatus, setShowStatus] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
+  const [driveToastDismissed, setDriveToastDismissed] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   
   const { isProcessing, handleTurn } = useChatLogic();
 
@@ -165,6 +168,16 @@ export default function Chat() {
     fetchMissingLoadingMessages();
   }, [state.worldview, state.loadingMessages.length]);
 
+  const handleReconnectDrive = useCallback(async () => {
+    setIsReconnecting(true);
+    try {
+      await reconnectDrive();
+      setDriveToastDismissed(false);
+    } finally {
+      setIsReconnecting(false);
+    }
+  }, [reconnectDrive]);
+
   const handleProfileSubmit = () => {
     if (!tempName.trim()) return;
     updateState({
@@ -286,10 +299,24 @@ export default function Chat() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {!isAuthenticated && (
+          {driveError ? (
+            <button
+              onClick={handleReconnectDrive}
+              disabled={isReconnecting}
+              className="flex items-center gap-1.5 text-xs text-red-400 bg-red-500/10 px-2.5 py-1 rounded-full border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3 h-3 ${isReconnecting ? 'animate-spin' : ''}`} />
+              <span>{isReconnecting ? '重连中...' : 'Drive 异常 · 点击重连'}</span>
+            </button>
+          ) : isAuthenticated ? (
+            <div className="flex items-center gap-1 text-xs text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>Drive 已连接</span>
+            </div>
+          ) : (
             <div className="flex items-center gap-1 text-xs text-amber-500 bg-amber-500/10 px-2 py-1 rounded-full border border-amber-500/20">
               <AlertCircle className="w-3 h-3" />
-              <span>未连接 Drive (无法保存图片)</span>
+              <span>未连接 Drive</span>
             </div>
           )}
           <button 
@@ -403,6 +430,12 @@ export default function Chat() {
       </AnimatePresence>
 
       <DebugOverlay state={state} />
+
+      <DriveToast
+        visible={driveError && !driveToastDismissed}
+        onDismiss={() => setDriveToastDismissed(true)}
+        onReconnect={handleReconnectDrive}
+      />
     </div>
   );
 }
