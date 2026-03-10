@@ -31,7 +31,7 @@ export function useBGM(currentBgmKey: string | undefined) {
 
     activeBgmKey.current = currentBgmKey;
 
-    console.log("audioRef", audioRef);
+    // console.log("audioRef", audioRef);
     if (!audioRef.current) {
       audioRef.current = new Audio();
       audioRef.current.loop = true;
@@ -42,8 +42,8 @@ export function useBGM(currentBgmKey: string | undefined) {
     audio.src = currentBgmKey;
     audio.volume = volume;
     audio.loop = true;
-    console.log("Playing BGM:", currentBgmKey, "with volume:", volume);
-    console.log("Audio element before play:", audioRef);
+    // console.log("Playing BGM:", currentBgmKey, "with volume:", volume);
+    // console.log("Audio element before play:", audioRef);
     audio.play().catch(() => {
       // Autoplay blocked — will play on next user interaction
       const resume = () => {

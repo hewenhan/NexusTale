@@ -1,4 +1,5 @@
 import { ai, TEXT_MODEL, PRO_MODEL, PRO_IMAGE_MODEL, IMAGE_MODEL, LITE_MODEL } from '../lib/gemini';
+import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import type { IntentResult, WorldData } from '../types/game';
 
 export async function generateSummary(currentSummary: string, messagesToSummarize: any[], language: 'zh' | 'en' = 'zh'): Promise<string | undefined> {
@@ -31,7 +32,27 @@ export async function generateTurn(fullPrompt: string): Promise<any> {
   const textResult = await ai.models.generateContent({
     model: TEXT_MODEL,
     contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
-    config: { responseMimeType: 'application/json' }
+    config: {
+      responseMimeType: 'application/json',
+      safetySettings: [
+        {
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.OFF
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.OFF
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+          threshold: HarmBlockThreshold.OFF
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          threshold: HarmBlockThreshold.OFF
+        },
+      ]
+    }
   });
 
   const responseText = textResult.text;
@@ -82,7 +103,25 @@ export async function generateImage(imagePrompt: string): Promise<string | undef
         imageConfig: {
           aspectRatio: "9:16",
           imageSize: "512px"
-        }
+        },
+        safetySettings: [
+          {
+            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold: HarmBlockThreshold.OFF
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold: HarmBlockThreshold.OFF
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold: HarmBlockThreshold.OFF
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.OFF
+          },
+        ]
       }
     });
 

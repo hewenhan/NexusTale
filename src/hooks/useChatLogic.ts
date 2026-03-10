@@ -166,58 +166,34 @@ function resolveD20(
         res.narrativeInstruction = `【系统指令 - 奇遇】：探索发现隐藏物资！进度+40（当前${res.newProgressMap[progressKey]}%）。Roll=${roll}，请描写意外发现珍贵资源或隐藏通道的场景。`;
       }
     } else if (intent.intent === 'move') {
+      // Move in Tension 1: auto-success if connected
       const targetId = intent.targetId;
-      let canMove = false;
-      let nextNodeId = state.currentNodeId;
-      let nextHouseId = state.currentHouseId;
-      let targetName = "安全地带";
-
-      // 1. 优先校验目的地合法性（防瞬移）
       if (targetId && currentNode?.connections.includes(targetId)) {
-        canMove = true;
-        nextNodeId = targetId;
-        nextHouseId = null;
-        targetName = "相邻区域";
+        res.newNodeId = targetId;
+        res.newHouseId = null;
+        res.isSuccess = true;
+        res.narrativeInstruction = '【系统指令】：移动成功，玩家转移至新区域。请描写旅途与抵达新地点的见闻。';
       } else if (targetId && currentNode) {
+        // Check if target is a house within current node
         const visibleHouses = getVisibleHouses(currentNode, state.progressMap, state.currentObjective);
         const targetHouse = visibleHouses.find(h => h.id === targetId);
         if (targetHouse) {
-          canMove = true;
-          nextNodeId = state.currentNodeId;
-          nextHouseId = targetId;
-          targetName = targetHouse.name;
-        }
-      } else if (!targetId && state.currentHouseId) {
-        canMove = true;
-        nextNodeId = state.currentNodeId;
-        nextHouseId = null;
-        targetName = "街区野外";
-      }
-
-      // 2. 结算突围 D20 (如果选了错的路，直接判死胡同惩罚)
-      if (!canMove) {
-        res.newHp -= 20;
-        res.isSuccess = false;
-        res.narrativeInstruction = `【系统指令 - 慌不择路】：试图逃跑，却在恐慌中冲向了死胡同或无法到达的区域！吃瘪了，HP-20（当前${res.newHp}）。被逼回原地，维持 3 级紧张度。`;
-      } else {
-        // 目的地合法，开始惨烈的突围检定
-        if (roll >= 1 && roll <= 6) {
-          // [1-6] 撤离大失败：受损 -20，僵持
-          res.newHp -= 20;
-          res.isSuccess = false;
-          res.narrativeInstruction = `【系统指令 - 突围大失败】：试图向【${targetName}】撤退，但被敌人死死包围并重创！突围失败，HP-20（当前${res.newHp}）。退路被截断，陷入极其危险的僵持！维持 3 级紧张度。Roll=${roll}。`;
-        } else if (roll >= 7 && roll <= 18) {
-          // [7-18] 撤离受阻：受损 -10，僵持
-          res.newHp -= 10;
-          res.isSuccess = false;
-          res.narrativeInstruction = `【系统指令 - 突围受挫】：试图向【${targetName}】撤退，在包围圈的拉锯中挂彩！突围失败，HP-10（当前${res.newHp}）。双方继续僵持，未能脱困！维持 3 级紧张度。Roll=${roll}。`;
-        } else {
-          // [19-20] 大成功：极限逃脱
-          res.newNodeId = nextNodeId;
-          res.newHouseId = nextHouseId;
-          res.newTensionLevel = 1;
+          res.newHouseId = targetId;
           res.isSuccess = true;
-          res.narrativeInstruction = `【系统指令 - 极限逃生】：奇迹般地撕开了包围圈！成功逃往【${targetName}】，彻底摆脱了追击！紧张度骤降至 1 级。Roll=${roll}，请描写极其惊险刺激的绝境求生画面。`;
+          res.narrativeInstruction = `【系统指令】：玩家进入${targetHouse.name}。请描写进入该建筑的场景。`;
+        } else {
+          res.isSuccess = false;
+          res.narrativeInstruction = '【系统指令】：目标位置未揭盲或不可达。请描写找不到出路的场景。';
+        }
+      } else {
+        // No target: go to node outdoor if in house
+        if (state.currentHouseId) {
+          res.newHouseId = null;
+          res.isSuccess = true;
+          res.narrativeInstruction = '【系统指令】：玩家退出当前建筑，回到街区野外。请描写走出建筑的场景。';
+        } else {
+          res.isSuccess = false;
+          res.narrativeInstruction = '【系统指令】：玩家想移动但未指定明确方向。请询问玩家要去哪里。';
         }
       }
     } else {
@@ -265,9 +241,60 @@ function resolveD20(
   // ─── Tension 3 (中度危机 - 精英怪/绝境) ─────
   if (tension === 3) {
     if (intent.intent === 'move') {
-      res.newTensionLevel = 1;
-      res.isSuccess = true;
-      res.narrativeInstruction = '【系统强制 - 惊险撤退】：玩家在精英危机中抓准时机逃脱！无伤脱战，紧张度降回 1 级。请描写极其惊险的逃跑过程。';
+      const targetId = intent.targetId;
+      let canMove = false;
+      let nextNodeId = state.currentNodeId;
+      let nextHouseId = state.currentHouseId;
+      let targetName = "安全地带";
+
+      // 1. 优先校验目的地合法性（防瞬移）
+      if (targetId && currentNode?.connections.includes(targetId)) {
+        canMove = true;
+        nextNodeId = targetId;
+        nextHouseId = null;
+        targetName = "相邻区域";
+      } else if (targetId && currentNode) {
+        const visibleHouses = getVisibleHouses(currentNode, state.progressMap, state.currentObjective);
+        const targetHouse = visibleHouses.find(h => h.id === targetId);
+        if (targetHouse) {
+          canMove = true;
+          nextNodeId = state.currentNodeId;
+          nextHouseId = targetId;
+          targetName = targetHouse.name;
+        }
+      } else if (!targetId && state.currentHouseId) {
+        canMove = true;
+        nextNodeId = state.currentNodeId;
+        nextHouseId = null;
+        targetName = "街区野外";
+      }
+
+      // 2. 结算突围 D20 (如果选了错的路，直接判死胡同惩罚)
+      if (!canMove) {
+        res.newHp -= 20;
+        res.isSuccess = false;
+        res.narrativeInstruction = `【系统指令 - 慌不择路】：试图逃跑，却在恐慌中冲向了死胡同或无法到达的区域！遭到敌人背后猛击，HP-20（当前${res.newHp}）。被逼回原地，维持 3 级紧张度。`;
+      } else {
+        // 目的地合法，开始惨烈的突围检定
+        if (roll >= 1 && roll <= 6) {
+          // [1-6] 撤离大失败：受损 -20，僵持
+          res.newHp -= 20;
+          res.isSuccess = false;
+          res.narrativeInstruction = `【系统指令 - 突围大失败】：试图向【${targetName}】撤退，但被敌人死死包围并重创！突围失败，HP-20（当前${res.newHp}）。退路被截断，陷入极其危险的僵持！维持 3 级紧张度。Roll=${roll}。`;
+        } else if (roll >= 7 && roll <= 18) {
+          // [7-18] 撤离受阻：受损 -10，僵持
+          res.newHp -= 10;
+          res.isSuccess = false;
+          res.narrativeInstruction = `【系统指令 - 突围受挫】：试图向【${targetName}】撤退，在包围圈的拉锯中挂彩！突围失败，HP-10（当前${res.newHp}）。双方继续僵持，未能脱困！维持 3 级紧张度。Roll=${roll}。`;
+        } else {
+          // [19-20] 大成功：极限逃脱
+          res.newNodeId = nextNodeId;
+          res.newHouseId = nextHouseId;
+          res.newTensionLevel = 1;
+          res.isSuccess = true;
+          res.narrativeInstruction = `【系统指令 - 极限逃生】：奇迹般地撕开了包围圈！成功逃往【${targetName}】，彻底摆脱了追击！紧张度骤降至 1 级。Roll=${roll}，请描写极其惊险刺激的绝境求生画面。`;
+        }
+      }
     } else if (intent.intent === 'suicidal_idle' || intent.intent === 'idle') {
       res.newHp -= 25;
       res.newTensionLevel = 4;
@@ -618,7 +645,7 @@ OUTPUT FORMAT (JSON ONLY):
 
       // ── Call LLM for story rendering ──
       const responseJson = await generateTurn(fullPrompt);
-      console.log("AI Response JSON:", responseJson);
+      // console.log("AI Response JSON:", responseJson);
       const { image_prompt, text_sequence, scene_visuals_update } = responseJson;
       
       const messages = Array.isArray(text_sequence) ? text_sequence : [responseJson.text_response || "......"];
