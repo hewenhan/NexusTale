@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { GameProvider } from './contexts/GameContext';
@@ -10,8 +11,13 @@ import { GrandNotificationProvider } from './components/GrandNotification';
 import Home from './pages/Home';
 import Setup from './pages/Setup';
 import Chat from './pages/Chat';
+import { APP_TITLE } from './lib/appMeta';
 
 export default function App() {
+  useEffect(() => {
+    document.title = APP_TITLE;
+  }, []);
+
   return (
     <BrowserRouter>
       <AuthProvider>

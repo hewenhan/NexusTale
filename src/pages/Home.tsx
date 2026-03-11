@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { Upload, Play, Settings, Globe, Plus, History } from 'lucide-react';
+import { APP_DESCRIPTION, APP_SUBTITLE, APP_TITLE } from '../lib/appMeta';
 
 export default function Home() {
   const { state, updateState, loadSave, resetGame } = useGame();
@@ -114,9 +115,10 @@ export default function Home() {
       >
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-bold tracking-tighter bg-gradient-to-br from-white to-zinc-500 bg-clip-text text-transparent">
-            AI 角色扮演冒险
+            {APP_TITLE}
           </h1>
-          <p className="text-zinc-400">沉浸式生成式视觉叙事体验</p>
+          <p className="text-zinc-300 text-base font-medium leading-relaxed">{APP_SUBTITLE}</p>
+          <p className="text-zinc-500 text-sm leading-6 max-w-md mx-auto">{APP_DESCRIPTION}</p>
         </div>
 
         <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl space-y-6 backdrop-blur-sm">
