@@ -33,6 +33,8 @@ export interface TurnResolution {
   roll: number;
   isSuccess: boolean;
   houseSafetyUpdate?: { houseId: string; newSafetyLevel: SafetyLevel };
+  affectionTriggered?: 'aid' | 'sabotage' | null;
+  formulaBreakdown: string;
 }
 
 function clampTension(val: number): 0 | 1 | 2 | 3 | 4 {
@@ -42,15 +44,22 @@ function clampTension(val: number): 0 | 1 | 2 | 3 | 4 {
 /**
  * 根据概率配置表和 D20 掷骰结果计算档位 (tier)
  */
-function rollToTier(probabilities: [number, number, number], roll: number): 0 | 1 | 2 {
+function rollToTier(probabilities: [number, number, number], roll: number, res?: Pick<TurnResolution, 'formulaBreakdown'>): 0 | 1 | 2 {
   const p1 = probabilities[0];
   const p2 = probabilities[1];
   const thresh1 = Math.round(20 * p1);
   const thresh2 = Math.round(20 * (p1 + p2));
 
-  if (roll <= thresh1) return 0; // 大失败
-  if (roll <= thresh2) return 1; // 普通
-  return 2; // 大成功
+  let tier: 0 | 1 | 2;
+  if (roll <= thresh1) tier = 0;
+  else if (roll <= thresh2) tier = 1;
+  else tier = 2;
+
+  if (res) {
+    const tierLabel = ['大失败', '普通', '大成功'][tier];
+    res.formulaBreakdown = `D20(${roll}) [≤${thresh1}:失败 ≤${thresh2}:普通 >${thresh2}:成功] → T${tier} ${tierLabel}`;
+  }
+  return tier;
 }
 
 // ─── Narrative Instruction Generators ───────────────────────────
@@ -195,10 +204,55 @@ function applyMilestoneHook(res: TurnResolution, state: GameState): TurnResoluti
   return res;
 }
 
+// ─── Affection Roll Modifier ────────────────────────────────
+
+/**
+ * 好感度概率检定：高好感度在危机中提供援助，低好感度落井下石。
+ * 帮助概率 = (0.75 * affection - 60) / 100
+ * 例：100好感=15%援助率；80好感=-15%；60=-15%；0好感=-60%吃瘪率
+ * 返回 roll 的加减值 (+3 援助, -3 落井下石, 0 无触发)
+ */
+function applyAffectionModifier(affection: number, tension: number, roll: number): { adjustedRoll: number; triggered: 'aid' | 'sabotage' | null; detail: string } {
+  // 只在 tension >= 2（冲突及以上）时触发
+  if (tension < 2) {
+    return { adjustedRoll: roll, triggered: null, detail: `好感度修正: 跳过(tension=${tension}<2)` };
+  }
+
+  const helpProb = (0.75 * affection - 60) / 100; // range: -0.60 to +0.15
+  const diceRoll = Math.random();
+  const probStr = `P=(0.75×${affection}-60)/100=${helpProb.toFixed(2)}`;
+  const diceStr = `随机=${diceRoll.toFixed(3)}`;
+
+  if (helpProb > 0 && diceRoll < helpProb) {
+    // 好感度援助：roll +3
+    const adjusted = Math.min(20, roll + 3);
+    return { adjustedRoll: adjusted, triggered: 'aid', detail: `好感度修正: ${probStr}, ${diceStr}<${helpProb.toFixed(2)} → 援助! D20(${roll})+3=${adjusted}` };
+  } else if (helpProb < 0 && diceRoll < Math.abs(helpProb)) {
+    // 好感度落井下石：roll -3
+    const adjusted = Math.max(1, roll - 3);
+    return { adjustedRoll: adjusted, triggered: 'sabotage', detail: `好感度修正: ${probStr}, ${diceStr}<|${helpProb.toFixed(2)}|=${Math.abs(helpProb).toFixed(2)} → 落井下石! D20(${roll})-3=${adjusted}` };
+  }
+
+  return { adjustedRoll: roll, triggered: null, detail: `好感度修正: ${probStr}, ${diceStr} 未触发(阈值${Math.abs(helpProb).toFixed(2)}), Roll不变=${roll}` };
+}
+
 // ─── Main Resolver ──────────────────────────────────────────────
 
 export class D20Resolver {
   static resolve(state: GameState, intent: IntentResult, roll: number): TurnResolution {
+    const tension = state.pacingState.tensionLevel;
+
+    // ── 好感度检定：在 D20 掷骰基础上加减修正值 ──
+    const { adjustedRoll, triggered: affectionTriggered, detail: affectionDetail } = applyAffectionModifier(state.affection, tension, roll);
+    const effectiveRoll = adjustedRoll;
+
+    const res = D20Resolver._resolveInner(state, intent, effectiveRoll, affectionTriggered);
+    // 在公式前追加好感度修正详情
+    res.formulaBreakdown = `原始D20=${roll} | ${affectionDetail} | 有效Roll=${effectiveRoll}\n${res.formulaBreakdown}`;
+    return res;
+  }
+
+  private static _resolveInner(state: GameState, intent: IntentResult, roll: number, affectionTriggered: 'aid' | 'sabotage' | null): TurnResolution {
     const tension = state.pacingState.tensionLevel;
     const action = intent.intent;
     const currentNode = findNode(state, state.currentNodeId);
@@ -215,8 +269,10 @@ export class D20Resolver {
       newIsGameOver: false,
       newTransitState: state.transitState,
       narrativeInstruction: '',
-      roll,
+      roll: roll,
       isSuccess: false,
+      affectionTriggered,
+      formulaBreakdown: '系统强制(无掷骰)',
     };
 
     // ─── Transit State: 赶路中的特殊处理 ─────
@@ -242,7 +298,7 @@ export class D20Resolver {
       } else if (action === 'explore') {
         // BUG1b: 允许在 Tension 0 安全区下执行 explore，使用纯探索无伤配置表 [0, 0.7, 0.3]
         const safeExploreProbs: [number, number, number] = [0, 0.7, 0.3];
-        const tier = rollToTier(safeExploreProbs, roll);
+        const tier = rollToTier(safeExploreProbs, roll, res);
         const progressKey = state.currentHouseId
           ? `house_${state.currentHouseId}`
           : `node_${state.currentNodeId}`;
@@ -296,7 +352,7 @@ export class D20Resolver {
         }
       } else {
         const route = routeTable['default'];
-        const tier = rollToTier(route.probabilities, roll);
+        const tier = rollToTier(route.probabilities, roll, res);
         res.newHp = Math.max(0, Math.min(100, state.hp + route.hpDelta[tier]));
         res.isSuccess = true;
         res.narrativeInstruction = buildT0Narrative(action, tier, roll, res.newHp);
@@ -320,7 +376,7 @@ export class D20Resolver {
     if (tension === 1) {
       if (action === 'explore') {
         const route = routeTable['explore'];
-        const tier = rollToTier(route.probabilities, roll);
+        const tier = rollToTier(route.probabilities, roll, res);
         const progressKey = state.currentHouseId
           ? `house_${state.currentHouseId}`
           : `node_${state.currentNodeId}`;
@@ -380,7 +436,7 @@ export class D20Resolver {
       } else {
         // combat / other in T1
         const route = routeTable['combat'] || routeTable['default'];
-        const tier = rollToTier(route.probabilities, roll);
+        const tier = rollToTier(route.probabilities, roll, res);
         res.newTensionLevel = clampTension(tension + route.tensionDelta[tier]);
         res.isSuccess = tier > 0;
         res.narrativeInstruction = buildT1CombatNarrative(tier, roll);
@@ -392,7 +448,7 @@ export class D20Resolver {
     if (tension === 2) {
       const routeKey = (action === 'idle' || action === 'suicidal_idle') ? action : (action === 'move' ? 'move' : 'combat');
       const route = routeTable[routeKey] || routeTable['default'];
-      const tier = rollToTier(route.probabilities, roll);
+      const tier = rollToTier(route.probabilities, roll, res);
 
       res.newHp = Math.max(0, Math.min(100, state.hp + route.hpDelta[tier]));
       res.newTensionLevel = clampTension(tension + route.tensionDelta[tier]);
@@ -437,7 +493,7 @@ export class D20Resolver {
           res.narrativeInstruction = `【系统指令 - 慌不择路】：试图逃跑，却在恐慌中冲向了死胡同或无法到达的区域！遭到敌人背后猛击，HP-20（当前${res.newHp}）。被逼回原地，维持 3 级紧张度。`;
         } else {
           const route = routeTable['move'];
-          const tier = rollToTier(route.probabilities, roll);
+          const tier = rollToTier(route.probabilities, roll, res);
           res.newHp = Math.max(0, Math.min(100, state.hp + route.hpDelta[tier]));
           res.newTensionLevel = clampTension(tension + route.tensionDelta[tier]);
           res.isSuccess = tier === 2;
@@ -457,7 +513,7 @@ export class D20Resolver {
         }
       } else if (action === 'idle' || action === 'suicidal_idle') {
         const route = routeTable['idle'];
-        const tier = rollToTier(route.probabilities, roll);
+        const tier = rollToTier(route.probabilities, roll, res);
         res.newHp = Math.max(0, Math.min(100, state.hp + route.hpDelta[tier]));
         res.newTensionLevel = clampTension(tension + route.tensionDelta[tier]);
         res.isSuccess = false;
@@ -465,7 +521,7 @@ export class D20Resolver {
       } else {
         // combat / explore
         const route = routeTable['combat'];
-        const tier = rollToTier(route.probabilities, roll);
+        const tier = rollToTier(route.probabilities, roll, res);
         res.newHp = Math.max(0, Math.min(100, state.hp + route.hpDelta[tier]));
         res.newTensionLevel = clampTension(tension + route.tensionDelta[tier]);
         res.isSuccess = tier >= 1;
@@ -478,7 +534,7 @@ export class D20Resolver {
     if (tension === 4) {
       const routeKey = action === 'combat' ? 'combat' : (action === 'move' ? 'move' : 'idle');
       const route = routeTable[routeKey] || routeTable['default'];
-      const tier = rollToTier(route.probabilities, roll);
+      const tier = rollToTier(route.probabilities, roll, res);
 
       res.newHp = Math.max(0, Math.min(100, state.hp + route.hpDelta[tier]));
       res.newTensionLevel = clampTension(tension + route.tensionDelta[tier]);
@@ -507,7 +563,7 @@ export class D20Resolver {
     const transitProbs: [number, number, number] = tension >= 2
       ? (TENSION_ROUTE[1]['explore']?.probabilities ?? [0.15, 0.65, 0.20])
       : [0.08, 0.72, 0.20]; // 和平赶路：仅 8% 受阻
-    const tier = rollToTier(transitProbs, roll);
+    const tier = rollToTier(transitProbs, roll, res);
 
     // HP 变化：和平赶路不扣血，危险赶路 tier=0 扣少量
     if (tension >= 2 && tier === 0) {

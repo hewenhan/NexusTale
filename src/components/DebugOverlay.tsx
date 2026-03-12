@@ -66,6 +66,14 @@ export const DebugOverlay: React.FC<DebugOverlayProps> = ({ state }) => {
             {state.isGameOver && <span className="text-red-500 font-bold ml-2">GAME OVER</span>}
           </div>
 
+          {/* Affection */}
+          <div>
+            <span className="text-gray-400">Affection:</span>{' '}
+            <span className={state.affection >= 60 ? 'text-pink-400' : state.affection >= 30 ? 'text-yellow-300' : 'text-red-400'}>
+              {state.affection}/100
+            </span>
+          </div>
+
           {/* Location */}
           <div>
             <span className="text-gray-400">Node:</span>{' '}
@@ -95,6 +103,15 @@ export const DebugOverlay: React.FC<DebugOverlayProps> = ({ state }) => {
                   )}
                 </div>
               </div>
+
+              {debugState.lastFormula && (
+                <div className="border-t border-gray-700 pt-2 mt-2">
+                  <div className="text-gray-300 font-bold mb-1">RESOLUTION FORMULA</div>
+                  <div className="text-cyan-200 text-[10px] break-all whitespace-pre-wrap">
+                    {debugState.lastFormula}
+                  </div>
+                </div>
+              )}
 
               {debugState.lastNarrativeInstruction && (
                 <div className="border-t border-gray-700 pt-2 mt-2">

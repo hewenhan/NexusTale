@@ -61,6 +61,7 @@ export interface DebugState {
   lastTensionLevel: number;
   lastIntent?: IntentType;
   lastNarrativeInstruction?: string;
+  lastFormula?: string;
   lastImagePrompt?: string;
   lastImageError?: string;
 }
@@ -170,6 +171,9 @@ export interface GameState {
 
   // 7. 世界观画风提词（用于统一所有生图风格）
   artStylePrompt: string;
+
+  // 8. 好感度系统
+  affection: number; // 0-100，初始值由 AI 根据世界观和性格生成
 }
 
 export interface ChatMessage {
@@ -192,6 +196,7 @@ export interface ChatMessage {
   currentHouseId?: string | null;
   debugState?: DebugState;
   bgmKey?: string;
+  affection?: number;
 }
 
 export const DEFAULT_CHARACTER: CharacterProfile = {
@@ -293,5 +298,8 @@ export const INITIAL_STATE: GameState = {
   currentObjective: null,
 
   // Art style
-  artStylePrompt: ''
+  artStylePrompt: '',
+
+  // Affection
+  affection: 50
 };

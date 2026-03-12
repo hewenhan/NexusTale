@@ -256,6 +256,13 @@ export function useChatLogic() {
         resolution.narrativeInstruction = directorNarrativeOverride;
       }
 
+      // ── 好感度检定叙事注入 ──
+      if (resolution.affectionTriggered === 'aid') {
+        resolution.narrativeInstruction += `\n【好感度援助】：同伴因与玩家关系亲密（好感度${state.affection}），在关键时刻出手相助！请结合同伴的【特长: ${state.characterSettings.specialties}】描写一段精彩的援助行动，使局面好转。`;
+      } else if (resolution.affectionTriggered === 'sabotage') {
+        resolution.narrativeInstruction += `\n【好感度冷淡】：同伴因与玩家关系冷淡（好感度${state.affection}），在危急关头袖手旁观甚至落井下石！请结合同伴的性格描写冷漠、嘲讽或使绊子的反应，使局面雪上加霜。`;
+      }
+
       console.log("D20 Roll:", d20, "Resolution:", resolution);
 
       // ── Apply state changes from resolution ──
@@ -417,6 +424,10 @@ ${characterRoleString}
 - 健康状态：${getHpDescription(resolution.newHp, state.language)}（HP: ${resolution.newHp}/100）
 - ${progressLabel}（【揭盲锁】：未满100%绝不可描写彻底探索完毕！）
 - 紧张等级: ${resolution.newTensionLevel}（0=和平, 1=探索, 2=冲突, 3=危机, 4=死斗）
+- 好感度: ${state.affection}/100
+
+角色厌恶属性: ${state.characterSettings.dislikes || '无'}
+角色喜好/特长: ${state.characterSettings.hobbies || '无'} / ${state.characterSettings.specialties || '无'}
 
 上一场景视觉: "${lastVisuals}"
 
@@ -432,15 +443,26 @@ CORE RULES:
    - 5-7段对话，其中3-4段极短（<10字），最多1段可稍长。
    - 节奏呈现锯齿感: 短→短→中→短。最后一段必须是问题/指令/反应。
 
-3. **NARRATIVE VARIETY**: 
-   - 避免陈词滥调，多样化威胁类型，不重复近期已有的事件模式。
-   - SHOW DON'T TELL：描写具体感官细节（气味、温度、声音）。
+3. **禁止话痨向导行为 (ABSOLUTELY CRITICAL)**:
+   - **除了系统派发任务时，你绝不能在每句话结尾抛出行动建议或连环逼问！** 例如严禁出现"我们要不要去看看？"、"你觉得该怎么办？"、"要不要试试那边？"这类引导性结尾。
+   - 遇到失败/受伤不要瞎指挥或安慰说教。你必须像真人，根据自身性格吐槽、闲聊、发牢骚、表达观点、甚至沉默。
+   - **只有在玩家明确表示无聊（且当前 Tension = 0）时，才能主动提议去做某事。** 其余所有时候，让玩家自己决定下一步行动。
+   - 你的角色定位是"有血有肉的人"，不是"NPC任务向导"。多展现性格中的缺点、小脾气、个人偏好。
 
-4. **VISUAL CONSISTENCY**: 
+4. **像真人说话，不像 AI 写作文 (ABSOLUTELY CRITICAL)**:
+   - **严禁流水账式环境描写！** 真人走在路上不会逐项播报"柏油路裂纹、热气上钻、远处热浪、电线杆变形"。日常的、显而易见的事物（天热、路烂、灰大、车多）大家都感同身受，不用你说。只在遇到**反常的、意外的、有信息量的**事物时才值得开口。
+   - **严禁刻意贴标签式的类比！** 角色的兴趣爱好、专业知识、时代特征等是**内化的**，不能每句话都通过「就像玩XXX游戏一样」「比YYY动漫里还夸张」这种方式强行外显。真实的人不会时刻用自己的爱好做比喻。这些特质应该体现在角色的行为方式、思维习惯和下意识反应中，而不是挂在嘴上。
+   - **对话要有信息密度。** 每句话必须推进关系、透露性格、传递新信息、或引发情绪中的至少一项。如果一句话删掉后对话毫无损失，那它就不该存在。
+   - **说话方式不等于文学写作。** 真人会：说半句话就改口、用错词、答非所问、突然想起不相关的事、沉默之后冒出一句莫名其妙的话。不要每句话都工整对仗、起承转合。
+   - **结合好感度** 一定要让角色的反应和玩家当前的好感度水平相匹配。高好感度时可以更亲密、支持、甚至撒娇；中等好感度时可以是一般朋友的调侃、吐槽；低好感度时可以是冷漠、讽刺、甚至敌对的反应。好感度不是装饰，而是角色对玩家态度的直接体现。
+   - **环境感官留给 image_prompt。** 对话中偶尔一句感官细节点缀即可，不要用对话替代环境描写。大段环境信息请放在 image_prompt 里让图片来传达。
+
+5. **NARRATIVE VARIETY**: 
+   - 避免陈词滥调，多样化威胁类型，不重复近期已有的事件模式。
    - 如仍在同一地点，复用之前的视觉细节。
    - 若到新地点，在scene_visuals_update中提供新描述。
 
-5. **LANGUAGE**: 你必须用${state.language === 'zh' ? '中文' : 'English'}回复。
+6. **LANGUAGE**: 你必须用${state.language === 'zh' ? '中文' : 'English'}回复。
 
 本次检定的既定事实 (Required Outcome) - 极其重要：
 ${resolution.narrativeInstruction}${themeInstruction}（不要和已有聊天记录出现同质化危机）
@@ -453,7 +475,8 @@ OUTPUT FORMAT (JSON ONLY):
   "text_sequence": ["segment1", "segment2", ...],
   "scene_visuals_update": "仅在进入新地点时提供，否则省略",
   "hp_description": "根据当前HP(${resolution.newHp}/100)用一句简短的话描述角色当前的身体健康状况（如：'精神饱满，毫发无伤'、'左臂渗血，脸色苍白'等）",
-  "encounter_tag": "用2-4个字概括当前生成的遭遇主题(如：失控卡车、暴雨泥石流、流浪恶犬)。仅在旅途/危机场景中提供，安全区可省略"
+  "encounter_tag": "用2-4个字概括当前生成的遭遇主题(如：失控卡车、暴雨泥石流、流浪恶犬)。仅在旅途/危机场景中提供，安全区可省略",
+  "affection_change": "number（根据玩家本回合行为对好感度的影响值。正数=好感上升（最多+10），负数=好感下降（最多-30）。判断依据：玩家行为是否符合角色喜好/特长则+, 是否触犯角色厌恶属性则-。无明显影响时填0。）"
 }
 
 不需要返回任何状态数值 update（全部数据状态已在系统后台静默变更完毕）。`;
@@ -465,8 +488,16 @@ OUTPUT FORMAT (JSON ONLY):
       // ── Call LLM for story rendering ──
       const responseJson = await generateTurn(fullPrompt);
       // console.log("AI Response JSON:", responseJson);
-      const { image_prompt, text_sequence, scene_visuals_update, hp_description, encounter_tag } = responseJson;
+      const { image_prompt, text_sequence, scene_visuals_update, hp_description, encounter_tag, affection_change } = responseJson;
       
+      // ── 好感度变动 ──
+      if (typeof affection_change === 'number' && affection_change !== 0) {
+        const clampedChange = Math.max(-30, Math.min(10, affection_change));
+        updateState(prev => ({
+          affection: Math.max(0, Math.min(100, prev.affection + clampedChange))
+        }));
+      }
+
       // ── 动态记忆锁：处理 encounter_tag ──
       if (encounter_tag && resolution.newTransitState) {
         updateState(prev => {
@@ -493,6 +524,7 @@ OUTPUT FORMAT (JSON ONLY):
         lastTensionLevel: state.pacingState.tensionLevel,
         lastIntent: intent.intent,
         lastNarrativeInstruction: resolution.narrativeInstruction,
+        lastFormula: resolution.formulaBreakdown,
         lastImagePrompt: image_prompt,
         lastImageError: undefined as string | undefined
       };

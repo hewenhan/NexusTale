@@ -188,6 +188,7 @@ export async function fleshOutCharacterProfile(worldview: string, baseName: stri
     9. Hair Style (specific hair style, e.g. "long wavy hair", "short pixie cut", "twin tails", "buzz cut")
     10. Hair Color (specific hair color, e.g. "jet black", "platinum blonde", "cherry red", "silver-white")
     11. Appearance Prompt (a DETAILED, STABLE visual description of the character's physical appearance and outfit for image generation. Include: hair color/style, eye color, skin tone, facial features, body type, specific clothing items with colors and materials, accessories. This will be used as a fixed prompt for ALL future image generation involving this character. Be extremely specific and consistent. CRITICAL: The physical traits provided above (age, skin color, height, weight) plus the hair style and hair color MUST appear at the VERY BEGINNING of the appearancePrompt and must match exactly.)
+    12. Initial Affection (a number 0-100 representing how warmly this character would initially feel toward a stranger in this worldview. Consider: the character's personality, the worldview's social norms, and how trusting/suspicious they are by nature. Cold/hostile characters: 10-30. Neutral/cautious: 35-55. Friendly/warm: 55-75. Rarely above 75 initially.)
     
     Return ONLY a JSON object with this structure:
     {
@@ -201,7 +202,8 @@ export async function fleshOutCharacterProfile(worldview: string, baseName: stri
       "dislikes": "string",
       "hairStyle": "string",
       "hairColor": "string",
-      "appearancePrompt": "string"
+      "appearancePrompt": "string",
+      "initialAffection": number
     }
     
     ${langInstruction}
@@ -361,7 +363,7 @@ Output: {"intent": "move", "targetId": "n2"}
 === REAL TASK ===
 Player Input: "${userInput}"
 
-Return ONLY a JSON object: { "intent": "idle|explore|combat|suicidal_idle|move|seek_quest", "targetId": "nodeId_or_houseId_or_null" }
+Return ONLY a trimmed JSON object: { "intent": "idle|explore|combat|suicidal_idle|move|seek_quest", "targetId": "nodeId_or_houseId_or_null" }
 IMPORTANT: If targetId is null, use the literal null value (targetId: null), NOT the string "null".
 No markdown formatting.`;
 

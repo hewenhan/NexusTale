@@ -89,6 +89,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
         // Art style
         artStylePrompt: parsed.artStylePrompt ?? '',
+
+        // Affection system
+        affection: typeof parsed.affection === 'number' ? parsed.affection : INITIAL_STATE.affection,
         
         // Migration for history: Ensure all messages have IDs
         history: Array.isArray(parsed.history) 

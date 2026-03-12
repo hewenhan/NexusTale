@@ -3,7 +3,7 @@ import { useGame } from '../contexts/GameContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertCircle, Backpack, Home, Loader2, Map, RefreshCw, Save } from 'lucide-react';
+import { AlertCircle, Backpack, ChevronsRight, Heart, Home, Loader2, Map, RefreshCw, Save, Volume1, Volume2, VolumeX } from 'lucide-react';
 import { PlayerProfile, DEFAULT_LOADING_MESSAGES, INITIAL_STATE } from '../types/game';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { ChatMessageItem } from '../components/ChatMessageItem';
@@ -35,7 +35,30 @@ export default function Chat() {
   const [driveToastDismissed, setDriveToastDismissed] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [portraitUrl, setPortraitUrl] = useState<string | null>(null);
+  const chatAreaRef = useRef<HTMLDivElement>(null);
   
+  // Affection change animation
+  const [affectionDelta, setAffectionDelta] = useState<number | null>(null);
+  const [affectionAnimKey, setAffectionAnimKey] = useState(0);
+  const prevAffectionRef = useRef(state.affection);
+  const affectionInitRef = useRef(false);
+  
+  useEffect(() => {
+    if (!affectionInitRef.current) {
+      affectionInitRef.current = true;
+      prevAffectionRef.current = state.affection;
+      return;
+    }
+    const delta = state.affection - prevAffectionRef.current;
+    prevAffectionRef.current = state.affection;
+    if (delta !== 0) {
+      setAffectionDelta(delta);
+      setAffectionAnimKey(k => k + 1);
+      const timer = setTimeout(() => setAffectionDelta(null), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [state.affection]);
+
   // Progress bar refs for loading overlays
   const worldProgressRef = useRef<FakeProgressBarHandle>(null);
   const characterProgressRef = useRef<FakeProgressBarHandle>(null);
@@ -126,7 +149,9 @@ export default function Chat() {
               name: profile.name || state.aiCharacterSetup?.name || '',
               hairStyle: profile.hairStyle || state.aiCharacterSetup?.hairStyle || '',
               hairColor: profile.hairColor || state.aiCharacterSetup?.hairColor || '',
-            }
+            },
+            // 好感度初始值由 AI 生成
+            ...(typeof profile.initialAffection === 'number' ? { affection: Math.max(0, Math.min(100, profile.initialAffection)) } : {})
           });
 
           // 生成角色证件照并上传到 Drive
@@ -359,10 +384,20 @@ export default function Chat() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleExportSave]);
 
+  const VolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
+
+  const cycleTextSpeed = useCallback(() => {
+    const order: TextSpeed[] = ['normal', 'fast', 'instant'];
+    const idx = order.indexOf(textSpeed);
+    setTextSpeed(order[(idx + 1) % order.length]);
+  }, [textSpeed]);
+
+  const speedLabel = textSpeed === 'normal' ? '1x' : textSpeed === 'fast' ? '2x' : '∞';
+
   return (
     <div className="flex flex-col h-screen bg-zinc-950 text-zinc-100 font-sans relative overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-zinc-900/50 backdrop-blur-md border-b border-zinc-800 z-10">
+      <div className="flex items-center justify-between p-4 bg-zinc-900/50 backdrop-blur-md border-b border-zinc-800 z-30 relative">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-zinc-800 overflow-hidden border border-zinc-700 flex items-center justify-center">
             {portraitUrl ? (
@@ -396,6 +431,24 @@ export default function Chat() {
               <span className={`text-xs ${state.hp <= 30 ? 'text-red-400' : state.hp <= 60 ? 'text-amber-400' : 'text-zinc-400'}`}>
                 HP {state.hp}
               </span>
+              <span className={`text-xs flex items-center gap-0.5 relative ${state.affection >= 80 ? 'text-pink-400' : state.affection >= 60 ? 'text-rose-400' : state.affection >= 20 ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                <Heart className="w-3 h-3" fill={state.affection >= 60 ? 'currentColor' : 'none'} />
+                {state.affection}
+                <AnimatePresence>
+                  {affectionDelta !== null && (
+                    <motion.span
+                      key={affectionAnimKey}
+                      initial={{ opacity: 1, y: 0 }}
+                      animate={{ opacity: 0, y: -18 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 1.2, ease: 'easeOut' }}
+                      className={`absolute -top-1 left-full ml-1 text-xs font-bold whitespace-nowrap pointer-events-none ${affectionDelta > 0 ? 'text-pink-400' : 'text-blue-400'}`}
+                    >
+                      {affectionDelta > 0 ? `+${affectionDelta}` : affectionDelta}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </span>
             </div>
           </div>
         </div>
@@ -420,6 +473,50 @@ export default function Chat() {
               <span>未连接 Drive</span>
             </div>
           )}
+          <div className="relative group/vol">
+            <button
+              onClick={() => changeVolume(volume === 0 ? 0.5 : 0)}
+              title={volume === 0 ? '取消静音' : '静音'}
+              className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors"
+            >
+              <VolumeIcon className="w-4 h-4 text-zinc-400" />
+            </button>
+            {/* hover 弹出的音量滑条 — pt-2 填补按钮与面板之间的间隙防止 hover 断开 */}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 hidden group-hover/vol:block z-50">
+              <div className="flex flex-col items-center bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-3 shadow-xl">
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={volume}
+                  onChange={e => changeVolume(parseFloat(e.target.value))}
+                  className="w-24 accent-zinc-400 cursor-pointer"
+                />
+                <span className="text-[10px] text-zinc-500 mt-1">{Math.round(volume * 100)}%</span>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={cycleTextSpeed}
+            title={`打字速度: ${speedLabel}`}
+            className={`p-2 border rounded-full transition-colors ${
+              textSpeed === 'normal'
+                ? 'bg-zinc-900 border-zinc-800 hover:bg-zinc-800'
+                : textSpeed === 'fast'
+                ? 'bg-amber-500/20 border-amber-500/40 hover:bg-amber-500/30'
+                : 'bg-red-500/20 border-red-500/40 hover:bg-red-500/30'
+            }`}
+          >
+            <div className="relative w-4 h-4 flex items-center justify-center">
+              <ChevronsRight className={`w-4 h-4 ${
+                textSpeed === 'normal' ? 'text-zinc-400' : textSpeed === 'fast' ? 'text-amber-400' : 'text-red-400'
+              }`} />
+              <span className={`absolute -top-1 -right-1.5 text-[8px] font-bold ${
+                textSpeed === 'normal' ? 'text-zinc-500' : textSpeed === 'fast' ? 'text-amber-400' : 'text-red-400'
+              }`}>{speedLabel}</span>
+            </div>
+          </button>
           <button
             onClick={() => navigate('/')}
             title="返回首页"
@@ -455,10 +552,37 @@ export default function Chat() {
       <ProgressTracker state={state} />
 
       {/* Chat Area */}
-      <div className="flex-1 p-4 space-y-6 h-full overflow-hidden relative">
+      <div ref={chatAreaRef} className="flex-1 p-4 space-y-6 h-full overflow-hidden relative">
+        {/* Large affection change animation overlay */}
+        <AnimatePresence>
+          {affectionDelta !== null && (
+            <motion.div
+              key={`big-aff-${affectionAnimKey}`}
+              initial={{ opacity: 0, scale: 0.5, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: -30 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+              className="absolute bottom-8 left-28 z-20 pointer-events-none"
+            >
+              <div className={`w-20 h-20 rounded-2xl flex flex-col items-center justify-center gap-0.5 backdrop-blur-md border ${
+                affectionDelta > 0
+                  ? 'bg-pink-500/15 border-pink-500/30'
+                  : 'bg-blue-500/15 border-blue-500/30'
+              }`}>
+                <Heart
+                  className={`w-7 h-7 ${affectionDelta > 0 ? 'text-pink-400' : 'text-blue-400'}`}
+                  fill={affectionDelta > 0 ? 'currentColor' : 'none'}
+                />
+                <span className={`text-base font-bold ${affectionDelta > 0 ? 'text-pink-300' : 'text-blue-300'}`}>
+                  {affectionDelta > 0 ? `+${affectionDelta}` : affectionDelta}
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <AnimatePresence>
           {state.currentObjective && (
-            <FloatingObjective description={state.currentObjective.description} />
+            <FloatingObjective description={state.currentObjective.description} constraintsRef={chatAreaRef} />
           )}
         </AnimatePresence>
         <Virtuoso
@@ -531,7 +655,7 @@ export default function Chat() {
         />
       </div>
 
-      <ChatInput isProcessing={isProcessing} onSend={handleTurn} volume={volume} onVolumeChange={changeVolume} textSpeed={textSpeed} onTextSpeedChange={setTextSpeed} />
+      <ChatInput isProcessing={isProcessing} onSend={handleTurn} />
 
       <AnimatePresence>
         {showStatus && (
