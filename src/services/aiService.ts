@@ -35,6 +35,33 @@ export async function generateTurn(fullPrompt: string): Promise<any> {
     contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
     config: {
       responseMimeType: 'application/json',
+      
+      // ⬇️ ====== 首席架构师的炼丹参数区 ====== ⬇️
+      
+      // 1. 创造力控制 (Temperature)：默认通常是 0.7 左右。
+      // 调到 0.85 ~ 0.9 是跑团游戏的甜点区。文案会变得极其生动、比喻丰富，
+      // 但又没有高到让它胡言乱语或者破坏 JSON 结构的程度。
+      temperature: 0.85, 
+
+      // 2. 逻辑兜底 (Top-P)：核采样。
+      // 限制模型只能从累计概率达到 0.9 的候选词中选择。
+      // 作用：配合较高的 temperature，它能“砍掉最离谱/不合逻辑的废话”，保证剧情发展不脱轨。
+      topP: 0.9,
+
+      // 3. 词汇多样性 (Top-K)：
+      // 扩大候选词汇库（默认通常是 40）。调高到 60 能让 AI 使用更罕见、更具文学性的词汇，
+      // 比如用“逼仄”代替“狭窄”，用“斑驳”代替“破旧”，大幅提升文本的高级感。
+      topK: 60,
+
+      // 4. 话题推进引擎 (Presence Penalty - 存在惩罚)：0.0 到 2.0
+      // 设置为 0.3 可以轻微惩罚已经出现过的话题。
+      // 作用：逼迫 AI 推进剧情，引导它发现新事物，而不是一直跟你扯皮“这里很危险”。
+      // presencePenalty: 0.3,
+
+      // 5. 反复读机神器 (Frequency Penalty - 频率惩罚)：0.0 到 2.0
+      // 极其关键！跑团游戏最怕 AI 词穷（比如动不动就“空气中弥漫着XX”）。
+      // 设置为 0.4 会惩罚它用过的形容词，逼它换个说法，完美配合咱们之前的“防雷同”策略！
+      // frequencyPenalty: 0.4,
       safetySettings: [
         {
           category: HarmCategory.HARM_CATEGORY_HARASSMENT,
@@ -328,50 +355,38 @@ export async function extractIntent(
 如果玩家表达继续赶路、加快脚步、继续前进等，或者进行闲聊/互动，则 direction="forward"。`
     : '';
 
-  const prompt = `You are an intent classifier for a text adventure game. Classify the player's action into ONE intent category.
+  const prompt = `You are an intent classifier for a text adventure game. Classify the player's action into ONE intent category based on the current state AND the full conversation history.
 
+**Current State & Context:**
 Current Location: Node "${currentNodeId}", House "${currentHouseId || 'outdoors'}"
-Visible Environment: ${visibleContext}
 Connected Nodes: ${connectedNodesInfo}
-Visible Houses: ${visibleHousesInfo}
-Current Tension Level: ${tensionLevel}
-Current Objective: ${currentObjectiveDesc || '\u65e0 (None - \u73a9\u5bb6\u5f53\u524d\u6f2b\u65e0\u76ee\u7684\uff0c\u82e5\u63d0\u8bae\u53bb\u672a\u77e5\u8fdc\u5904\uff0c\u8bf7\u52a1\u5fc5\u5224\u5b9a\u4e3a seek_quest)'}${transitContext}
-
-Recent Conversation Context (for understanding intent continuity):
+Current Objective: ${currentObjectiveDesc || 'None'}
+Transit State: ${transitContext ? `ACTIVE: Player is traveling. Progress: ${transitContext.match(/路程进度 (\d+%)/)[1]}.` : 'INACTIVE'}
+Recent Conversation History (CRITICAL for continuity):
 ${recentConversation || 'No prior conversation.'}
-${survivalInstinctRule}
 
-Intent Categories:
-- "seek_quest": [HIGHEST PRIORITY] The player suggests, demands, or mentions traveling to a MACRO-DESTINATION (e.g., Internet Cafe, School, Hospital) that is ABSENT from the "Connected Nodes" and "Visible Houses" lists. EVEN IF the sentence is wrapped in a joke, a bet, or complaining about being sleepy/bored, IF it contains a request to go to a NEW UNLISTED place, you MUST choose seek_quest.
-- "idle": Roleplaying, resting, chatting, eating/drinking in the current location.[CRITICAL EXCLUSION: If the text contains ANY suggestion to go to a macro-destination not on the lists, DO NOT choose idle. Action overrides chatting.]
-- "explore": Actively searching, investigating, looting, OR aimless wandering/scouting within the CURRENT area to find new things.
-- "combat": Fighting, attacking, using weapons, defending against threats.${tensionLevel >= 2 ? ' [BOOSTED PRIORITY at high tension: emotional outbursts, panic, resistance = combat]' : ''}
-- "suicidal_idle": Reckless/self-destructive behavior in a dangerous area.
-- "move": Traveling ONLY to a destination explicitly listed in "Connected Nodes" or "Visible Houses".
+**TRANSIT STATE SPECIAL RULE (If Active):**
+If the player is in a Transit State and expresses intent to "go back", "turn around", "return to origin" (or synonyms), you MUST classify as intent="move" AND direction="back". **CRITICALLY, if the player explicitly names the *origin node* of the current transit (here: 西都/n2) as the new destination, this is considered a return action, and you MUST use direction="back", unless the language is clearly accelerating away from the origin.** Otherwise (chatting, or explicitly continuing towards the *current* objective), direction defaults to "forward".
 
-=== EXAMPLES (LEARN FROM THESE) ===
-Example 1:
-Visible Environment: 露天小龙虾摊
-Connected Nodes: n2 (城中村老区), n3 (百脑汇电脑城)
+**Intent Categories & Priority:**
+1. "seek_quest": Travel to any MACRO-DESTINATION NOT listed in Connected Nodes/Visible Houses. (HIGHEST PRIORITY, overrides chat/idle).
+2. "move": Travel ONLY to a destination explicitly listed in Connected Nodes/Visible Houses.
+3. "explore": Actively searching/investigating the current area.
+4. "idle": Roleplaying, resting, chatting *unless* it contains a travel request (which triggers #1 or #2).
+5. "combat"/"suicidal_idle": As applicable.
+
+=== EXAMPLES (Learn from these: focus on how context shapes the final intent) ===
+Example 1: (Context implies travel intent)
+...
 Player Input: "天快亮了，再去网吧验证咱们的赌局我就睡着啦！"
 Output: {"intent": "seek_quest", "targetId": null}
-(Reason: "网吧" is a macro-destination NOT in the connected lists. The chatting/bet context is overridden by the travel request.)
-
-Example 2:
-Player Input: "老板，这龙虾太辣了，我去旁边买瓶水。"
-Output: {"intent": "idle", "targetId": null}
-(Reason: Micro-flavor roleplaying in the immediate area. Not leaving the macro-node.)
-
-Example 3:
-Player Input: "别磨叽了，直接去城中村老区！"
-Output: {"intent": "move", "targetId": "n2"}
-(Reason: Explicitly moving to a connected node list.)
+...
 
 === REAL TASK ===
 Player Input: "${userInput}"
 
-Return ONLY a trimmed JSON object: { "intent": "idle|explore|combat|suicidal_idle|move|seek_quest", "targetId": "nodeId_or_houseId_or_null"${transitInfo ? ', "direction": "forward|back"' : ''} }
-IMPORTANT: If targetId is null, use the literal null value (targetId: null), NOT the string "null".${transitInfo ? ' direction is REQUIRED when player is in transit.' : ''}
+Return ONLY a trimmed JSON object: { "intent": "...", "targetId": "...", "direction": "..." }
+IMPORTANT: targetId must be null if not applicable. If Transit State is ACTIVE, "direction" is REQUIRED.
 No markdown formatting.`;
 
   const result = await ai.models.generateContent({
