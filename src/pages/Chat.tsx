@@ -21,7 +21,7 @@ import { DriveToast } from '../components/DriveToast';
 import { FakeProgressBar, FakeProgressBarHandle } from '../components/FakeProgressBar';
 import { FloatingObjective } from '../components/FloatingObjective';
 import { uploadImageToDrive, getImageUrlByName } from '../lib/drive';
-import { fleshOutProfile, fetchCustomLoadingMessages, generateWorldData, generateMapImage, generateCharacterPortrait } from '../services/aiService';
+import { initializeWorld, fetchCustomLoadingMessages, generateMapImage, generateCharacterPortrait } from '../services/aiService';
 
 export default function Chat() {
   const { state, updateState, exportSave } = useGame();
@@ -124,27 +124,63 @@ export default function Chat() {
     }
   }, [state.playerProfile.name]);
 
+  // Unified World Initialization: world topology + both character profiles in one request
+  const [isGeneratingWorld, setIsGeneratingWorld] = useState(false);
   useEffect(() => {
-    const fleshOutCompanion = async () => {
-      const needsFleshingOut = !state.companionProfile.isFleshedOut;
-
-      if (needsFleshingOut && state.worldview && !isFleshingOutCharacter) {
-        setIsFleshingOutCharacter(true);
+    if (!state.worldData && state.worldview && !isGeneratingWorld) {
+      setIsGeneratingWorld(true);
+      setIsFleshingOutCharacter(true);
+      (async () => {
         try {
-          const profile = await fleshOutProfile(
+          const result = await initializeWorld(
             state.worldview,
+            state.playerProfile,
             state.companionProfile,
-            state.language
+            state.language,
+            state.worldviewUserInput
           );
-          
-          updateState({ 
-            companionProfile: profile,
-            ...(typeof profile.initialAffection === 'number' ? { affection: Math.max(0, Math.min(100, profile.initialAffection)) } : {})
+
+          // Apply world data
+          const spawnNode = result.worldData.nodes[0];
+          const spawnHouse = spawnNode?.houses[0];
+          if (spawnHouse) spawnHouse.safetyLevel = 'safe';
+          const finalArtStyle = state.artStylePrompt || result.artStylePrompt;
+
+          updateState({
+            worldData: result.worldData,
+            artStylePrompt: finalArtStyle,
+            currentWorldId: result.worldData.id,
+            currentNodeId: spawnNode?.id || null,
+            currentHouseId: spawnHouse?.id || null,
+            pacingState: { tensionLevel: 0, turnsInCurrentLevel: 0 },
+            companionProfile: result.companionProfile,
+            playerProfile: result.playerProfile,
+            ...(typeof result.companionProfile.initialAffection === 'number'
+              ? { affection: Math.max(0, Math.min(100, result.companionProfile.initialAffection)) }
+              : {})
           });
 
-          // 生成角色证件照并上传到 Drive
-          if (profile.appearancePrompt && isAuthenticated && accessToken) {
-            generateCharacterPortrait(profile.appearancePrompt, state.worldview, state.artStylePrompt).then(async base64 => {
+          // Generate map image in background (non-blocking)
+          generateMapImage(result.worldData, state.worldview, finalArtStyle).then(async base64 => {
+            if (base64) {
+              if (isAuthenticated && accessToken) {
+                try {
+                  const fileName = `ai_rpg_map_${Date.now()}.png`;
+                  await uploadImageToDrive(accessToken, base64, fileName);
+                  updateState({ mapImageFileName: fileName });
+                } catch (e) {
+                  console.error("Map image upload to Drive failed", e);
+                  updateState({ mapImageFileName: `data:image/png;base64,${base64}` });
+                }
+              } else {
+                updateState({ mapImageFileName: `data:image/png;base64,${base64}` });
+              }
+            }
+          }).catch(e => console.error("Map image generation failed", e));
+
+          // Generate companion portrait in background (non-blocking)
+          if (result.companionProfile.appearancePrompt && isAuthenticated && accessToken) {
+            generateCharacterPortrait(result.companionProfile.appearancePrompt, state.worldview, finalArtStyle).then(async base64 => {
               if (base64 && accessToken) {
                 try {
                   const fileName = `ai_rpg_portrait_${Date.now()}.png`;
@@ -157,92 +193,21 @@ export default function Chat() {
             }).catch(e => console.error("Portrait generation failed", e));
           }
         } catch (error) {
-          console.error("Failed to flesh out companion", error);
+          console.error("Failed to initialize world", error);
           updateState({
-            companionProfile: {
-              ...state.companionProfile,
-              isFleshedOut: true
-            }
+            companionProfile: { ...state.companionProfile, isFleshedOut: true },
+            playerProfile: { ...state.playerProfile, isFleshedOut: true },
           });
-        } finally {
-          characterProgressRef.current?.finish();
-          setTimeout(() => setIsFleshingOutCharacter(false), 600);
-        }
-      }
-    };
-
-    fleshOutCompanion();
-  }, [state.companionProfile.isFleshedOut, state.worldview]);
-
-  // Player Profile Flesh-out: fill missing fields (hair, personality, etc.)
-  useEffect(() => {
-    const fleshOutPlayer = async () => {
-      if (state.playerProfile.name && !state.playerProfile.isFleshedOut && state.worldview) {
-        try {
-          const filled = await fleshOutProfile(state.worldview, state.playerProfile, state.language);
-          updateState({ playerProfile: filled });
-        } catch (e) {
-          console.error("Failed to flesh out player profile", e);
-          updateState({ playerProfile: { ...state.playerProfile, isFleshedOut: true } });
-        }
-      }
-    };
-    fleshOutPlayer();
-  }, [state.playerProfile.isFleshedOut, state.worldview]);
-
-  // World Data Generation: generate topology map if not present
-  const [isGeneratingWorld, setIsGeneratingWorld] = useState(false);
-  useEffect(() => {
-    const generateWorld = async () => {
-      if (!state.worldData && state.worldview && !isGeneratingWorld) {
-        setIsGeneratingWorld(true);
-        try {
-          const { worldData, artStylePrompt: aiGeneratedStyle } = await generateWorldData(state.worldview, state.language, state.worldviewUserInput);
-          // Spawn Rule: player starts in first node's first house, force it safe
-          const spawnNode = worldData.nodes[0];
-          const spawnHouse = spawnNode?.houses[0];
-          if (spawnHouse) {
-            spawnHouse.safetyLevel = 'safe';
-          }
-          // 如果用户已选择了固定风格提词（非系统推荐），保留用户的选择
-          const finalArtStyle = state.artStylePrompt || aiGeneratedStyle;
-          updateState({
-            worldData,
-            artStylePrompt: finalArtStyle,
-            currentWorldId: worldData.id,
-            currentNodeId: spawnNode?.id || null,
-            currentHouseId: spawnHouse?.id || null,
-            pacingState: { tensionLevel: 0, turnsInCurrentLevel: 0 }
-          });
-
-          // Generate map image in background (non-blocking), upload to Drive
-          generateMapImage(worldData, state.worldview, finalArtStyle).then(async base64 => {
-            if (base64) {
-              if (isAuthenticated && accessToken) {
-                try {
-                  const fileName = `ai_rpg_map_${Date.now()}.png`;
-                  await uploadImageToDrive(accessToken, base64, fileName);
-                  updateState({ mapImageFileName: fileName });
-                } catch (e) {
-                  console.error("Map image upload to Drive failed", e);
-                  // Fallback: store as data URL
-                  updateState({ mapImageFileName: `data:image/png;base64,${base64}` });
-                }
-              } else {
-                // No Drive auth, fallback to data URL
-                updateState({ mapImageFileName: `data:image/png;base64,${base64}` });
-              }
-            }
-          }).catch(e => console.error("Map image generation failed", e));
-        } catch (error) {
-          console.error("Failed to generate world data", error);
         } finally {
           worldProgressRef.current?.finish();
-          setTimeout(() => setIsGeneratingWorld(false), 600);
+          characterProgressRef.current?.finish();
+          setTimeout(() => {
+            setIsGeneratingWorld(false);
+            setIsFleshingOutCharacter(false);
+          }, 600);
         }
-      }
-    };
-    generateWorld();
+      })();
+    }
   }, [state.worldview, state.worldData]);
 
   useEffect(() => {

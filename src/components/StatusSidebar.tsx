@@ -230,7 +230,7 @@ export function StatusSidebar({ state, onClose }: StatusSidebarProps) {
               <div><span className="text-zinc-500">姓名：</span>{state.companionProfile.name}</div>
               {state.companionProfile.gender && <div><span className="text-zinc-500">性别：</span>{state.companionProfile.gender === 'Male' ? '男' : state.companionProfile.gender === 'Female' ? '女' : state.companionProfile.gender === 'Non-binary' ? '非二元' : '其他'}</div>}
               {state.companionProfile.age && <div><span className="text-zinc-500">年龄：</span>{state.companionProfile.age}</div>}
-              {state.companionProfile.orientation && <div><span className="text-zinc-500">性取向：</span>{state.companionProfile.orientation}</div>}
+              {state.companionProfile.orientation && <div><span className="text-zinc-500">性取向：</span>{state.companionProfile.orientation === 'Heterosexual' ? '异性恋' : state.companionProfile.orientation === 'Homosexual' ? '同性恋' : state.companionProfile.orientation === 'Bisexual' ? '双性恋' : state.companionProfile.orientation === 'Pansexual' ? '泛性恋' : state.companionProfile.orientation === 'Asexual' ? '无性恋' : state.companionProfile.orientation}</div>}
               {state.companionProfile.skinColor && <div><span className="text-zinc-500">肤色：</span>{state.companionProfile.skinColor}</div>}
               {state.companionProfile.height && <div><span className="text-zinc-500">身高：</span>{state.companionProfile.height}</div>}
               {state.companionProfile.weight && <div><span className="text-zinc-500">体型：</span>{state.companionProfile.weight}</div>}
@@ -258,7 +258,7 @@ export function StatusSidebar({ state, onClose }: StatusSidebarProps) {
                   state.playerProfile.gender === 'Non-binary' ? '非二元' : '其他'
                 }</div>}
                 {state.playerProfile.age && <div><span className="text-zinc-500">年龄：</span>{state.playerProfile.age}</div>}
-                {state.playerProfile.orientation && <div><span className="text-zinc-500">性取向：</span>{state.playerProfile.orientation}</div>}
+                {state.playerProfile.orientation && <div><span className="text-zinc-500">性取向：</span>{state.playerProfile.orientation === 'Heterosexual' ? '异性恋' : state.playerProfile.orientation === 'Homosexual' ? '同性恋' : state.playerProfile.orientation === 'Bisexual' ? '双性恋' : state.playerProfile.orientation === 'Pansexual' ? '泛性恋' : state.playerProfile.orientation === 'Asexual' ? '无性恋' : state.playerProfile.orientation}</div>}
                 {state.playerProfile.skinColor && <div><span className="text-zinc-500">肤色：</span>{state.playerProfile.skinColor}</div>}
                 {state.playerProfile.height && <div><span className="text-zinc-500">身高：</span>{state.playerProfile.height}</div>}
                 {state.playerProfile.weight && <div><span className="text-zinc-500">体型：</span>{state.playerProfile.weight}</div>}

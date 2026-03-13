@@ -249,6 +249,145 @@ export async function fleshOutProfile(worldview: string, profile: CharacterProfi
   throw new Error("Failed to flesh out character profile");
 }
 
+export interface InitializeWorldResult {
+  worldData: WorldData;
+  artStylePrompt: string;
+  companionProfile: CharacterProfile & { initialAffection?: number };
+  playerProfile: CharacterProfile;
+}
+
+/**
+ * Unified world initialization: generates world topology, art style, and fleshes out
+ * both player and companion profiles in a single PRO_MODEL request.
+ */
+export async function initializeWorld(
+  worldview: string,
+  playerProfile: CharacterProfile,
+  companionProfile: CharacterProfile,
+  language: 'zh' | 'en' = 'zh',
+  userInput?: string
+): Promise<InitializeWorldResult> {
+  const langInstruction = language === 'zh' ? 'All names, descriptions, and character fields MUST be in Chinese.' : 'All content MUST be in English.';
+  const userInputSection = userInput ? `\nOriginal User Input (additional context): "${userInput}"` : '';
+  const or = (v: string, fallback = 'Not specified (you decide)') => v || fallback;
+
+  const formatCharInfo = (label: string, p: CharacterProfile) => `
+  ${label}:
+    - Name: ${or(p.name, 'Not specified (invent a fitting one for the worldview)')}
+    - Age: ${or(p.age)}
+    - Gender: ${or(p.gender)}
+    - Orientation: ${or(p.orientation)}
+    - Skin Color: ${or(p.skinColor)}
+    - Height: ${or(p.height)}
+    - Weight/Build: ${or(p.weight)}
+    - Personality Description: ${or(p.personalityDesc)}
+    - Specialties/Skills: ${or(p.specialties)}
+    - Hobbies/Interests: ${or(p.hobbies)}
+    - Dislikes: ${or(p.dislikes)}`;
+
+  const prompt = `You are an expert world builder AND character designer for a text adventure RPG.
+
+Worldview: "${worldview}"${userInputSection}
+
+=== CHARACTERS ===
+${formatCharInfo('Player Character', playerProfile)}
+${formatCharInfo('AI Companion Character', companionProfile)}
+
+=== TASKS (complete ALL in one response) ===
+
+**Task 1: World Topology**
+Generate a complete world map with EXACTLY 10 nodes (locations) and multiple houses (buildings) within each node.
+Rules:
+- Each node: 1-3 houses. Connected graph (every node reachable). Types: "city"/"town"/"village"/"wilderness". House types: "housing"/"shop"/"inn"/"facility". Safety: "safe"/"low"/"medium"/"high"/"deadly".
+- Node n1 MUST be a safe starting village/camp. Last few nodes should be increasingly dangerous. Connections should form branching paths, not a straight line.
+
+**Task 2: Art Style Prompt**
+Generate a concise English art style prompt describing the ideal illustration style for this world (color palette, rendering technique, lighting, influences). This will be prepended to ALL image generation.
+
+**Task 3: Flesh Out Player Character**
+Fill in all "Not specified" fields with creative values fitting the worldview. Keep user-provided values. Generate: name, age, gender, orientation, skinColor, height, weight, hairStyle, hairColor, personalityDesc, specialties, hobbies, dislikes, description, personality, background.
+
+**Task 4: Flesh Out AI Companion Character**
+Same as Task 3, PLUS generate:
+- appearancePrompt: DETAILED, STABLE visual description for image generation (hair color/style, eye color, skin tone, facial features, body type, clothing with colors/materials, accessories. Physical traits MUST appear at the VERY BEGINNING).
+- initialAffection: number 0-100 (how warmly they'd feel toward a stranger. Cold/hostile: 10-30. Neutral/cautious: 35-55. Friendly/warm: 55-75. Rarely above 75.)
+
+IMPORTANT: The two characters should feel like they BELONG in this world. Their names, appearances, backgrounds should be consistent with the worldview and with each other's existence in the same universe.
+
+${langInstruction}
+
+Return ONLY a JSON object with this EXACT structure (no markdown):
+{
+  "worldData": {
+    "id": "w1",
+    "name": "WorldName",
+    "nodes": [
+      {
+        "id": "n1",
+        "name": "Name",
+        "type": "village",
+        "safetyLevel": "safe",
+        "connections": ["n2"],
+        "houses": [
+          { "id": "h1_1", "name": "HouseName", "type": "facility", "safetyLevel": "safe" }
+        ]
+      }
+    ]
+  },
+  "artStylePrompt": "A concise English art style description...",
+  "playerProfile": {
+    "name": "string", "age": "string", "gender": "string", "orientation": "string",
+    "skinColor": "string", "height": "string", "weight": "string",
+    "hairStyle": "string", "hairColor": "string",
+    "personalityDesc": "string", "specialties": "string", "hobbies": "string", "dislikes": "string",
+    "description": "string", "personality": "string", "background": "string"
+  },
+  "companionProfile": {
+    "name": "string", "age": "string", "gender": "string", "orientation": "string",
+    "skinColor": "string", "height": "string", "weight": "string",
+    "hairStyle": "string", "hairColor": "string",
+    "personalityDesc": "string", "specialties": "string", "hobbies": "string", "dislikes": "string",
+    "description": "string", "personality": "string", "background": "string",
+    "appearancePrompt": "string",
+    "initialAffection": 50
+  }
+}`;
+
+  const result = await ai.models.generateContent({
+    model: PRO_MODEL,
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    config: { responseMimeType: 'application/json' }
+  });
+
+  const text = result.text;
+  if (!text) throw new Error("Failed to initialize world");
+
+  const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
+  const parsed = JSON.parse(cleaned);
+
+  // Validate world data
+  if (!parsed.worldData?.nodes || !Array.isArray(parsed.worldData.nodes) || parsed.worldData.nodes.length === 0) {
+    throw new Error("Invalid world data structure");
+  }
+
+  const normalizedWorld = normalizeConnections(parsed.worldData as WorldData);
+
+  return {
+    worldData: normalizedWorld,
+    artStylePrompt: parsed.artStylePrompt || '',
+    playerProfile: {
+      ...playerProfile,
+      ...parsed.playerProfile,
+      isFleshedOut: true,
+    },
+    companionProfile: {
+      ...companionProfile,
+      ...parsed.companionProfile,
+      isFleshedOut: true,
+    },
+  };
+}
+
 export async function fetchCustomLoadingMessages(worldview: string, language: 'zh' | 'en' = 'zh'): Promise<string[]> {
   const langInstruction = language === 'zh' ? 'Translate to Chinese.' : 'Translate to English.';
   const prompt = `
