@@ -61,7 +61,7 @@ export default function Setup() {
   const { state, updateState } = useGame();
   const navigate = useNavigate();
   const [step, setStep] = useState<'player' | 'aiCharacter' | 'world' | 'artStyle'>('player');
-  
+
   // Step 1: Player Profile State
   const [playerName, setPlayerName] = useState("");
   const [playerAge, setPlayerAge] = useState("");
@@ -177,7 +177,7 @@ export default function Setup() {
         Translate EVERYTHING to Chinese.
         No markdown formatting.
       `;
-      
+
       const result = await ai.models.generateContent({
         model: PRO_MODEL,
         contents: [{ role: 'user', parts: [{ text: prompt }] }]
@@ -187,15 +187,15 @@ export default function Setup() {
       if (!text) throw new Error("No text generated");
       const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
       const parsed = JSON.parse(jsonStr);
-      
+
       if (parsed.worldviews && Array.isArray(parsed.worldviews)) {
         setOptions(parsed.worldviews.slice(0, 4));
       }
-      
+
       if (parsed.loading_messages && Array.isArray(parsed.loading_messages)) {
         setGeneratedLoadingMessages(parsed.loading_messages);
       }
-      
+
     } catch (error) {
       console.error("Failed to generate worldviews", error);
       alert("生成世界观失败，请重试。");
@@ -279,11 +279,10 @@ export default function Setup() {
     <div className="flex items-center justify-center gap-2 mb-6">
       {[1, 2, 3].map((s) => (
         <div key={s} className="flex items-center gap-2">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors ${
-            s < current ? 'bg-emerald-500 border-emerald-500 text-black' :
-            s === current ? 'bg-white border-white text-black' :
-            'bg-zinc-900 border-zinc-700 text-zinc-500'
-          }`}>{s}</div>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors ${s < current ? 'bg-emerald-500 border-emerald-500 text-black' :
+              s === current ? 'bg-white border-white text-black' :
+                'bg-zinc-900 border-zinc-700 text-zinc-500'
+            }`}>{s}</div>
           {s < 3 && <div className={`w-8 h-0.5 ${s < current ? 'bg-emerald-500' : 'bg-zinc-700'}`} />}
         </div>
       ))}
@@ -294,7 +293,7 @@ export default function Setup() {
   if (step === 'player') {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6 flex flex-col items-center justify-center font-sans">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="max-w-md w-full space-y-6 bg-zinc-900/50 p-8 rounded-2xl border border-zinc-800"
@@ -320,11 +319,10 @@ export default function Setup() {
                   <button
                     key={g.value}
                     onClick={() => setPlayerGender(g.value as any)}
-                    className={`p-2 rounded-lg text-sm border transition-colors ${
-                      playerGender === g.value 
-                        ? 'bg-white text-black border-white' 
+                    className={`p-2 rounded-lg text-sm border transition-colors ${playerGender === g.value
+                        ? 'bg-white text-black border-white'
                         : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'
-                    }`}
+                      }`}
                   >
                     {g.label}
                   </button>
@@ -379,7 +377,7 @@ export default function Setup() {
   if (step === 'aiCharacter') {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6 flex flex-col items-center justify-center font-sans">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="max-w-md w-full space-y-6 bg-zinc-900/50 p-8 rounded-2xl border border-zinc-800"
@@ -398,19 +396,18 @@ export default function Setup() {
               <div className="grid grid-cols-5 gap-2">
                 {[
                   { value: '', label: '随机' },
-                  { value: '男', label: '男' },
-                  { value: '女', label: '女' },
-                  { value: '非二元', label: '非二元' },
-                  { value: '其他', label: '其他' }
+                  { value: 'Female', label: '女' },
+                  { value: 'Male', label: '男' },
+                  { value: 'Non-binary', label: '非二元' },
+                  { value: 'Other', label: '其他' }
                 ].map((g) => (
                   <button
                     key={g.value}
                     onClick={() => setAiGender(g.value)}
-                    className={`p-2 rounded-lg text-sm border transition-colors ${
-                      aiGender === g.value 
-                        ? 'bg-white text-black border-white' 
+                    className={`p-2 rounded-lg text-sm border transition-colors ${aiGender === g.value
+                        ? 'bg-white text-black border-white'
                         : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'
-                    }`}
+                      }`}
                   >
                     {g.label}
                   </button>
@@ -427,12 +424,12 @@ export default function Setup() {
               >
                 {[
                   { value: '', label: '随机（AI 决定）' },
-                  { value: '异性恋', label: '异性恋' },
-                  { value: '同性恋', label: '同性恋' },
-                  { value: '双性恋', label: '双性恋' },
-                  { value: '泛性恋', label: '泛性恋' },
-                  { value: '无性恋', label: '无性恋' },
-                  { value: '其他', label: '其他' }
+                  { value: 'Heterosexual', label: '异性恋' },
+                  { value: 'Homosexual', label: '同性恋' },
+                  { value: 'Bisexual', label: '双性恋' },
+                  { value: 'Pansexual', label: '泛性恋' },
+                  { value: 'Asexual', label: '无性恋' },
+                  { value: 'Other', label: '其他' }
                 ].map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
@@ -571,7 +568,7 @@ export default function Setup() {
                 {opt}
               </motion.button>
             ))}
-            <button 
+            <button
               onClick={() => setOptions([])}
               className="text-zinc-500 hover:text-zinc-300 text-sm mt-4"
             >
