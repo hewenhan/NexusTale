@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { GameState, INITIAL_STATE, ChatMessage, DEFAULT_LOADING_MESSAGES, normalizeConnections } from '../types/game';
+import { GameState, INITIAL_STATE, ChatMessage, DEFAULT_LOADING_MESSAGES, DEFAULT_PROFILE, normalizeConnections } from '../types/game';
 import { v4 as uuidv4 } from 'uuid';
 
 interface GameContextType {
@@ -18,7 +18,34 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem('ai_rpg_save');
     if (!saved) return INITIAL_STATE;
     const parsed = JSON.parse(saved);
-    const restored = { ...INITIAL_STATE, ...parsed, currentObjective: parsed.currentObjective ?? null, transitState: parsed.transitState ? { ...parsed.transitState, lockedTheme: parsed.transitState.lockedTheme ?? null } : null, exhaustedThemes: Array.isArray(parsed.exhaustedThemes) ? parsed.exhaustedThemes : [], mapImageFileName: parsed.mapImageFileName ?? parsed.mapImageUrl ?? null, hpDescription: parsed.hpDescription ?? '', characterPortraitFileName: parsed.characterPortraitFileName ?? null };
+
+    // Migrate old characterSettings + aiCharacterSetup → companionProfile
+    let companionProfile = parsed.companionProfile;
+    if (!companionProfile) {
+      const cs = parsed.characterSettings ?? {};
+      const ai = parsed.aiCharacterSetup ?? {};
+      companionProfile = {
+        ...DEFAULT_PROFILE,
+        name: cs.name || ai.name || '', age: ai.age || '',
+        gender: cs.gender || ai.gender || '', orientation: ai.orientation || '',
+        skinColor: ai.skinColor || '', height: ai.height || '', weight: ai.weight || '',
+        hairStyle: ai.hairStyle || cs.hairStyle || '', hairColor: ai.hairColor || cs.hairColor || '',
+        personalityDesc: ai.personalityDesc || '',
+        specialties: cs.specialties || ai.specialties || '', hobbies: cs.hobbies || ai.hobbies || '', dislikes: cs.dislikes || ai.dislikes || '',
+        description: cs.description || '', personality: cs.personality || '', background: cs.background || '',
+        appearancePrompt: cs.appearancePrompt || '', isFleshedOut: cs.isFleshedOut ?? false,
+      };
+    } else {
+      companionProfile = { ...DEFAULT_PROFILE, ...companionProfile };
+    }
+
+    // Migrate old optional playerProfile → required CharacterProfile
+    const pp = parsed.playerProfile;
+    const playerProfile = (pp && typeof pp === 'object' && pp.name)
+      ? { ...DEFAULT_PROFILE, ...pp }
+      : { ...DEFAULT_PROFILE };
+
+    const restored = { ...INITIAL_STATE, ...parsed, companionProfile, playerProfile, currentObjective: parsed.currentObjective ?? null, transitState: parsed.transitState ? { ...parsed.transitState, lockedTheme: parsed.transitState.lockedTheme ?? null } : null, exhaustedThemes: Array.isArray(parsed.exhaustedThemes) ? parsed.exhaustedThemes : [], mapImageFileName: parsed.mapImageFileName ?? parsed.mapImageUrl ?? null, hpDescription: parsed.hpDescription ?? '', characterPortraitFileName: parsed.characterPortraitFileName ?? null };
     if (restored.worldData) restored.worldData = normalizeConnections(restored.worldData);
     return restored;
   });
@@ -41,15 +68,47 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (!parsed.history || !Array.isArray(parsed.history)) return false;
       
       // Migration for old saves: Ensure new fields exist
+      // Migrate old characterSettings + aiCharacterSetup → companionProfile
+      const oldCS = parsed.characterSettings ?? {};
+      const oldAI = parsed.aiCharacterSetup ?? {};
+      const companionProfile = parsed.companionProfile
+        ? { ...DEFAULT_PROFILE, ...parsed.companionProfile }
+        : {
+            ...DEFAULT_PROFILE,
+            name: oldCS.name || oldAI.name || '',
+            age: oldAI.age || '',
+            gender: oldCS.gender || oldAI.gender || '',
+            orientation: oldAI.orientation || '',
+            skinColor: oldAI.skinColor || '',
+            height: oldAI.height || '',
+            weight: oldAI.weight || '',
+            hairStyle: oldAI.hairStyle || oldCS.hairStyle || '',
+            hairColor: oldAI.hairColor || oldCS.hairColor || '',
+            personalityDesc: oldAI.personalityDesc || '',
+            specialties: oldCS.specialties || oldAI.specialties || '',
+            hobbies: oldCS.hobbies || oldAI.hobbies || '',
+            dislikes: oldCS.dislikes || oldAI.dislikes || '',
+            description: oldCS.description || '',
+            personality: oldCS.personality || '',
+            background: oldCS.background || '',
+            appearancePrompt: oldCS.appearancePrompt || '',
+            isFleshedOut: oldCS.isFleshedOut ?? false,
+          };
+
+      // Migrate old optional playerProfile → required CharacterProfile
+      const oldPP = parsed.playerProfile;
+      const playerProfile = (oldPP && typeof oldPP === 'object' && oldPP.name)
+        ? { ...DEFAULT_PROFILE, ...oldPP }
+        : { ...DEFAULT_PROFILE };
+
       const migratedState: GameState = {
-        characterSettings: { ...INITIAL_STATE.characterSettings, ...(parsed.characterSettings ?? {}) },
+        companionProfile,
+        playerProfile,
         worldview: parsed.worldview ?? INITIAL_STATE.worldview,
         worldviewUserInput: parsed.worldviewUserInput ?? '',
         isFirstRun: parsed.isFirstRun ?? INITIAL_STATE.isFirstRun,
         summary: parsed.summary ?? INITIAL_STATE.summary,
         turnsSinceLastSummary: parsed.turnsSinceLastSummary ?? INITIAL_STATE.turnsSinceLastSummary,
-        playerProfile: parsed.playerProfile,
-        aiCharacterSetup: parsed.aiCharacterSetup,
         loadingMessages: parsed.loadingMessages || DEFAULT_LOADING_MESSAGES,
         language: parsed.language || INITIAL_STATE.language,
         

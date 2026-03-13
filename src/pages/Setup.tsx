@@ -1,15 +1,33 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { useNavigate } from 'react-router-dom';
 import { ai, PRO_MODEL } from '../lib/gemini';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader2 } from 'lucide-react';
-import { PlayerProfile, AICharacterSetup, DEFAULT_LOADING_MESSAGES } from '../types/game';
+import { CharacterProfile, Gender, Orientation, DEFAULT_LOADING_MESSAGES, DEFAULT_PROFILE, INIT_PLAYER_PROFILE, INIT_COMPANION_PROFILE } from '../types/game';
 import { FakeProgressBar, FakeProgressBarHandle } from '../components/FakeProgressBar';
 import { ArtStylePicker } from '../components/ArtStylePicker';
 import { ArtStyleOption } from '../types/artStyles';
 
-// ── Dropdown option constants ──
+// ── Shared dropdown option constants ──
+const GENDER_OPTIONS: { value: Gender | ''; label: string }[] = [
+  { value: 'Male', label: '男' },
+  { value: 'Female', label: '女' },
+  { value: 'Non-binary', label: '非二元' },
+  { value: 'Other', label: '其他' },
+];
+const GENDER_OPTIONS_WITH_RANDOM = [{ value: '' as const, label: '随机' }, ...GENDER_OPTIONS];
+
+const ORIENTATION_OPTIONS: { value: Orientation | ''; label: string }[] = [
+  { value: 'Heterosexual', label: '异性恋' },
+  { value: 'Homosexual', label: '同性恋' },
+  { value: 'Bisexual', label: '双性恋' },
+  { value: 'Pansexual', label: '泛性恋' },
+  { value: 'Asexual', label: '无性恋' },
+  { value: 'Other', label: '其他' },
+];
+const ORIENTATION_OPTIONS_WITH_RANDOM = [{ value: '' as const, label: '随机（AI 决定）' }, ...ORIENTATION_OPTIONS];
+
 const AGE_OPTIONS = [
   { value: '', label: '随机（AI 决定）' },
   { value: '14-16岁', label: '14-16岁 · 少年' },
@@ -62,28 +80,14 @@ export default function Setup() {
   const navigate = useNavigate();
   const [step, setStep] = useState<'player' | 'aiCharacter' | 'world' | 'artStyle'>('player');
 
-  // Step 1: Player Profile State
-  const [playerName, setPlayerName] = useState("");
-  const [playerAge, setPlayerAge] = useState("");
-  const [playerGender, setPlayerGender] = useState<PlayerProfile['gender']>('Male');
-  const [playerOrientation, setPlayerOrientation] = useState<PlayerProfile['orientation']>('Heterosexual');
-  const [playerSkinColor, setPlayerSkinColor] = useState("");
-  const [playerHeight, setPlayerHeight] = useState("");
-  const [playerWeight, setPlayerWeight] = useState("");
-  const [playerPersonalityDesc, setPlayerPersonalityDesc] = useState("");
+  // ── Form state (grouped) ──
+  const [player, setPlayer] = useState<CharacterProfile>({ ...DEFAULT_PROFILE, ...INIT_PLAYER_PROFILE });
+  const updatePlayer = useCallback(<K extends keyof CharacterProfile>(key: K, value: CharacterProfile[K]) =>
+    setPlayer(prev => ({ ...prev, [key]: value })), []);
 
-  // Step 2: AI Character Setup State
-  const [aiName, setAiName] = useState("");
-  const [aiAge, setAiAge] = useState("");
-  const [aiGender, setAiGender] = useState("");
-  const [aiOrientation, setAiOrientation] = useState("");
-  const [aiSkinColor, setAiSkinColor] = useState("");
-  const [aiHeight, setAiHeight] = useState("");
-  const [aiWeight, setAiWeight] = useState("");
-  const [aiPersonalityDesc, setAiPersonalityDesc] = useState("");
-  const [aiSpecialties, setAiSpecialties] = useState("");
-  const [aiHobbies, setAiHobbies] = useState("");
-  const [aiDislikes, setAiDislikes] = useState("");
+  const [companion, setCompanion] = useState<CharacterProfile>({ ...DEFAULT_PROFILE, ...INIT_COMPANION_PROFILE });
+  const updateCompanion = useCallback(<K extends keyof CharacterProfile>(key: K, value: CharacterProfile[K]) =>
+    setCompanion(prev => ({ ...prev, [key]: value })), []);
 
   // Step 3: World State
   const [inputWorldview, setInputWorldview] = useState("");
@@ -110,49 +114,12 @@ export default function Setup() {
   }, [loading]);
 
   const handlePlayerSubmit = () => {
-    updateState({
-      playerProfile: {
-        name: playerName,
-        age: playerAge,
-        gender: playerGender,
-        orientation: playerOrientation,
-        skinColor: playerSkinColor,
-        height: playerHeight,
-        weight: playerWeight,
-        personalityDesc: playerPersonalityDesc,
-        hairStyle: '',
-        hairColor: '',
-      }
-    });
+    updateState({ playerProfile: { ...player } });
     setStep('aiCharacter');
   };
 
   const handleAiCharacterSubmit = () => {
-    const aiSetup: AICharacterSetup = {
-      name: aiName,
-      age: aiAge,
-      gender: aiGender,
-      orientation: aiOrientation,
-      skinColor: aiSkinColor,
-      height: aiHeight,
-      weight: aiWeight,
-      personalityDesc: aiPersonalityDesc,
-      specialties: aiSpecialties,
-      hobbies: aiHobbies,
-      dislikes: aiDislikes,
-      hairStyle: '',
-      hairColor: '',
-    };
-    updateState({
-      aiCharacterSetup: aiSetup,
-      characterSettings: {
-        ...state.characterSettings,
-        name: aiName,
-        gender: aiGender,
-        description: aiPersonalityDesc,
-        specialties: '',
-      }
-    });
+    updateState({ companionProfile: { ...companion } });
     setStep('world');
   };
 
@@ -305,21 +272,16 @@ export default function Setup() {
           </div>
 
           <div className="space-y-4">
-            {inputField("姓名（可留空）", playerName, setPlayerName, "不填则由 AI 根据世界观生成")}
+            {inputField("姓名（可留空）", player.name, v => updatePlayer('name', v), "不填则由 AI 根据世界观生成")}
 
             <div>
               <label className="block text-sm font-medium text-zinc-400 mb-1">性别</label>
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { value: 'Male', label: '男' },
-                  { value: 'Female', label: '女' },
-                  { value: 'Non-binary', label: '非二元' },
-                  { value: 'Other', label: '其他' }
-                ].map((g) => (
+              <div className="grid grid-cols-5 gap-2">
+                {GENDER_OPTIONS_WITH_RANDOM.map((g) => (
                   <button
                     key={g.value}
-                    onClick={() => setPlayerGender(g.value as any)}
-                    className={`p-2 rounded-lg text-sm border transition-colors ${playerGender === g.value
+                    onClick={() => updatePlayer('gender', g.value as Gender | '')}
+                    className={`p-2 rounded-lg text-sm border transition-colors ${player.gender === g.value
                         ? 'bg-white text-black border-white'
                         : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'
                       }`}
@@ -331,35 +293,17 @@ export default function Setup() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              {selectField("年龄段", playerAge, setPlayerAge, AGE_OPTIONS)}
-              <div>
-                <label className="block text-sm font-medium text-zinc-400 mb-1">性取向</label>
-                <select
-                  value={playerOrientation}
-                  onChange={(e) => setPlayerOrientation(e.target.value as any)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 focus:ring-2 focus:ring-white/20 outline-none text-sm"
-                >
-                  {[
-                    { value: 'Heterosexual', label: '异性恋' },
-                    { value: 'Homosexual', label: '同性恋' },
-                    { value: 'Bisexual', label: '双性恋' },
-                    { value: 'Pansexual', label: '泛性恋' },
-                    { value: 'Asexual', label: '无性恋' },
-                    { value: 'Other', label: '其他' }
-                  ].map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
+              {selectField("年龄段", player.age, v => updatePlayer('age', v), AGE_OPTIONS)}
+              {selectField("性取向", player.orientation, v => updatePlayer('orientation', v as Orientation | ''), ORIENTATION_OPTIONS_WITH_RANDOM)}
             </div>
 
             <div className="grid grid-cols-3 gap-3">
-              {selectField("肤色", playerSkinColor, setPlayerSkinColor, SKIN_COLOR_OPTIONS)}
-              {selectField("身高", playerHeight, setPlayerHeight, HEIGHT_OPTIONS)}
-              {selectField("体型", playerWeight, setPlayerWeight, WEIGHT_OPTIONS)}
+              {selectField("肤色", player.skinColor, v => updatePlayer('skinColor', v), SKIN_COLOR_OPTIONS)}
+              {selectField("身高", player.height, v => updatePlayer('height', v), HEIGHT_OPTIONS)}
+              {selectField("体型", player.weight, v => updatePlayer('weight', v), WEIGHT_OPTIONS)}
             </div>
 
-            {textareaField("性格描述（可留空）", playerPersonalityDesc, setPlayerPersonalityDesc, "描述一下你的性格特点，留空则由 AI 生成...")}
+            {textareaField("性格描述（可留空）", player.personalityDesc, v => updatePlayer('personalityDesc', v), "描述一下你的性格特点，留空则由 AI 生成...")}
 
             <button
               onClick={handlePlayerSubmit}
@@ -389,22 +333,16 @@ export default function Setup() {
           </div>
 
           <div className="space-y-4">
-            {inputField("姓名（可留空）", aiName, setAiName, "不填则由 AI 根据世界观生成")}
+            {inputField("姓名（可留空）", companion.name, v => updateCompanion('name', v), "不填则由 AI 根据世界观生成")}
 
             <div>
               <label className="block text-sm font-medium text-zinc-400 mb-1">性别</label>
               <div className="grid grid-cols-5 gap-2">
-                {[
-                  { value: '', label: '随机' },
-                  { value: 'Female', label: '女' },
-                  { value: 'Male', label: '男' },
-                  { value: 'Non-binary', label: '非二元' },
-                  { value: 'Other', label: '其他' }
-                ].map((g) => (
+                {GENDER_OPTIONS_WITH_RANDOM.map((g) => (
                   <button
                     key={g.value}
-                    onClick={() => setAiGender(g.value)}
-                    className={`p-2 rounded-lg text-sm border transition-colors ${aiGender === g.value
+                    onClick={() => updateCompanion('gender', g.value as Gender | '')}
+                    className={`p-2 rounded-lg text-sm border transition-colors ${companion.gender === g.value
                         ? 'bg-white text-black border-white'
                         : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'
                       }`}
@@ -415,41 +353,22 @@ export default function Setup() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1">性取向</label>
-              <select
-                value={aiOrientation}
-                onChange={(e) => setAiOrientation(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 focus:ring-2 focus:ring-white/20 outline-none text-sm"
-              >
-                {[
-                  { value: '', label: '随机（AI 决定）' },
-                  { value: 'Heterosexual', label: '异性恋' },
-                  { value: 'Homosexual', label: '同性恋' },
-                  { value: 'Bisexual', label: '双性恋' },
-                  { value: 'Pansexual', label: '泛性恋' },
-                  { value: 'Asexual', label: '无性恋' },
-                  { value: 'Other', label: '其他' }
-                ].map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
+            {selectField("性取向", companion.orientation, v => updateCompanion('orientation', v as Orientation | ''), ORIENTATION_OPTIONS_WITH_RANDOM)}
+
+            <div className="grid grid-cols-2 gap-4">
+              {selectField("年龄段", companion.age, v => updateCompanion('age', v), AGE_OPTIONS)}
+              {selectField("肤色", companion.skinColor, v => updateCompanion('skinColor', v), SKIN_COLOR_OPTIONS)}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              {selectField("年龄段", aiAge, setAiAge, AGE_OPTIONS)}
-              {selectField("肤色", aiSkinColor, setAiSkinColor, SKIN_COLOR_OPTIONS)}
+              {selectField("身高", companion.height, v => updateCompanion('height', v), HEIGHT_OPTIONS)}
+              {selectField("体型", companion.weight, v => updateCompanion('weight', v), WEIGHT_OPTIONS)}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              {selectField("身高", aiHeight, setAiHeight, HEIGHT_OPTIONS)}
-              {selectField("体型", aiWeight, setAiWeight, WEIGHT_OPTIONS)}
-            </div>
-
-            {textareaField("性格描述（可留空）", aiPersonalityDesc, setAiPersonalityDesc, "例如：外冷内热的毒舌少女，嘴上不饶人但关键时刻靠谱...")}
-            {inputField("特长（可留空）", aiSpecialties, setAiSpecialties, "例如：黑客技术、格斗、情报分析")}
-            {inputField("兴趣爱好（可留空）", aiHobbies, setAiHobbies, "例如：烹饪、吉他、收集黑胶唱片")}
-            {inputField("厌恶（可留空）", aiDislikes, setAiDislikes, "例如：不守信用、噪音、虫子")}
+            {textareaField("性格描述（可留空）", companion.personalityDesc, v => updateCompanion('personalityDesc', v), "例如：外冷内热的毒舌少女，嘴上不饶人但关键时刻靠谱...")}
+            {inputField("特长（可留空）", companion.specialties, v => updateCompanion('specialties', v), "例如：黑客技术、格斗、情报分析")}
+            {inputField("兴趣爱好（可留空）", companion.hobbies, v => updateCompanion('hobbies', v), "例如：烹饪、吉他、收集黑胶唱片")}
+            {inputField("厌恶（可留空）", companion.dislikes, v => updateCompanion('dislikes', v), "例如：不守信用、噪音、虫子")}
 
             <div className="flex gap-3 mt-2">
               <button

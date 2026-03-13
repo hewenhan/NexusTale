@@ -106,14 +106,14 @@ export function useChatLogic() {
   const hasInitialized = useRef(false);
 
   useEffect(() => {
-    if (state.history.length === 0 && !isProcessing && state.playerProfile && state.worldData && !hasInitialized.current) {
+    if (state.history.length === 0 && !isProcessing && state.playerProfile.name && state.worldData && !hasInitialized.current) {
       hasInitialized.current = true;
       handleTurn("你好"); // Trigger initial flow
     }
-  }, [state.playerProfile, state.worldData, state.history.length, isProcessing]);
+  }, [state.playerProfile.name, state.worldData, state.history.length, isProcessing]);
 
   const handleTurn = async (userInput: string) => {
-    if (!state.playerProfile) return false;
+    if (!state.playerProfile.name) return false;
     if (state.isGameOver) return false;
     if (!state.worldData || !state.currentNodeId) return false;
 
@@ -291,7 +291,7 @@ export function useChatLogic() {
 
       // ── 好感度检定叙事注入 ──
       if (resolution.affectionTriggered === 'aid') {
-        resolution.narrativeInstruction += `\n【好感度援助】：同伴因与玩家关系亲密（好感度${state.affection}），在关键时刻出手相助！请结合同伴的【特长: ${state.characterSettings.specialties}】描写一段精彩的援助行动，使局面好转。`;
+        resolution.narrativeInstruction += `\n【好感度援助】：同伴因与玩家关系亲密（好感度${state.affection}），在关键时刻出手相助！请结合同伴的【特长: ${state.companionProfile.specialties}】描写一段精彩的援助行动，使局面好转。`;
       } else if (resolution.affectionTriggered === 'sabotage') {
         resolution.narrativeInstruction += `\n【好感度冷淡】：同伴因与玩家关系冷淡（好感度${state.affection}），在危急关头袖手旁观甚至落井下石！请结合同伴的性格描写冷漠、嘲讽或使绊子的反应，使局面雪上加霜。`;
       }
@@ -437,7 +437,16 @@ export function useChatLogic() {
         }
       }
 
-      const characterRoleString = `Name: ${state.characterSettings.name}\nGender: ${state.characterSettings.gender}\nDescription: ${state.characterSettings.description}\nPersonality: ${state.characterSettings.personality}\nBackground: ${state.characterSettings.background}\nSpecialties: ${state.characterSettings.specialties}\nHobbies: ${state.characterSettings.hobbies}\nDislikes: ${state.characterSettings.dislikes}`;
+      const cp = state.companionProfile;
+      const characterRoleString = [
+        `Name: ${cp.name}`, `Gender: ${cp.gender}`, `Age: ${cp.age}`,
+        `Orientation: ${cp.orientation}`,
+        `Appearance: Skin=${cp.skinColor}, Height=${cp.height}, Build=${cp.weight}, Hair=${cp.hairStyle} ${cp.hairColor}`,
+        `PersonalityDesc: ${cp.personalityDesc}`,
+        `Description: ${cp.description}`, `Personality: ${cp.personality}`,
+        `Background: ${cp.background}`,
+        `Specialties: ${cp.specialties}`, `Hobbies: ${cp.hobbies}`, `Dislikes: ${cp.dislikes}`,
+      ].join('\n');
 
       // ── Module 5: Assemble LLM Prompt (Story Renderer Only) ──
       const systemPrompt = `你是本游戏的沉浸式多模态图文渲染引擎。你**没有**判定胜负的权力，只需根据以下【既定事实】进行生动描写。
@@ -448,9 +457,15 @@ ${characterRoleString}
 世界观: ${state.worldview}
 
 玩家档案:
-姓名: ${state.playerProfile!.name}
-性别: ${state.playerProfile!.gender}
-性取向: ${state.playerProfile!.orientation}
+姓名: ${state.playerProfile.name}
+性别: ${state.playerProfile.gender}
+年龄: ${state.playerProfile.age}
+性取向: ${state.playerProfile.orientation}
+外貌: 肤色=${state.playerProfile.skinColor}, 身高=${state.playerProfile.height}, 体型=${state.playerProfile.weight}, 发型=${state.playerProfile.hairStyle} ${state.playerProfile.hairColor}
+性格: ${state.playerProfile.personalityDesc}
+特长: ${state.playerProfile.specialties}
+爱好: ${state.playerProfile.hobbies}
+厌恶: ${state.playerProfile.dislikes}
 
 当前状态参数：
 - 绝对位置与可用视野：${locationContext}
@@ -594,23 +609,21 @@ OUTPUT FORMAT (JSON ONLY):
       
       if (image_prompt && isAuthenticated && accessToken) {
         // 如果角色有外貌提词，注入到图片生成 prompt 中
-        const characterAppearance = state.characterSettings.appearancePrompt;
+        const characterAppearance = state.companionProfile.appearancePrompt;
         const enrichedImagePrompt = characterAppearance
           ? `${image_prompt}\n\nIMPORTANT - The companion character in this scene has the following fixed appearance: ${characterAppearance}`
           : image_prompt;
 
         // 构建物理特征锁定字符串（包含发型发色）
-        const aiSetup = state.aiCharacterSetup;
-        const physicalTraitsLock = aiSetup
-          ? [
-              aiSetup.skinColor && `Skin: ${aiSetup.skinColor}`,
-              aiSetup.height && `Height: ${aiSetup.height}`,
-              aiSetup.weight && `Build: ${aiSetup.weight}`,
-              aiSetup.age && `Age: ${aiSetup.age}`,
-              aiSetup.hairStyle && `Hair Style: ${aiSetup.hairStyle}`,
-              aiSetup.hairColor && `Hair Color: ${aiSetup.hairColor}`,
-            ].filter(Boolean).join(', ') || undefined
-          : undefined;
+        const cp = state.companionProfile;
+        const physicalTraitsLock = [
+              cp.skinColor && `Skin: ${cp.skinColor}`,
+              cp.height && `Height: ${cp.height}`,
+              cp.weight && `Build: ${cp.weight}`,
+              cp.age && `Age: ${cp.age}`,
+              cp.hairStyle && `Hair Style: ${cp.hairStyle}`,
+              cp.hairColor && `Hair Color: ${cp.hairColor}`,
+            ].filter(Boolean).join(', ') || undefined;
 
         imagePromise = (async () => {
           try {

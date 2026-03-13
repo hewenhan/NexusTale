@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { AlertCircle, Backpack, ChevronsRight, Heart, Home, Loader2, Map, MoreHorizontal, RefreshCw, Save, Volume1, Volume2, VolumeX } from 'lucide-react';
-import { PlayerProfile, DEFAULT_LOADING_MESSAGES, INITIAL_STATE } from '../types/game';
+import { CharacterProfile, DEFAULT_PROFILE, DEFAULT_LOADING_MESSAGES, INITIAL_STATE, type Gender, type Orientation } from '../types/game';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { ChatMessageItem } from '../components/ChatMessageItem';
 import { DebugOverlay } from '../components/DebugOverlay';
@@ -21,7 +21,7 @@ import { DriveToast } from '../components/DriveToast';
 import { FakeProgressBar, FakeProgressBarHandle } from '../components/FakeProgressBar';
 import { FloatingObjective } from '../components/FloatingObjective';
 import { uploadImageToDrive, getImageUrlByName } from '../lib/drive';
-import { fleshOutCharacterProfile, fleshOutPlayerProfile, fetchCustomLoadingMessages, generateWorldData, generateMapImage, generateCharacterPortrait } from '../services/aiService';
+import { fleshOutProfile, fetchCustomLoadingMessages, generateWorldData, generateMapImage, generateCharacterPortrait } from '../services/aiService';
 
 export default function Chat() {
   const { state, updateState, exportSave } = useGame();
@@ -112,47 +112,33 @@ export default function Chat() {
   // Profile Completion State
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [tempName, setTempName] = useState("");
-  const [tempGender, setTempGender] = useState<PlayerProfile['gender']>('Male');
-  const [tempOrientation, setTempOrientation] = useState<PlayerProfile['orientation']>('Heterosexual');
+  const [tempGender, setTempGender] = useState<Gender>('Male');
+  const [tempOrientation, setTempOrientation] = useState<Orientation>('Heterosexual');
 
   // Character Fleshing Out State
   const [isFleshingOutCharacter, setIsFleshingOutCharacter] = useState(false);
 
   useEffect(() => {
-    if (!state.playerProfile) {
+    if (!state.playerProfile.name) {
       setShowProfileModal(true);
     }
-  }, [state.playerProfile]);
+  }, [state.playerProfile.name]);
 
   useEffect(() => {
-    const fleshOutCharacter = async () => {
-      const needsFleshingOut = !state.characterSettings.isFleshedOut;
+    const fleshOutCompanion = async () => {
+      const needsFleshingOut = !state.companionProfile.isFleshedOut;
 
       if (needsFleshingOut && state.worldview && !isFleshingOutCharacter) {
         setIsFleshingOutCharacter(true);
         try {
-          const profile = await fleshOutCharacterProfile(
+          const profile = await fleshOutProfile(
             state.worldview,
-            state.characterSettings.name,
-            state.characterSettings.gender,
-            state.characterSettings.description,
-            state.language,
-            state.aiCharacterSetup
+            state.companionProfile,
+            state.language
           );
           
           updateState({ 
-            characterSettings: {
-              ...profile,
-              isFleshedOut: true
-            },
-            // 回写 AI 生成的发型发色和可能补全的姓名到 aiCharacterSetup
-            aiCharacterSetup: {
-              ...(state.aiCharacterSetup || { name: '', age: '', gender: '', orientation: '', skinColor: '', height: '', weight: '', personalityDesc: '', specialties: '', hobbies: '', dislikes: '', hairStyle: '', hairColor: '' }),
-              name: profile.name || state.aiCharacterSetup?.name || '',
-              hairStyle: profile.hairStyle || state.aiCharacterSetup?.hairStyle || '',
-              hairColor: profile.hairColor || state.aiCharacterSetup?.hairColor || '',
-            },
-            // 好感度初始值由 AI 生成
+            companionProfile: profile,
             ...(typeof profile.initialAffection === 'number' ? { affection: Math.max(0, Math.min(100, profile.initialAffection)) } : {})
           });
 
@@ -171,10 +157,10 @@ export default function Chat() {
             }).catch(e => console.error("Portrait generation failed", e));
           }
         } catch (error) {
-          console.error("Failed to flesh out character", error);
+          console.error("Failed to flesh out companion", error);
           updateState({
-            characterSettings: {
-              ...state.characterSettings,
+            companionProfile: {
+              ...state.companionProfile,
               isFleshedOut: true
             }
           });
@@ -185,32 +171,24 @@ export default function Chat() {
       }
     };
 
-    fleshOutCharacter();
-  }, [state.characterSettings, state.worldview]);
+    fleshOutCompanion();
+  }, [state.companionProfile.isFleshedOut, state.worldview]);
 
-  // Player Profile Flesh-out: fill missing fields (name, hair, personality)
+  // Player Profile Flesh-out: fill missing fields (hair, personality, etc.)
   useEffect(() => {
     const fleshOutPlayer = async () => {
-      if (state.playerProfile && !state.playerProfile.hairStyle && state.worldview) {
+      if (state.playerProfile.name && !state.playerProfile.isFleshedOut && state.worldview) {
         try {
-          const filled = await fleshOutPlayerProfile(state.worldview, state.playerProfile, state.language);
-          updateState({
-            playerProfile: {
-              ...state.playerProfile,
-              name: state.playerProfile.name || filled.name || state.playerProfile.name,
-              age: state.playerProfile.age || filled.age || state.playerProfile.age,
-              personalityDesc: state.playerProfile.personalityDesc || filled.personalityDesc || '',
-              hairStyle: filled.hairStyle || '',
-              hairColor: filled.hairColor || '',
-            }
-          });
+          const filled = await fleshOutProfile(state.worldview, state.playerProfile, state.language);
+          updateState({ playerProfile: filled });
         } catch (e) {
           console.error("Failed to flesh out player profile", e);
+          updateState({ playerProfile: { ...state.playerProfile, isFleshedOut: true } });
         }
       }
     };
     fleshOutPlayer();
-  }, [state.playerProfile?.hairStyle, state.worldview]);
+  }, [state.playerProfile.isFleshedOut, state.worldview]);
 
   // World Data Generation: generate topology map if not present
   const [isGeneratingWorld, setIsGeneratingWorld] = useState(false);
@@ -299,16 +277,10 @@ export default function Chat() {
     if (!tempName.trim()) return;
     updateState({
       playerProfile: {
+        ...DEFAULT_PROFILE,
         name: tempName,
-        age: '',
         gender: tempGender,
         orientation: tempOrientation,
-        skinColor: '',
-        height: '',
-        weight: '',
-        personalityDesc: '',
-        hairStyle: '',
-        hairColor: '',
       }
     });
     setShowProfileModal(false);
@@ -362,7 +334,7 @@ export default function Chat() {
     }
   }, [state.history, state.pacingState, state.hp, state.inventory, state.status, updateState]);
 
-  const characterName = state.characterSettings.name || 'AI';
+  const characterName = state.companionProfile.name || 'AI';
 
   const handleExportSave = useCallback(() => {
     const json = exportSave();
@@ -685,7 +657,7 @@ export default function Chat() {
           data={state.history}
           initialTopMostItemIndex={state.history.length - 1}
           followOutput="smooth"
-          context={{ onDelete: handleDeleteMessage, imageUrls, characterName, playerName: state.playerProfile?.name || '你', onImageLoaded: handleImageLoaded, portraitUrl, totalMessages: state.history.length, textSpeed, flushPendingNotifications, animatedIds: animatedIdsRef.current }}
+          context={{ onDelete: handleDeleteMessage, imageUrls, characterName, playerName: state.playerProfile.name || '你', onImageLoaded: handleImageLoaded, portraitUrl, totalMessages: state.history.length, textSpeed, flushPendingNotifications, animatedIds: animatedIdsRef.current }}
           itemContent={(index, msg, context) => {
             const isLast = index === context.totalMessages - 1;
             const isLastModel = msg.role === 'model' && isLast;

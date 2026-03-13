@@ -67,54 +67,39 @@ export interface DebugState {
   lastImageError?: string;
 }
 
+export type Gender = 'Male' | 'Female' | 'Non-binary' | 'Other';
+export type Orientation = 'Heterosexual' | 'Homosexual' | 'Bisexual' | 'Pansexual' | 'Asexual' | 'Other';
+
 export interface CharacterProfile {
+  // 身份
   name: string;
-  gender: string;
+  age: string;
+  gender: Gender | '';
+  orientation: Orientation | '';
+  // 外貌
+  skinColor: string;
+  height: string;
+  weight: string;
+  hairStyle: string;
+  hairColor: string;
+  // 内在
+  personalityDesc: string;
+  specialties: string;
+  hobbies: string;
+  dislikes: string;
+  // AI 丰富
   description: string;
   personality: string;
   background: string;
-  specialties: string;
-  hobbies: string;
-  dislikes: string;
   appearancePrompt: string;
   isFleshedOut: boolean;
-  hairStyle?: string;
-  hairColor?: string;
-}
-
-export interface PlayerProfile {
-  name: string;
-  age: string;
-  gender: 'Male' | 'Female' | 'Non-binary' | 'Other';
-  orientation: 'Heterosexual' | 'Homosexual' | 'Bisexual' | 'Pansexual' | 'Asexual' | 'Other';
-  skinColor: string;
-  height: string;
-  weight: string;
-  personalityDesc: string;
-  hairStyle: string;
-  hairColor: string;
-}
-
-export interface AICharacterSetup {
-  name: string;
-  age: string;
-  gender: string;
-  orientation: string;
-  skinColor: string;
-  height: string;
-  weight: string;
-  personalityDesc: string;
-  specialties: string;
-  hobbies: string;
-  dislikes: string;
-  hairStyle: string;
-  hairColor: string;
 }
 
 // --- Core Game State ---
 export interface GameState {
   // 1. Original base fields
-  characterSettings: CharacterProfile;
+  playerProfile: CharacterProfile;
+  companionProfile: CharacterProfile;
   worldview: string;
   /** 用户原始输入的世界观描述（用于辅助生成更准确的地图） */
   worldviewUserInput: string;
@@ -122,8 +107,6 @@ export interface GameState {
   isFirstRun: boolean;
   summary: string;
   turnsSinceLastSummary: number;
-  playerProfile?: PlayerProfile;
-  aiCharacterSetup?: AICharacterSetup;
   loadingMessages: string[];
   language: 'zh' | 'en';
 
@@ -200,17 +183,13 @@ export interface ChatMessage {
   affection?: number;
 }
 
-export const DEFAULT_CHARACTER: CharacterProfile = {
-  name: "林星",
-  gender: "女",
-  description: "23岁白羊座的小女生",
-  personality: "",
-  background: "",
-  specialties: "",
-  hobbies: "",
-  dislikes: "",
-  appearancePrompt: "",
-  isFleshedOut: false
+export const DEFAULT_PROFILE: CharacterProfile = {
+  name: '', age: '', gender: '', orientation: '',
+  skinColor: '', height: '', weight: '',
+  hairStyle: '', hairColor: '',
+  personalityDesc: '', specialties: '', hobbies: '', dislikes: '',
+  description: '', personality: '', background: '',
+  appearancePrompt: '', isFleshedOut: false,
 };
 export const SUMMARY_THRESHOLD = 20;
 export const KEEP_RECENT_TURNS = 10;
@@ -257,8 +236,19 @@ export const DEFAULT_LOADING_MESSAGES = [
   "正在给希望浇水..."
 ];
 
+export const INIT_PLAYER_PROFILE: Partial<CharacterProfile> = {
+  gender: 'Male',
+  orientation: 'Heterosexual'
+};
+
+export const INIT_COMPANION_PROFILE: Partial<CharacterProfile> = {
+  gender: 'Female',
+  orientation: 'Heterosexual'
+};
+
 export const INITIAL_STATE: GameState = {
-  characterSettings: DEFAULT_CHARACTER,
+  playerProfile: { ...DEFAULT_PROFILE, ...INIT_PLAYER_PROFILE },
+  companionProfile: { ...DEFAULT_PROFILE, ...INIT_COMPANION_PROFILE },
   worldview: "",
   worldviewUserInput: "",
   history: [],

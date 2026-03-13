@@ -1,6 +1,6 @@
 import { ai, TEXT_MODEL, PRO_MODEL, PRO_IMAGE_MODEL, IMAGE_MODEL, LITE_MODEL } from '../lib/gemini';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
-import type { IntentResult, WorldData } from '../types/game';
+import type { IntentResult, WorldData, CharacterProfile } from '../types/game';
 import { normalizeConnections } from '../types/game';
 
 export async function generateSummary(currentSummary: string, messagesToSummarize: any[], language: 'zh' | 'en' = 'zh'): Promise<string | undefined> {
@@ -182,60 +182,49 @@ const traitPrefix = physicalTraitsLock
   return undefined;
 }
 
-export async function fleshOutCharacterProfile(worldview: string, baseName: string, baseGender: string, baseDesc: string, language: 'zh' | 'en' = 'zh', aiCharacterSetup?: { age?: string; skinColor?: string; height?: string; weight?: string; specialties?: string; hobbies?: string; dislikes?: string; orientation?: string; hairStyle?: string; hairColor?: string }): Promise<any> {
+export async function fleshOutProfile(worldview: string, profile: CharacterProfile, language: 'zh' | 'en' = 'zh'): Promise<CharacterProfile & { initialAffection?: number }> {
   const langInstruction = language === 'zh' ? 'Translate all content to Chinese.' : 'Translate all content to English.';
-  
-  const physicalTraits = aiCharacterSetup
-    ? `
-    Physical Traits (MUST be included verbatim in appearancePrompt):
-    - Age: ${aiCharacterSetup.age || 'Not specified (you decide)'}
-    - Skin Color: ${aiCharacterSetup.skinColor || 'Not specified (you decide)'}
-    - Height: ${aiCharacterSetup.height || 'Not specified (you decide)'}
-    - Weight/Build: ${aiCharacterSetup.weight || 'Not specified (you decide)'}
-    - Orientation: ${aiCharacterSetup.orientation || 'Not specified (you decide)'}
-    Specialties/Skills: ${aiCharacterSetup.specialties || 'Not specified (you decide)'}
-    Hobbies/Interests: ${aiCharacterSetup.hobbies || 'Not specified (you decide)'}
-    Dislikes: ${aiCharacterSetup.dislikes || 'Not specified (you decide)'}`
-    : '';
+  const or = (v: string, fallback = 'Not specified (you decide)') => v || fallback;
 
   const prompt = `
     You are an expert character designer for a roleplay game.
     
     Worldview: "${worldview}"
-    Initial Character Info:
-    Name: ${baseName || 'Not specified (invent a fitting one for the worldview)'}
-    Gender: ${baseGender || 'Not specified (you decide)'}
-    Description: ${baseDesc || 'Not specified (you decide)'}${physicalTraits}
+    Character Info:
+    - Name: ${or(profile.name, 'Not specified (invent a fitting one for the worldview)')}
+    - Age: ${or(profile.age)}
+    - Gender: ${or(profile.gender)}
+    - Orientation: ${or(profile.orientation)}
+    - Skin Color: ${or(profile.skinColor)}
+    - Height: ${or(profile.height)}
+    - Weight/Build: ${or(profile.weight)}
+    - Personality Description: ${or(profile.personalityDesc)}
+    - Specialties/Skills: ${or(profile.specialties)}
+    - Hobbies/Interests: ${or(profile.hobbies)}
+    - Dislikes: ${or(profile.dislikes)}
     
-    Task: Flesh out this character to fit perfectly into the worldview. If any fields are "Not specified", use your creativity to invent appropriate values that fit the worldview.
-    Provide a complete profile including:
-    1. Name (use the initial name if provided, otherwise invent a fitting one)
-    2. Gender (use the initial gender if provided, otherwise invent a fitting one)
-    3. Description (a short summary of who they are)
-    4. Personality (their traits, quirks, how they act)
-    5. Background (their past experiences, how they got here)
-    6. Specialties (what they are GOOD AT, their skills, expertise, combat abilities — practical things. If user provided specialties, use them and expand.)
-    7. Hobbies (what they ENJOY doing in their free time, interests, pastimes — leisure things. If user provided hobbies, use them and expand.)
-    8. Dislikes (things they hate, dislike, or can't stand. If user provided dislikes, use them and expand.)
-    9. Hair Style (specific hair style, e.g. "long wavy hair", "short pixie cut", "twin tails", "buzz cut")
-    10. Hair Color (specific hair color, e.g. "jet black", "platinum blonde", "cherry red", "silver-white")
-    11. Appearance Prompt (a DETAILED, STABLE visual description of the character's physical appearance and outfit for image generation. Include: hair color/style, eye color, skin tone, facial features, body type, specific clothing items with colors and materials, accessories. This will be used as a fixed prompt for ALL future image generation involving this character. Be extremely specific and consistent. CRITICAL: The physical traits provided above (age, skin color, height, weight) plus the hair style and hair color MUST appear at the VERY BEGINNING of the appearancePrompt and must match exactly.)
-    12. Initial Affection (a number 0-100 representing how warmly this character would initially feel toward a stranger in this worldview. Consider: the character's personality, the worldview's social norms, and how trusting/suspicious they are by nature. Cold/hostile characters: 10-30. Neutral/cautious: 35-55. Friendly/warm: 55-75. Rarely above 75 initially.)
+    Task: Flesh out this character to fit perfectly into the worldview. If any fields are "Not specified", use your creativity to invent appropriate values that fit the worldview. Keep all user-provided values and expand upon them.
     
-    Return ONLY a JSON object with this structure:
+    Return ONLY a JSON object with ALL fields filled:
     {
       "name": "string",
+      "age": "string (e.g. '24岁')",
       "gender": "string",
-      "description": "string",
-      "personality": "string",
-      "background": "string",
-      "specialties": "string",
-      "hobbies": "string",
-      "dislikes": "string",
-      "hairStyle": "string",
-      "hairColor": "string",
-      "appearancePrompt": "string",
-      "initialAffection": number
+      "orientation": "string",
+      "skinColor": "string",
+      "height": "string",
+      "weight": "string",
+      "hairStyle": "string (specific, e.g. 'long wavy hair', 'short pixie cut')",
+      "hairColor": "string (specific, e.g. 'jet black', 'platinum blonde')",
+      "personalityDesc": "string (brief personality summary from user, expand if provided)",
+      "specialties": "string (practical skills, combat abilities. Expand user input if provided.)",
+      "hobbies": "string (leisure interests. Expand user input if provided.)",
+      "dislikes": "string (things they hate. Expand user input if provided.)",
+      "description": "string (a short summary of who they are)",
+      "personality": "string (detailed traits, quirks, how they act)",
+      "background": "string (past experiences, how they got here)",
+      "appearancePrompt": "string (DETAILED, STABLE visual description for image generation. Include: hair color/style, eye color, skin tone, facial features, body type, clothing with colors/materials, accessories. Physical traits MUST appear at the VERY BEGINNING and match exactly.)",
+      "initialAffection": "number 0-100 (how warmly this character would initially feel toward a stranger. Cold/hostile: 10-30. Neutral/cautious: 35-55. Friendly/warm: 55-75. Rarely above 75.)"
     }
     
     ${langInstruction}
@@ -250,52 +239,14 @@ export async function fleshOutCharacterProfile(worldview: string, baseName: stri
   const text = result.text;
   if (text) {
     const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(jsonStr);
+    const filled = JSON.parse(jsonStr);
+    return {
+      ...profile,
+      ...filled,
+      isFleshedOut: true,
+    };
   }
-  throw new Error("Failed to generate character profile");
-}
-
-export async function fleshOutPlayerProfile(worldview: string, playerProfile: { name?: string; age?: string; gender?: string; orientation?: string; skinColor?: string; height?: string; weight?: string; personalityDesc?: string }, language: 'zh' | 'en' = 'zh'): Promise<{ name: string; age: string; personalityDesc: string; hairStyle: string; hairColor: string }> {
-  const langInstruction = language === 'zh' ? 'Translate all content to Chinese.' : 'Translate all content to English.';
-  const prompt = `
-    You are an expert character designer for a roleplay game.
-    
-    Worldview: "${worldview}"
-    Player Character Info:
-    - Name: ${playerProfile.name || 'Not specified (invent a fitting one for the worldview)'}
-    - Age: ${playerProfile.age || 'Not specified (you decide)'}
-    - Gender: ${playerProfile.gender || 'Not specified'}
-    - Orientation: ${playerProfile.orientation || 'Not specified'}
-    - Skin Color: ${playerProfile.skinColor || 'Not specified (you decide)'}
-    - Height: ${playerProfile.height || 'Not specified (you decide)'}
-    - Weight/Build: ${playerProfile.weight || 'Not specified (you decide)'}
-    - Personality: ${playerProfile.personalityDesc || 'Not specified (you decide)'}
-    
-    Task: Fill in any missing/empty fields for the PLAYER character to fit the worldview. Keep all provided values unchanged.
-    
-    Return ONLY a JSON object:
-    {
-      "name": "string (use provided if given, else invent)",
-      "age": "string (use provided if given, else invent, e.g. '24岁')",
-      "personalityDesc": "string (use provided if given, else invent a brief personality)",
-      "hairStyle": "string (invent a specific hair style)",
-      "hairColor": "string (invent a specific hair color)"
-    }
-    
-    ${langInstruction}
-    No markdown formatting.
-  `;
-  
-  const result = await ai.models.generateContent({
-    model: TEXT_MODEL,
-    contents: [{ role: 'user', parts: [{ text: prompt }] }]
-  });
-  const text = result.text;
-  if (text) {
-    const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(jsonStr);
-  }
-  throw new Error("Failed to flesh out player profile");
+  throw new Error("Failed to flesh out character profile");
 }
 
 export async function fetchCustomLoadingMessages(worldview: string, language: 'zh' | 'en' = 'zh'): Promise<string[]> {

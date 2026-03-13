@@ -89,7 +89,7 @@ export function StatusSidebar({ state, onClose }: StatusSidebarProps) {
             </h3>
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span>{state.characterSettings.name}</span>
+                <span>{state.companionProfile.name}</span>
                 <span className={state.affection >= 80 ? 'text-pink-400' : state.affection >= 60 ? 'text-rose-400' : state.affection >= 20 ? 'text-zinc-300' : 'text-zinc-600'}>
                   {state.affection} / 100
                 </span>
@@ -227,35 +227,47 @@ export function StatusSidebar({ state, onClose }: StatusSidebarProps) {
                   <img src={portraitUrl} alt="角色头像" className="w-24 h-24 rounded-full object-cover border-2 border-zinc-700" />
                 </div>
               )}
-              <div><span className="text-zinc-500">姓名：</span>{state.characterSettings.name}</div>
-              <div><span className="text-zinc-500">性别：</span>{state.characterSettings.gender}</div>
-              <div><span className="text-zinc-500">简述：</span>{state.characterSettings.description}</div>
-              {state.characterSettings.personality && <div><span className="text-zinc-500">性格：</span>{state.characterSettings.personality}</div>}
-              {state.characterSettings.background && <div><span className="text-zinc-500">经历：</span>{state.characterSettings.background}</div>}
-              {state.characterSettings.specialties && <div><span className="text-zinc-500">特长：</span>{state.characterSettings.specialties}</div>}
-              {state.characterSettings.hobbies && <div><span className="text-zinc-500">爱好：</span>{state.characterSettings.hobbies}</div>}
-              {state.characterSettings.dislikes && <div><span className="text-zinc-500">厌恶：</span>{state.characterSettings.dislikes}</div>}
+              <div><span className="text-zinc-500">姓名：</span>{state.companionProfile.name}</div>
+              {state.companionProfile.gender && <div><span className="text-zinc-500">性别：</span>{state.companionProfile.gender === 'Male' ? '男' : state.companionProfile.gender === 'Female' ? '女' : state.companionProfile.gender === 'Non-binary' ? '非二元' : '其他'}</div>}
+              {state.companionProfile.age && <div><span className="text-zinc-500">年龄：</span>{state.companionProfile.age}</div>}
+              {state.companionProfile.orientation && <div><span className="text-zinc-500">性取向：</span>{state.companionProfile.orientation}</div>}
+              {state.companionProfile.skinColor && <div><span className="text-zinc-500">肤色：</span>{state.companionProfile.skinColor}</div>}
+              {state.companionProfile.height && <div><span className="text-zinc-500">身高：</span>{state.companionProfile.height}</div>}
+              {state.companionProfile.weight && <div><span className="text-zinc-500">体型：</span>{state.companionProfile.weight}</div>}
+              {state.companionProfile.hairStyle && <div><span className="text-zinc-500">发型：</span>{state.companionProfile.hairStyle}</div>}
+              {state.companionProfile.hairColor && <div><span className="text-zinc-500">发色：</span>{state.companionProfile.hairColor}</div>}
+              <div><span className="text-zinc-500">简述：</span>{state.companionProfile.description}</div>
+              {state.companionProfile.personalityDesc && <div><span className="text-zinc-500">自述性格：</span>{state.companionProfile.personalityDesc}</div>}
+              {state.companionProfile.personality && <div><span className="text-zinc-500">性格：</span>{state.companionProfile.personality}</div>}
+              {state.companionProfile.background && <div><span className="text-zinc-500">经历：</span>{state.companionProfile.background}</div>}
+              {state.companionProfile.specialties && <div><span className="text-zinc-500">特长：</span>{state.companionProfile.specialties}</div>}
+              {state.companionProfile.hobbies && <div><span className="text-zinc-500">爱好：</span>{state.companionProfile.hobbies}</div>}
+              {state.companionProfile.dislikes && <div><span className="text-zinc-500">厌恶：</span>{state.companionProfile.dislikes}</div>}
             </div>
           </div>
 
           {/* Player Profile */}
-          {state.playerProfile && (
+          {state.playerProfile.name && (
             <div>
               <h3 className="text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider">玩家档案</h3>
               <div className="bg-zinc-950 border border-zinc-800 p-3 rounded-lg text-sm text-zinc-300 space-y-1">
-                {state.playerProfile.name && <div><span className="text-zinc-500">姓名：</span>{state.playerProfile.name}</div>}
-                <div><span className="text-zinc-500">性别：</span>{
+                <div><span className="text-zinc-500">姓名：</span>{state.playerProfile.name}</div>
+                {state.playerProfile.gender && <div><span className="text-zinc-500">性别：</span>{
                   state.playerProfile.gender === 'Male' ? '男' :
                   state.playerProfile.gender === 'Female' ? '女' :
                   state.playerProfile.gender === 'Non-binary' ? '非二元' : '其他'
-                }</div>
+                }</div>}
                 {state.playerProfile.age && <div><span className="text-zinc-500">年龄：</span>{state.playerProfile.age}</div>}
+                {state.playerProfile.orientation && <div><span className="text-zinc-500">性取向：</span>{state.playerProfile.orientation}</div>}
                 {state.playerProfile.skinColor && <div><span className="text-zinc-500">肤色：</span>{state.playerProfile.skinColor}</div>}
                 {state.playerProfile.height && <div><span className="text-zinc-500">身高：</span>{state.playerProfile.height}</div>}
                 {state.playerProfile.weight && <div><span className="text-zinc-500">体型：</span>{state.playerProfile.weight}</div>}
                 {state.playerProfile.hairStyle && <div><span className="text-zinc-500">发型：</span>{state.playerProfile.hairStyle}</div>}
                 {state.playerProfile.hairColor && <div><span className="text-zinc-500">发色：</span>{state.playerProfile.hairColor}</div>}
                 {state.playerProfile.personalityDesc && <div><span className="text-zinc-500">性格：</span>{state.playerProfile.personalityDesc}</div>}
+                {state.playerProfile.specialties && <div><span className="text-zinc-500">特长：</span>{state.playerProfile.specialties}</div>}
+                {state.playerProfile.hobbies && <div><span className="text-zinc-500">爱好：</span>{state.playerProfile.hobbies}</div>}
+                {state.playerProfile.dislikes && <div><span className="text-zinc-500">厌恶：</span>{state.playerProfile.dislikes}</div>}
               </div>
             </div>
           )}
