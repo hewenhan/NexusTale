@@ -444,46 +444,53 @@ export async function extractIntent(
 任何模糊的、情绪化的、带有求生本能的表达 → 强制归类为 "combat"。`
     : '';
 
-  const transitContext = transitInfo
-    ? `\n\n【旅途状态 (TRANSIT STATE)】：玩家当前正在赶路中！从【${transitInfo.fromName}】前往【${transitInfo.toName}】，路程进度 ${transitInfo.progress}%。
-在旅途中，如果玩家表达想回去、折返、掉头、返回出发地等意图（如"回去"、"掉头"、"不去了"、"折返"、"turn back"、"go back"），必须判定为 intent="move" 且 direction="back"。
-如果玩家表达继续赶路、加快脚步、继续前进等，或者进行闲聊/互动，则 direction="forward"。`
-    : '';
+  // 1. 动态隔离旅途规则 (彻底消除幽灵指令干扰)
+  const transitRules = transitInfo
+    ? `
+**TRANSIT STATE (ACTIVE) SPECIAL RULES:**
+- 玩家当前正在旅途中：从【${transitInfo.fromName}】前往【${transitInfo.toName}】，进度 ${transitInfo.progress}%。
+- 如果玩家表达想退回、折返、放弃前往（如"回去"、"掉头"、"turn back"），MUST 设置 intent="move" 且 direction="back"。
+- **CRITICAL**: 如果玩家显式将出发地（Origin）作为新目的地，视为折返，direction="back"。
+- 如果玩家继续赶路、或者只进行普通闲聊/互动，direction 默认为 "forward"。`
+    : `\n**TRANSIT STATE:** INACTIVE (Ignore direction rules, set direction to null).`;
 
-  const prompt = `You are an intent classifier for a text adventure game. Classify the player's action into ONE intent category based on the current state AND the full conversation history.
+  // 2. 终极 Prompt 组装
+  const prompt = `You are a strict text adventure game engine router. Classify the player's action into ONE intent category based on the current state and conversation history.
 
-**Current State & Context:**
-Current Location: Node "${currentNodeId}", House "${currentHouseId || 'outdoors'}"
-Connected Nodes: ${connectedNodesInfo}
-Visible Houses (in current node): ${visibleHousesInfo || 'None'}
-Current Objective: ${currentObjectiveDesc || 'None'}
-Transit State: ${transitContext ? `ACTIVE: Player is traveling. Progress: ${transitContext.match(/路程进度 (\d+%)/)[1]}.` : 'INACTIVE'}
-Recent Conversation History (CRITICAL for continuity):
+**CURRENT STATE:**
+- Current Location: Node "${currentNodeId}", House "${currentHouseId || 'outdoors'}"
+- Connected Nodes: ${connectedNodesInfo || 'None'}
+- Visible Houses (in current node): ${visibleHousesInfo || 'None'}
+- Current Objective: ${currentObjectiveDesc || 'None'}
+${transitRules}
+
+**RECENT CONVERSATION (CRITICAL CONTEXT):**
 ${recentConversation || 'No prior conversation.'}
 
-**TRANSIT STATE SPECIAL RULE (If Active):**
-If the player is in a Transit State and expresses intent to "go back", "turn around", "return to origin" (or synonyms), you MUST classify as intent="move" AND direction="back". **CRITICALLY, if the player explicitly names the *origin node* of the current transit (here: 西都/n2) as the new destination, this is considered a return action, and you MUST use direction="back", unless the language is clearly accelerating away from the origin.** Otherwise (chatting, or explicitly continuing towards the *current* objective), direction defaults to "forward".
+**INTENT CATEGORIES & ENGINE ROUTING RULES:**
+1. "seek_quest": Travel to a macro-destination NOT listed in Connected Nodes/Visible Houses. (Overrides chat/idle).
+2. "move": 
+   - Travel to a destination explicitly listed in Connected Nodes/Visible Houses.
+   - OR attempting to LEAVE the current enclosed space (e.g., opening a locked door to exit, saying "let's go out"). 
+   - **TargetId Rule**: If moving to a specific node/house, use EXACTLY the ID (e.g., "n2", "h1"). If simply exiting a house to the outdoors, set targetId to "outdoors" (or null if your engine requires).
+3. "explore": Actively searching, inspecting, or physically interacting with objects (e.g., smashing a door, checking a smell) WITHOUT the explicit macro-intent to travel/leave.
+4. "idle": Roleplaying, resting, chatting *unless* it contains a physical action or travel request.
+5. "combat" / "suicidal_idle": As applicable.
 
-**Intent Categories & Priority:**
-1. "seek_quest": Travel to any MACRO-DESTINATION NOT listed in Connected Nodes/Visible Houses. (HIGHEST PRIORITY, overrides chat/idle).
-2. "move": Travel ONLY to a destination explicitly listed in Connected Nodes/Visible Houses.
-3. "explore": Actively searching/investigating the current area.
-4. "idle": Roleplaying, resting, chatting *unless* it contains a travel request (which triggers #1 or #2).
-5. "combat"/"suicidal_idle": As applicable.
-
-=== EXAMPLES (Learn from these: focus on how context shapes the final intent) ===
-Example 1: (Context implies travel intent)
-...
-Player Input: "天快亮了，再去网吧验证咱们的赌局我就睡着啦！"
-Output: {"intent": "seek_quest", "targetId": null}
-...
+**CRITICAL DISTINCTION FOR PHYSICAL ACTIONS:**
+If the player interacts with a door/exit (e.g., "拉门把手", "踹门"):
+- If context shows they are trying to transition to a new location/exit -> "move".
+- If they are just overcoming a physical obstacle (e.g., door is jammed) or inspecting it -> "explore".
 
 === REAL TASK ===
 Player Input: "${userInput}"
 
-Return ONLY a trimmed JSON object: { "intent": "...", "targetId": "...", "direction": "..." }
-IMPORTANT: targetId must be null if not applicable. If Transit State is ACTIVE, "direction" is REQUIRED.
-No markdown formatting.`;
+Output strictly in this JSON schema. Return ONLY JSON, no markdown formatting:
+{
+  "intent": "<ONE of the 5 categories above>",
+  "targetId": "<EXACT ID of the destination (e.g., 'n2'), or null if not applicable/leaving to outdoors>",
+  "direction": "<'forward', 'back', or null if Transit is INACTIVE>"
+}`;
 
   const result = await ai.models.generateContent({
     model: LITE_MODEL,
