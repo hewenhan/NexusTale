@@ -124,12 +124,17 @@ export const IMAGE_PROHIBITED_SENTINEL = '__PROHIBITED_CONTENT__';
 
 export async function generateImage(imagePrompt: string, artStylePrompt?: string, physicalTraitsLock?: string): Promise<string | undefined> {
   // Prepend locked physical traits to ensure character consistency
-  const traitPrefix = physicalTraitsLock
-    ? `[LOCKED CHARACTER PHYSICAL TRAITS - MUST MATCH EXACTLY]: ${physicalTraitsLock}\n\n`
+const traitPrefix = physicalTraitsLock
+    ? `### SUBJECT CHARACTER (The Companion - [COMPANION]) ###\nAppearance: ${physicalTraitsLock}\n\n`
     : '';
-  const finalPrompt = artStylePrompt
-    ? `${traitPrefix}${imagePrompt}\n\nMANDATORY ART STYLE (apply this style to the entire image):\n${artStylePrompt}`
-    : `${traitPrefix}${imagePrompt}`;
+  const finalPrompt = `
+    ${traitPrefix}
+    ### SCENE DESCRIPTION ###
+    ${imagePrompt} (Note: Whenever the companion appears, use the reference [COMPANION])
+    ### MANDATORY ART STYLE ###
+    ${artStylePrompt}
+    `.trim();
+
   try {
     const imageResult = await ai.models.generateContent({
       model: IMAGE_MODEL,
@@ -360,6 +365,7 @@ export async function extractIntent(
 **Current State & Context:**
 Current Location: Node "${currentNodeId}", House "${currentHouseId || 'outdoors'}"
 Connected Nodes: ${connectedNodesInfo}
+Visible Houses (in current node): ${visibleHousesInfo || 'None'}
 Current Objective: ${currentObjectiveDesc || 'None'}
 Transit State: ${transitContext ? `ACTIVE: Player is traveling. Progress: ${transitContext.match(/路程进度 (\d+%)/)[1]}.` : 'INACTIVE'}
 Recent Conversation History (CRITICAL for continuity):
