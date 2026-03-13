@@ -12,6 +12,7 @@ import { ZoomableImage } from './ZoomableImage';
 interface ChatMessageItemProps {
   msg: ChatMessage;
   characterName: string;
+  playerName?: string;
   portraitUrl?: string | null;
   animate?: boolean;
   textSpeed?: TextSpeed;
@@ -23,7 +24,7 @@ interface ChatMessageItemProps {
   onDelete?: () => void;
 }
 
-export const ChatMessageItem = React.memo(({ msg, characterName, portraitUrl, imageUrl, onImageLoaded, onDelete, animate = false, textSpeed = 'normal', isLastModelMessage = false, durationMs, onTypewriterComplete }: ChatMessageItemProps) => {
+export const ChatMessageItem = React.memo(({ msg, characterName, playerName = '你', portraitUrl, imageUrl, onImageLoaded, onDelete, animate = false, textSpeed = 'normal', isLastModelMessage = false, durationMs, onTypewriterComplete }: ChatMessageItemProps) => {
   const { accessToken } = useAuth();
   const [isLoadingImage, setIsLoadingImage] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -55,14 +56,14 @@ export const ChatMessageItem = React.memo(({ msg, characterName, portraitUrl, im
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={clsx(
-        "flex w-full mx-auto py-4 px-4 gap-3 relative group",
+        "flex w-full mx-auto py-1 sm:py-4 px-2 sm:px-4 gap-2 sm:gap-3 relative group",
         msg.role === 'user' ? "justify-end" : "justify-start"
       )}
     >
       {/* AI Avatar */}
       {msg.role !== 'user' && (
         <div 
-          className={`w-20 h-20 rounded-xl bg-zinc-800 shrink-0 overflow-hidden border border-zinc-700 flex items-center justify-center mt-5 ${portraitUrl ? 'cursor-pointer hover:ring-2 hover:ring-zinc-500 transition-all' : ''}`}
+          className={`w-10 h-10 sm:w-20 sm:h-20 rounded-xl bg-zinc-800 shrink-0 overflow-hidden border border-zinc-700 flex items-center justify-center mt-1 sm:mt-5 ${portraitUrl ? 'cursor-pointer hover:ring-2 hover:ring-zinc-500 transition-all' : ''}`}
           onClick={() => { if (portraitUrl) setIsAvatarFullscreen(true); }}
         >
           {portraitUrl ? (
@@ -78,8 +79,8 @@ export const ChatMessageItem = React.memo(({ msg, characterName, portraitUrl, im
         msg.role === 'user' ? "items-end" : "items-start"
       )}>
         {/* Name */}
-        <div className="text-xs text-zinc-500 mb-1 px-1">
-          {msg.role === 'user' ? '你' : characterName}
+        <div className="text-xs text-zinc-500 mb-0.5 sm:mb-1 px-1">
+          {msg.role === 'user' ? playerName : characterName}
         </div>
 
         {/* Bubble */}
@@ -154,10 +155,10 @@ export const ChatMessageItem = React.memo(({ msg, characterName, portraitUrl, im
         </div>
       </div>
 
-      {/* User Avatar Skeleton */}
+      {/* User Avatar */}
       {msg.role === 'user' && (
-        <div className="w-10 h-10 rounded-full bg-zinc-700 shrink-0 overflow-hidden border border-zinc-600 flex items-center justify-center mt-5">
-          <span className="text-zinc-400 text-xs">你</span>
+        <div className="w-10 h-10 rounded-full bg-zinc-700 shrink-0 overflow-hidden border border-zinc-600 flex items-center justify-center mt-1 sm:mt-5">
+          <span className="text-zinc-400 text-xs">{playerName[0]}</span>
         </div>
       )}
 

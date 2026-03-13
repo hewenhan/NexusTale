@@ -27,7 +27,7 @@ export function ChatInput({ isProcessing, onSend }: ChatInputProps) {
   }, [input]);
 
   return (
-    <div className="p-4 bg-zinc-900/50 backdrop-blur-md border-t border-zinc-800">
+    <div className="p-4 bg-zinc-900/50 backdrop-blur-md border-t border-zinc-800 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="max-w-3xl mx-auto relative">
         <textarea
           ref={textareaRef}

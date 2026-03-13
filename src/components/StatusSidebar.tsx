@@ -38,7 +38,7 @@ export function StatusSidebar({ state, onClose }: StatusSidebarProps) {
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
-        className="absolute right-0 top-0 bottom-0 w-80 bg-zinc-900 border-l border-zinc-800 z-40 p-6 overflow-y-auto"
+        className="absolute right-0 top-0 bottom-0 w-80 max-w-full bg-zinc-900 border-l border-zinc-800 z-40 p-4 sm:p-6 overflow-y-auto"
       >
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold">状态</h2>

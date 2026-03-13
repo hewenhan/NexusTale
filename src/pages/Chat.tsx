@@ -3,7 +3,7 @@ import { useGame } from '../contexts/GameContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertCircle, Backpack, ChevronsRight, Heart, Home, Loader2, Map, RefreshCw, Save, Volume1, Volume2, VolumeX } from 'lucide-react';
+import { AlertCircle, Backpack, ChevronsRight, Heart, Home, Loader2, Map, MoreHorizontal, RefreshCw, Save, Volume1, Volume2, VolumeX } from 'lucide-react';
 import { PlayerProfile, DEFAULT_LOADING_MESSAGES, INITIAL_STATE } from '../types/game';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { ChatMessageItem } from '../components/ChatMessageItem';
@@ -34,6 +34,8 @@ export default function Chat() {
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   const [driveToastDismissed, setDriveToastDismissed] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const [portraitUrl, setPortraitUrl] = useState<string | null>(null);
   const chatAreaRef = useRef<HTMLDivElement>(null);
   
@@ -386,6 +388,22 @@ export default function Chat() {
 
   const VolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
 
+  // 点击菜单外部关闭‹⋯›菜单
+  useEffect(() => {
+    if (!showMoreMenu) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMoreMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
+  }, [showMoreMenu]);
+
   const cycleTextSpeed = useCallback(() => {
     const order: TextSpeed[] = ['normal', 'fast', 'instant'];
     const idx = order.indexOf(textSpeed);
@@ -395,11 +413,11 @@ export default function Chat() {
   const speedLabel = textSpeed === 'normal' ? '1x' : textSpeed === 'fast' ? '2x' : '∞';
 
   return (
-    <div className="flex flex-col h-screen bg-zinc-950 text-zinc-100 font-sans relative overflow-hidden">
+    <div className="flex flex-col h-dvh bg-zinc-950 text-zinc-100 font-sans relative overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-zinc-900/50 backdrop-blur-md border-b border-zinc-800 z-30 relative">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-zinc-800 overflow-hidden border border-zinc-700 flex items-center justify-center">
+      <div className="flex items-center justify-between p-3 sm:p-4 bg-zinc-900/50 backdrop-blur-md border-b border-zinc-800 z-30 relative">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-lg bg-zinc-800 overflow-hidden border border-zinc-700 flex items-center justify-center shrink-0">
             {portraitUrl ? (
               <img src={portraitUrl} alt={characterName} className="w-full h-full object-cover" />
             ) : (
@@ -416,7 +434,7 @@ export default function Chat() {
                 {state.pacingState.tensionLevel === 3 && "危机"}
                 {state.pacingState.tensionLevel === 4 && "灾难"}
               </span>
-              <div className="flex gap-0.5">
+              <div className="hidden sm:flex gap-0.5">
                 {[0, 1, 2, 3, 4].map(level => (
                   <div 
                     key={level} 
@@ -428,10 +446,10 @@ export default function Chat() {
                   />
                 ))}
               </div>
-              <span className={`text-xs ${state.hp <= 30 ? 'text-red-400' : state.hp <= 60 ? 'text-amber-400' : 'text-zinc-400'}`}>
+              <span className={`text-xs whitespace-nowrap ${state.hp <= 30 ? 'text-red-400' : state.hp <= 60 ? 'text-amber-400' : 'text-zinc-400'}`}>
                 HP {state.hp}
               </span>
-              <span className={`text-xs flex items-center gap-0.5 relative ${state.affection >= 80 ? 'text-pink-400' : state.affection >= 60 ? 'text-rose-400' : state.affection >= 20 ? 'text-zinc-400' : 'text-zinc-600'}`}>
+              <span className={`text-xs flex items-center gap-0.5 relative whitespace-nowrap ${state.affection >= 80 ? 'text-pink-400' : state.affection >= 60 ? 'text-rose-400' : state.affection >= 20 ? 'text-zinc-400' : 'text-zinc-600'}`}>
                 <Heart className="w-3 h-3" fill={state.affection >= 60 ? 'currentColor' : 'none'} />
                 {state.affection}
                 <AnimatePresence>
@@ -452,7 +470,7 @@ export default function Chat() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {driveError ? (
             <button
               onClick={handleReconnectDrive}
@@ -463,88 +481,165 @@ export default function Chat() {
               <span>{isReconnecting ? '重连中...' : 'Drive 异常 · 点击重连'}</span>
             </button>
           ) : isAuthenticated ? (
-            <div className="flex items-center gap-1 text-xs text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full border border-emerald-500/20">
+            <div className="flex items-center gap-1 text-xs text-emerald-500 bg-emerald-500/10 px-1 sm:px-2 py-1 rounded-full border border-emerald-500/20">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span>Drive 已连接</span>
+              <span className="hidden sm:inline">Drive 已连接</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1 text-xs text-amber-500 bg-amber-500/10 px-2 py-1 rounded-full border border-amber-500/20">
+            <div className="flex items-center gap-1 text-xs text-amber-500 bg-amber-500/10 px-1 sm:px-2 py-1 rounded-full border border-amber-500/20">
               <AlertCircle className="w-3 h-3" />
-              <span>未连接 Drive</span>
+              <span className="hidden sm:inline">未连接 Drive</span>
             </div>
           )}
-          <div className="relative group/vol">
-            <button
-              onClick={() => changeVolume(volume === 0 ? 0.5 : 0)}
-              title={volume === 0 ? '取消静音' : '静音'}
-              className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors"
-            >
-              <VolumeIcon className="w-4 h-4 text-zinc-400" />
-            </button>
-            {/* hover 弹出的音量滑条 — pt-2 填补按钮与面板之间的间隙防止 hover 断开 */}
-            <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 hidden group-hover/vol:block z-50">
-              <div className="flex flex-col items-center bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-3 shadow-xl">
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={volume}
-                  onChange={e => changeVolume(parseFloat(e.target.value))}
-                  className="w-24 accent-zinc-400 cursor-pointer"
-                />
-                <span className="text-[10px] text-zinc-500 mt-1">{Math.round(volume * 100)}%</span>
+
+          {/* === PC: 所有按钮一字排开 === */}
+          <div className="hidden sm:flex items-center gap-2">
+            <div className="relative group/vol">
+              <button
+                onClick={() => changeVolume(volume === 0 ? 0.5 : 0)}
+                title={volume === 0 ? '取消静音' : '静音'}
+                className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors"
+              >
+                <VolumeIcon className="w-4 h-4 text-zinc-400" />
+              </button>
+              <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 hidden group-hover/vol:block z-50">
+                <div className="flex flex-col items-center bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-3 shadow-xl">
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={volume}
+                    onChange={e => changeVolume(parseFloat(e.target.value))}
+                    className="w-24 accent-zinc-400 cursor-pointer"
+                  />
+                  <span className="text-[10px] text-zinc-500 mt-1">{Math.round(volume * 100)}%</span>
+                </div>
               </div>
             </div>
+            <button
+              onClick={cycleTextSpeed}
+              title={`打字速度: ${speedLabel}`}
+              className={`p-2 border rounded-full transition-colors ${
+                textSpeed === 'normal'
+                  ? 'bg-zinc-900 border-zinc-800 hover:bg-zinc-800'
+                  : textSpeed === 'fast'
+                  ? 'bg-amber-500/20 border-amber-500/40 hover:bg-amber-500/30'
+                  : 'bg-red-500/20 border-red-500/40 hover:bg-red-500/30'
+              }`}
+            >
+              <div className="relative w-4 h-4 flex items-center justify-center">
+                <ChevronsRight className={`w-4 h-4 ${
+                  textSpeed === 'normal' ? 'text-zinc-400' : textSpeed === 'fast' ? 'text-amber-400' : 'text-red-400'
+                }`} />
+                <span className={`absolute -top-1 -right-1.5 text-[8px] font-bold ${
+                  textSpeed === 'normal' ? 'text-zinc-500' : textSpeed === 'fast' ? 'text-amber-400' : 'text-red-400'
+                }`}>{speedLabel}</span>
+              </div>
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              title="返回首页"
+              className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors"
+            >
+              <Home className="w-4 h-4 text-zinc-400" />
+            </button>
+            <button 
+              onClick={handleExportSave}
+              title="保存存档 (Ctrl+S)"
+              className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors"
+            >
+              <Save className="w-4 h-4 text-zinc-400" />
+            </button>
+            <button 
+              onClick={() => setShowMap(true)}
+              title="世界地图"
+              className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors"
+            >
+              <Map className="w-4 h-4 text-zinc-400" />
+            </button>
+            <button 
+              onClick={() => setShowStatus(true)}
+              title="背包与状态"
+              className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors"
+            >
+              <Backpack className="w-4 h-4 text-zinc-400" />
+            </button>
           </div>
-          <button
-            onClick={cycleTextSpeed}
-            title={`打字速度: ${speedLabel}`}
-            className={`p-2 border rounded-full transition-colors ${
-              textSpeed === 'normal'
-                ? 'bg-zinc-900 border-zinc-800 hover:bg-zinc-800'
-                : textSpeed === 'fast'
-                ? 'bg-amber-500/20 border-amber-500/40 hover:bg-amber-500/30'
-                : 'bg-red-500/20 border-red-500/40 hover:bg-red-500/30'
-            }`}
-          >
-            <div className="relative w-4 h-4 flex items-center justify-center">
-              <ChevronsRight className={`w-4 h-4 ${
-                textSpeed === 'normal' ? 'text-zinc-400' : textSpeed === 'fast' ? 'text-amber-400' : 'text-red-400'
-              }`} />
-              <span className={`absolute -top-1 -right-1.5 text-[8px] font-bold ${
-                textSpeed === 'normal' ? 'text-zinc-500' : textSpeed === 'fast' ? 'text-amber-400' : 'text-red-400'
-              }`}>{speedLabel}</span>
+
+          {/* === 移动端: pinned 按钮 + ⋯ 菜单 === */}
+          <div className="flex sm:hidden items-center gap-2">
+            <button 
+              onClick={() => setShowMap(true)}
+              className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors"
+            >
+              <Map className="w-4 h-4 text-zinc-400" />
+            </button>
+            <button 
+              onClick={() => setShowStatus(true)}
+              className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors"
+            >
+              <Backpack className="w-4 h-4 text-zinc-400" />
+            </button>
+            <div className="relative" ref={moreMenuRef}>
+              <button
+                onClick={() => setShowMoreMenu(v => !v)}
+                className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors"
+              >
+                <MoreHorizontal className="w-4 h-4 text-zinc-400" />
+              </button>
+              <AnimatePresence>
+                {showMoreMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, y: -4 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute top-full right-0 mt-2 z-50 bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden min-w-[160px]"
+                    >
+                      <button
+                        onClick={() => { cycleTextSpeed(); }}
+                        className="flex items-center gap-3 w-full px-4 py-3 hover:bg-zinc-800 transition-colors text-sm text-zinc-300"
+                      >
+                        <ChevronsRight className={`w-4 h-4 ${
+                          textSpeed === 'normal' ? 'text-zinc-400' : textSpeed === 'fast' ? 'text-amber-400' : 'text-red-400'
+                        }`} />
+                        <span>打字速度 {speedLabel}</span>
+                      </button>
+                      <button
+                        onClick={() => { navigate('/'); }}
+                        className="flex items-center gap-3 w-full px-4 py-3 hover:bg-zinc-800 transition-colors text-sm text-zinc-300"
+                      >
+                        <Home className="w-4 h-4 text-zinc-400" />
+                        <span>返回首页</span>
+                      </button>
+                      <button
+                        onClick={() => { handleExportSave(); }}
+                        className="flex items-center gap-3 w-full px-4 py-3 hover:bg-zinc-800 transition-colors text-sm text-zinc-300"
+                      >
+                        <Save className="w-4 h-4 text-zinc-400" />
+                        <span>保存存档</span>
+                      </button>
+                      <div className="border-t border-zinc-800 px-4 py-3">
+                        <div className="flex items-center gap-3 text-sm text-zinc-300 mb-2">
+                          <VolumeIcon className="w-4 h-4 text-zinc-400 shrink-0" />
+                          <span>音量 {Math.round(volume * 100)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={1}
+                          step={0.01}
+                          value={volume}
+                          onChange={e => changeVolume(parseFloat(e.target.value))}
+                          className="w-full accent-zinc-400 cursor-pointer"
+                        />
+                      </div>
+                    </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          </button>
-          <button
-            onClick={() => navigate('/')}
-            title="返回首页"
-            className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors"
-          >
-            <Home className="w-4 h-4 text-zinc-400" />
-          </button>
-          <button 
-            onClick={handleExportSave}
-            title="保存存档 (Ctrl+S)"
-            className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors"
-          >
-            <Save className="w-4 h-4 text-zinc-400" />
-          </button>
-          <button 
-            onClick={() => setShowMap(true)}
-            title="世界地图"
-            className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors"
-          >
-            <Map className="w-4 h-4 text-zinc-400" />
-          </button>
-          <button 
-            onClick={() => setShowStatus(true)}
-            title="背包与状态"
-            className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors"
-          >
-            <Backpack className="w-4 h-4 text-zinc-400" />
-          </button>
+          </div>
         </div>
       </div>
 
@@ -552,7 +647,7 @@ export default function Chat() {
       <ProgressTracker state={state} />
 
       {/* Chat Area */}
-      <div ref={chatAreaRef} className="flex-1 p-4 space-y-6 h-full overflow-hidden relative">
+      <div ref={chatAreaRef} className="flex-1 p-2 sm:p-4 space-y-2 sm:space-y-6 h-full overflow-hidden relative">
         {/* Large affection change animation overlay */}
         <AnimatePresence>
           {affectionDelta !== null && (
@@ -562,7 +657,7 @@ export default function Chat() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.8, y: -30 }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
-              className="absolute bottom-8 left-28 z-20 pointer-events-none"
+              className="absolute bottom-8 left-4 sm:left-28 z-20 pointer-events-none"
             >
               <div className={`w-20 h-20 rounded-2xl flex flex-col items-center justify-center gap-0.5 backdrop-blur-md border ${
                 affectionDelta > 0
@@ -590,7 +685,7 @@ export default function Chat() {
           data={state.history}
           initialTopMostItemIndex={state.history.length - 1}
           followOutput="smooth"
-          context={{ onDelete: handleDeleteMessage, imageUrls, characterName, onImageLoaded: handleImageLoaded, portraitUrl, totalMessages: state.history.length, textSpeed, flushPendingNotifications, animatedIds: animatedIdsRef.current }}
+          context={{ onDelete: handleDeleteMessage, imageUrls, characterName, playerName: state.playerProfile?.name || '你', onImageLoaded: handleImageLoaded, portraitUrl, totalMessages: state.history.length, textSpeed, flushPendingNotifications, animatedIds: animatedIdsRef.current }}
           itemContent={(index, msg, context) => {
             const isLast = index === context.totalMessages - 1;
             const isLastModel = msg.role === 'model' && isLast;
@@ -601,6 +696,7 @@ export default function Chat() {
                 <ChatMessageItem 
                   msg={msg} 
                   characterName={context.characterName}
+                  playerName={context.playerName}
                   portraitUrl={context.portraitUrl}
                   imageUrl={msg.imageFileName ? context.imageUrls[msg.imageFileName] : undefined}
                   onImageLoaded={context.onImageLoaded}
