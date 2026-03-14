@@ -68,7 +68,7 @@ function createContext(state: GameState, intent: IntentResult, d20Roll: number):
 
     // ⑥ 安全区
     isInSafeZone: false,
-    isNodeFullyExplored: false,
+
 
     // ⑦ 里程碑
     houseSafetyUpdate: null,
@@ -84,7 +84,7 @@ function createContext(state: GameState, intent: IntentResult, d20Roll: number):
     // ⑨ 死亡
     newLives: state.lives,
     newIsGameOver: false,
-    deathEvacuated: false,
+
 
     // ⑩ BGM/叙事
     newInventory: [...state.inventory],
@@ -117,6 +117,7 @@ function extractResult(ctx: PipelineContext): PipelineResult {
     houseSafetyUpdate: ctx.houseSafetyUpdate,
     bossSpawn: ctx.bossSpawn,
     bossDefeatedKey: ctx.bossDefeatedKey,
+    inBossZone: ctx.inBossZone,
     affectionTriggered: ctx.affectionTriggered,
     formulaBreakdown: ctx.formulaBreakdown,
     tensionChanged: ctx.tensionChanged,

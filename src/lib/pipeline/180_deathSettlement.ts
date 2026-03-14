@@ -96,26 +96,40 @@ export function stepDeathSettlement(ctx: PipelineContext): void {
     ctx.newLives = ctx.state.lives - 1;
     ctx.newHp = 20;
     ctx.newTensionLevel = 1;
-    ctx.deathEvacuated = true;
 
     const currentNodeId = ctx.newNodeId || ctx.state.currentNodeId;
 
-    // ── 赶路中死亡：撤回出发点 ──
+    // ── 赶路中死亡：随机撤往出发点的相邻节点 ──
     if (ctx.state.transitState) {
-      const fromId = ctx.state.transitState.fromNodeId;
+      const fromNode = findNode(ctx.state, ctx.state.transitState.fromNodeId);
+      const transitCandidates: EvacCandidate[] = [];
+      if (fromNode && ctx.state.worldData) {
+        for (const connId of fromNode.connections) {
+          const neighbor = ctx.state.worldData.nodes.find(n => n.id === connId);
+          if (neighbor) {
+            transitCandidates.push({
+              type: 'node',
+              id: neighbor.id,
+              name: neighbor.name,
+              safetyScore: scoreSafety(neighbor.safetyLevel, !!neighbor.activeBoss),
+            });
+          }
+        }
+      }
+      const transitTarget = pickEvacTarget(transitCandidates);
+      const evacId = transitTarget?.id || ctx.state.transitState.fromNodeId;
+      const evacName = transitTarget?.name || fromNode?.name || '附近';
       ctx.newTransitState = {
-        fromNodeId: currentNodeId!,
-        toNodeId: fromId,
+        fromNodeId: ctx.state.transitState.fromNodeId,
+        toNodeId: evacId,
         pathProgress: 50,
         lockedTheme: null,
       };
       ctx.newHouseId = null;
-      ctx.newNodeId = currentNodeId;
+      ctx.newNodeId = ctx.state.transitState.fromNodeId;
       ctx.tensionChanged = ctx.newTensionLevel !== ctx.state.pacingState.tensionLevel;
-
-      const evacNode = findNode(ctx.state, fromId);
       ctx.narrativeInstruction = buildDeathReviveNarrative(ctx.newLives)
-        + `开始向【${evacNode?.name || '出发点'}】方向撤离…`
+        + `开始向【${evacName}】方向撤离…`
         + ctx.narrativeInstruction;
       return;
     }

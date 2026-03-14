@@ -70,8 +70,7 @@ export interface PipelineContext {
   // ── ⑥ 安全区覆写 ──
   /** 当前位置是否处于安全区 */
   isInSafeZone: boolean;
-  /** 结算后位置所在 node 探索度是否已满 100% */
-  isNodeFullyExplored: boolean;
+
 
   // ── ⑦ 里程碑 ──
   /** house 安全等级变更（探索度满 → safe） */
@@ -89,8 +88,7 @@ export interface PipelineContext {
   // ── ⑨ 死亡结算 ──
   newLives: number;
   newIsGameOver: boolean;
-  /** 死亡复活后是否发生了位置撤离 */
-  deathEvacuated: boolean;
+
 
   // ── ⑩ 任务/BGM/叙事 ──
   newInventory: string[];
@@ -124,6 +122,7 @@ export interface PipelineResult {
   houseSafetyUpdate: { houseId: string; newSafetyLevel: SafetyLevel } | null;
   bossSpawn: { locationKey: string; boss: ActiveBoss } | null;
   bossDefeatedKey: string | null;
+  inBossZone: boolean;
   affectionTriggered: 'aid' | 'sabotage' | null;
   formulaBreakdown: string;
   tensionChanged: boolean;

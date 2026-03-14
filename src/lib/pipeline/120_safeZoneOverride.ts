@@ -6,7 +6,7 @@
  * - safe 区域 → 强制 T→0
  * - 非 safe + T===0 → 强制 T=1（修复从 safe house 出来仍为 T0 的 bug）
  * - 赶路抵达目的地时：根据目的地安全度覆写紧张度
- * - 记录 isInSafeZone / isNodeFullyExplored 供后续步骤使用
+ * - 记录 isInSafeZone 供后续步骤使用
  */
 
 import type { PipelineContext } from './types';
@@ -44,11 +44,6 @@ export function stepSafeZoneOverride(ctx: PipelineContext): void {
   const inSafeHouse = !!(newHouse && newHouse.safetyLevel === 'safe');
   const inSafeNode = !!(newNode && newNode.safetyLevel === 'safe');
   ctx.isInSafeZone = inSafeHouse || inSafeNode;
-
-  // 区域探索度是否已满（用于后续里程碑等判定）
-  const nodeKey = ctx.newNodeId ? `node_${ctx.newNodeId}` : '';
-  const nodeProgress = nodeKey ? (ctx.newProgressMap[nodeKey] || 0) : 0;
-  ctx.isNodeFullyExplored = nodeProgress >= 100 && !ctx.newHouseId;
 
   // ── 安全区 → T0 ──
   if (ctx.isInSafeZone) {

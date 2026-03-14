@@ -85,6 +85,7 @@ export function useChatLogic() {
     if (!state.playerProfile.name) return false;
     if (state.isGameOver) return false;
     if (!state.worldData || !state.currentNodeId) return false;
+    if (isProcessing) return false;
 
     setIsProcessing(true);
 

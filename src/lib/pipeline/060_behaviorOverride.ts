@@ -6,7 +6,7 @@
  * - 这里处理额外的行为覆写规则（如有）
  * - Zone 探索度 100% 且在野外时，T1 explore 大失败改为普通（屏蔽伏击升级）
  *
- * 当前此步骤主要处理 isNodeFullyExplored 的大失败屏蔽
+ * 当前此步骤主要处理区域探索度满时的大失败屏蔽
  */
 
 import type { PipelineContext } from './types';
