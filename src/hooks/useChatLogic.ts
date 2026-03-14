@@ -204,11 +204,12 @@ export function useChatLogic() {
         applyDebugDirectWrites(debugOv, updateState);
       }
 
-      // 动态记忆锁：旅途结束时将 lockedTheme 推入黑名单
+      // 动态记忆锁：旅途结束时将 lockedTheme 推入黑名单（FIFO, 上限 20）
       if (!resolution.newTransitState && state.transitState?.lockedTheme) {
-        updateState(prev => ({
-          exhaustedThemes: [...prev.exhaustedThemes, state.transitState!.lockedTheme!]
-        }));
+        updateState(prev => {
+          const updated = [...prev.exhaustedThemes, state.transitState!.lockedTheme!];
+          return { exhaustedThemes: updated.length > 20 ? updated.slice(-20) : updated };
+        });
       }
 
       // ── Step 5: Build notifications ──
