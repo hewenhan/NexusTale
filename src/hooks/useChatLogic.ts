@@ -93,7 +93,29 @@ export function useChatLogic() {
     pendingNotificationsRef.current = notifications;
   }, []);
 
+  // ── Typewriter completion synchronization ──
+  // displayMessages waits for this signal before showing the next bubble
+  const typewriterResolveRef = useRef<(() => void) | null>(null);
+  const typewriterReadyRef = useRef(false);
+
+  const waitForTypewriter = useCallback(() => {
+    if (typewriterReadyRef.current) {
+      typewriterReadyRef.current = false;
+      return Promise.resolve();
+    }
+    return new Promise<void>(resolve => {
+      typewriterResolveRef.current = resolve;
+    });
+  }, []);
+
   const flushPendingNotifications = useCallback(() => {
+    // Signal typewriter completion → unblock displayMessages sequencing
+    if (typewriterResolveRef.current) {
+      typewriterResolveRef.current();
+      typewriterResolveRef.current = null;
+    } else {
+      typewriterReadyRef.current = true;
+    }
     const items = pendingNotificationsRef.current;
     if (items.length > 0) {
       pendingNotificationsRef.current = [];
@@ -676,10 +698,7 @@ OUTPUT FORMAT (JSON ONLY):
         })();
       }
 
-      // ── Display messages with reading-speed delays ──
-      // 每秒 7 个字的阅读速度来计算每条消息的动画 / 等待时长
-      const CHARS_PER_SECOND = 7;
-      const calcDelay = (text: string) => Math.max(800, (text.length / CHARS_PER_SECOND) * 1000);
+      // ── Display messages: wait for typewriter completion + 1s gap ──
       // 合并所有待显示通知（quest + discovery）
       if (questNotification) {
         pendingNotifications.unshift(questNotification);
@@ -690,6 +709,10 @@ OUTPUT FORMAT (JSON ONLY):
       }
 
       const displayMessages = async () => {
+        // Reset typewriter sync state to prevent stale signals from previous turn
+        typewriterReadyRef.current = false;
+        typewriterResolveRef.current = null;
+
         let lastMsgId = uuidv4();
         
         addMessage({
@@ -718,8 +741,8 @@ OUTPUT FORMAT (JSON ONLY):
         }
 
         for (let i = 1; i < messages.length - 1; i++) {
-          await new Promise(resolve => setTimeout(resolve, calcDelay(messages[i - 1])));
-          // await new Promise(resolve => setTimeout(resolve, 1000));
+          await waitForTypewriter();
+          await new Promise(resolve => setTimeout(resolve, 1000));
           
           lastMsgId = uuidv4();
           addMessage({
@@ -733,8 +756,7 @@ OUTPUT FORMAT (JSON ONLY):
 
         const [fileName] = await Promise.all([
           imagePromise,
-          // new Promise(resolve => setTimeout(resolve, calcDelay(messages[messages.length - 2])))
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          waitForTypewriter().then(() => new Promise(resolve => setTimeout(resolve, 1000)))
         ]);
 
         lastMsgId = uuidv4();
