@@ -3,7 +3,7 @@
  * 所有 pipeline step 读写的中间状态都在这里定义
  */
 
-import type { GameState, IntentResult, SafetyLevel, HouseData, NodeData } from '../../types/game';
+import type { GameState, IntentResult, SafetyLevel, HouseData, NodeData, ActiveBoss } from '../../types/game';
 
 // ─── D20 掷骰结果档位 ───
 export type RollTier = 0 | 1 | 2; // 0=大失败, 1=普通, 2=大成功
@@ -76,7 +76,13 @@ export interface PipelineContext {
   // ── ⑦ 里程碑 ──
   /** house 安全等级变更（探索度满 → safe） */
   houseSafetyUpdate: { houseId: string; newSafetyLevel: SafetyLevel } | null;
-
+  // ── BOSS 战 ──
+  /** 本回合新创建的 BOSS（探索度满触发） */
+  bossSpawn: { locationKey: string; boss: ActiveBoss } | null;
+  /** 本回合被击败的 BOSS 位置键（node_xxx / house_xxx） */
+  bossDefeatedKey: string | null;
+  /** 当前位置是否存在活跃 BOSS */
+  inBossZone: boolean;
   // ── ⑧ HP 结算 ──
   newHp: number;
 
@@ -116,6 +122,8 @@ export interface PipelineResult {
   roll: number;
   isSuccess: boolean;
   houseSafetyUpdate: { houseId: string; newSafetyLevel: SafetyLevel } | null;
+  bossSpawn: { locationKey: string; boss: ActiveBoss } | null;
+  bossDefeatedKey: string | null;
   affectionTriggered: 'aid' | 'sabotage' | null;
   formulaBreakdown: string;
   tensionChanged: boolean;

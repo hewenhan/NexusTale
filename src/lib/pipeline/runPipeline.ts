@@ -27,6 +27,7 @@ import { stepBehaviorOverride } from './060_behaviorOverride';
 import { stepMoveResolve } from './080_moveResolve';
 import { stepTensionDelta } from './100_tensionDelta';
 import { stepSafeZoneOverride } from './120_safeZoneOverride';
+import { stepBossCheck } from './130_bossCheck';
 import { stepMilestone } from './140_milestone';
 import { stepHpSettlement } from './160_hpSettlement';
 import { stepDeathSettlement } from './180_deathSettlement';
@@ -72,6 +73,11 @@ function createContext(state: GameState, intent: IntentResult, d20Roll: number):
     // ⑦ 里程碑
     houseSafetyUpdate: null,
 
+    // BOSS
+    bossSpawn: null,
+    bossDefeatedKey: null,
+    inBossZone: false,
+
     // ⑧ HP
     newHp: state.hp,
 
@@ -109,6 +115,8 @@ function extractResult(ctx: PipelineContext): PipelineResult {
     roll: ctx.rawRoll,
     isSuccess: ctx.isSuccess,
     houseSafetyUpdate: ctx.houseSafetyUpdate,
+    bossSpawn: ctx.bossSpawn,
+    bossDefeatedKey: ctx.bossDefeatedKey,
     affectionTriggered: ctx.affectionTriggered,
     formulaBreakdown: ctx.formulaBreakdown,
     tensionChanged: ctx.tensionChanged,
@@ -133,7 +141,8 @@ export function runPipeline(state: GameState, intent: IntentResult, d20Roll: num
   stepMoveResolve(ctx);        // ④ 位置解析
   stepTensionDelta(ctx);       // ⑤ 紧张度升降
   stepSafeZoneOverride(ctx);   // ⑥ 安全区覆写
-  stepMilestone(ctx);          // ⑦ 里程碑判定
+  stepBossCheck(ctx);          // ⑥½ BOSS 检测（重触发/击败）
+  stepMilestone(ctx);          // ⑦ 里程碑判定（新 BOSS 生成）
   stepHpSettlement(ctx);       // ⑧ HP 结算
   stepDeathSettlement(ctx);    // ⑨ 死亡结算
   stepBgmAndNarrative(ctx);    // ⑩ BGM + 叙事

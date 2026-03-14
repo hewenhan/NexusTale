@@ -454,17 +454,15 @@ export async function extractIntent(
 
   // 1. 动态隔离旅途规则 (彻底消除幽灵指令干扰)
 // 1. 动态隔离旅途规则 (彻底消除幽灵指令干扰)
-  const transitRules = transitInfo
+const transitRules = transitInfo
     ? `
-**TRANSIT STATE (ACTIVE) SPECIAL RULES:**
-- 玩家当前正在旅途中：从【${transitInfo.fromName}】前往【${transitInfo.toName}】，进度 ${transitInfo.progress}%。
-- 如果玩家表达想退回、折返、放弃前往（如"回去"、"掉头"、"turn back"），MUST 设置 intent="move" 且 direction="back"。
-- **CRITICAL**: 如果玩家显式将出发地（Origin）作为新目的地，视为折返，direction="back"。
-- 如果玩家继续赶路、或者只进行普通闲聊/互动，direction 默认为 "forward"。`
+**TRANSIT STATE (ACTIVE):**
+- Traveling from [${transitInfo.fromName}] to [${transitInfo.toName}], Progress: ${transitInfo.progress}%.
+- **DIRECTION RULE**: If the player explicitly wants to retreat, turn back, or abort (e.g., "回去", "掉头", "退回出发地"), set direction="back". For normal chatting, exploring, or continuing the journey, set direction="forward".`
     : `\n**TRANSIT STATE:** INACTIVE (Ignore direction rules, set direction to null).`;
 
-  // 2. 终极 Prompt 组装
-  const prompt = `You are a strict text adventure game engine router. Classify the player's action into ONE intent category based on the current state and conversation history.
+  // 2. 终极 Prompt 组装 (Architectural Router Prompt)
+  const prompt = `You are the core logic router of a strict text adventure game engine. Your ONLY job is to classify the player's true intent based on the Current State, Spatial Context, and Conversation History.
 
 **CURRENT STATE:**
 - Current Location: Node "${currentNodeId}", House "${currentHouseId || 'outdoors'}"
@@ -476,23 +474,34 @@ ${transitRules}
 **RECENT CONVERSATION (CRITICAL CONTEXT):**
 ${recentConversation || 'No prior conversation.'}
 
-**INTENT CATEGORIES & ENGINE ROUTING RULES:**
-1. "seek_quest": (MACRO TRAVEL & PROGRESSION)
-   - Triggered when the player expresses a general intent to set off, progress the story, or travel toward the Current Objective (e.g., "好的，赶紧出发吧", "let's go", "去村里").
-   - **TargetId Rule**: MUST set targetId to EXACTLY "current_objective". (The backend engine will intercept this flag and calculate the micro-pathfinding).
-2. "move": (MICRO TRAVEL)
-   - Triggered ONLY when the player explicitly names a specific, adjacent destination listed in Connected Nodes/Visible Houses (e.g., "去客厅", "去卫生间").
-   - OR when they attempt to just step outside the current enclosed space without mentioning the macro-goal.
-   - **TargetId Rule**: MUST use EXACTLY the Node/House ID (e.g., "n2", "h1"). If simply exiting a house to the outdoors, set targetId to "outdoors".
-   - **CRITICAL BAN**: Do NOT classify vague commands like "出发" as "move" if there is an active Current Objective. Route those to "seek_quest".
-3. "explore": Actively searching, inspecting, or physically interacting with objects (e.g., smashing a door, checking a smell) WITHOUT the explicit macro-intent to travel/leave.
-4. "idle": Roleplaying, resting, chatting *unless* it contains a physical action or travel request.
-5. "combat" / "suicidal_idle": As applicable.
+**INTENT RESOLUTION PIPELINE (STRICT WATERFALL RULES):**
+You MUST evaluate the player's input through this top-down pipeline. Match the FIRST applicable rule and IGNORE the rest.
 
-**CRITICAL DISTINCTION FOR PHYSICAL ACTIONS:**
-If the player interacts with a door/exit (e.g., "拉门把手", "踹门"):
-- If context shows they are trying to transition to a new location/exit -> "move" (or "seek_quest" if heading to the macro-objective).
-- If they are just overcoming a physical obstacle (e.g., door is jammed) or inspecting it -> "explore".
+**STEP 1: MICRO-SPACE EXIT (The "Get me out of here" Rule)**
+- **Condition**: Current House is NOT 'outdoors' AND player expresses physical spatial exit (e.g., "出去吧", "离开这", "出屋", "let's go out").
+- **Intent**: "move"
+- **TargetId**: "outdoors"
+- *Architect Note*: Even if they just finished a quest objective inside, the physical act of stepping outside the enclosure takes absolute priority. DO NOT route to seek_quest.
+
+**STEP 2: EXPLICIT DESTINATION (The "Map Navigation" Rule)**
+- **Condition**: Player explicitly names a specific target present in Connected Nodes or Visible Houses (e.g., "去浅层孢子林", "进装甲车").
+- **Intent**: "move"
+- **TargetId**: <The exact Node ID or House ID>
+
+**STEP 3: MACRO PROGRESSION (The "Journey/Objective" Rule)**
+- **Condition**: Player explicitly mentions heading to the Current Objective, OR uses vague journey verbs (e.g., "出发", "继续赶路", "let's hit the road") while already 'outdoors' or ready to move on.
+- **Intent**: "seek_quest"
+- **TargetId**: "current_objective" (The backend engine handles the pathfinding).
+
+**STEP 4: PHYSICAL INTERACTION & EXPLORATION (The "Hands-on" Rule)**
+- **Condition**: Player acts on the immediate environment (e.g., "搜刮尸体", "踹门", "检查箱子") WITHOUT intending to travel away.
+- **Intent**: "explore"
+- **TargetId**: null
+
+**STEP 5: ROLEPLAY & STANDBY (The "Idle" Rule)**
+- **Condition**: Pure conversation, emotional reactions, resting, or observations without physical progression.
+- **Intent**: "idle" (or "combat" / "suicidal_idle" if heavily applicable)
+- **TargetId**: null
 
 === REAL TASK ===
 Player Input: "${userInput}"
@@ -501,7 +510,7 @@ Output strictly in this JSON schema. Return ONLY JSON, no markdown formatting:
 {
   "intent": "<ONE of the 5 categories above>",
   "targetId": "<EXACT ID (e.g., 'n2'), 'current_objective' if seek_quest, 'outdoors' if exiting, or null>",
-  "direction": "<'forward', 'back', or null if Transit is INACTIVE>"
+  "direction": "<'forward', 'back', or null>"
 }`;
 
   const result = await ai.models.generateContent({

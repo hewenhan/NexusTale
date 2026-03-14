@@ -3,6 +3,11 @@ export type NodeType = 'city' | 'town' | 'village' | 'wilderness';
 export type HouseType = 'housing' | 'shop' | 'inn' | 'facility';
 export type SafetyLevel = 'safe' | 'low' | 'medium' | 'high' | 'deadly';
 
+/** 持久 BOSS 标记（探索度满触发，击败后清除） */
+export interface ActiveBoss {
+  tensionLevel: 2 | 3 | 4;
+}
+
 export interface HouseData {
   id: string;
   name: string;
@@ -10,6 +15,7 @@ export interface HouseData {
   safetyLevel: SafetyLevel;
   progress: number;   // 0-100 室内搜刮进度
   revealed: boolean;  // 是否已揭盲（持久化，不重复通知）
+  activeBoss?: ActiveBoss | null; // 持久 BOSS 战（探索度满触发）
 }
 
 export interface NodeData {
@@ -20,6 +26,21 @@ export interface NodeData {
   connections: string[];
   houses: HouseData[];
   progress: number;   // 0-100 区域探索进度
+  activeBoss?: ActiveBoss | null; // 持久 BOSS 战（探索度满触发）
+}
+
+/**
+ * 根据 safetyLevel 映射 BOSS 紧张度
+ * safe → null (不触发), low/medium → T2, high → T3, deadly → T4
+ */
+export function bossTensionFromSafety(safety: SafetyLevel): 2 | 3 | 4 | null {
+  switch (safety) {
+    case 'safe': return null;
+    case 'low': return null;
+    case 'medium': return 2;
+    case 'high': return 3;
+    case 'deadly': return 4;
+  }
 }
 
 export interface WorldData {

@@ -80,6 +80,8 @@ export function buildStateUpdate(
           resolution.newProgressMap,
           resolution.houseSafetyUpdate,
           additionalRevealHouseIds,
+          resolution.bossSpawn,
+          resolution.bossDefeatedKey,
         )
       : prev.worldData;
 

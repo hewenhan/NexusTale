@@ -136,7 +136,12 @@ export function useChatLogic() {
         intentCtx.transitInfo
       );
 
-      // ── Step 1.5a: 宏观寻路拦截 ──
+      // ── Step 1.5a: 特殊 targetId 归一化 ──
+      // "outdoors" 是 AI 返回的语义别名，归一化为 null，pipeline 自然走 exit-building
+      if (intent.targetId === 'outdoors') {
+        intent.targetId = null;
+      }
+
       if (intent.targetId === 'current_objective' && state.currentObjective && state.worldData) {
         const pathResult = resolveObjectivePathfinding(
           state.currentNodeId!, state.currentHouseId, state.currentObjective, state.worldData.nodes

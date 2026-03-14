@@ -184,6 +184,12 @@ export default function Chat() {
           const spawnNode = result.worldData.nodes[0];
           const spawnHouse = spawnNode?.houses[0];
           if (spawnHouse) spawnHouse.safetyLevel = 'safe';
+          // 出生点所有建筑默认揭盲
+          if (spawnNode) {
+            for (const h of spawnNode.houses) {
+              h.revealed = true;
+            }
+          }
           const finalArtStyle = state.artStylePrompt || result.artStylePrompt;
 
           updateState({

@@ -3,7 +3,7 @@
  * 空间查询、节点/建筑查找、可见性计算等
  */
 
-import type { GameState, NodeData, HouseData, WorldData, SafetyLevel } from '../../types/game';
+import type { GameState, NodeData, HouseData, WorldData, SafetyLevel, ActiveBoss } from '../../types/game';
 
 /** 根据 nodeId 查找节点数据 */
 export function findNode(state: GameState, nodeId: string | null): NodeData | undefined {
@@ -40,7 +40,7 @@ export function extractProgressMap(worldData: WorldData): Record<string, number>
 }
 
 /**
- * 将管线输出的扁平进度表 + 安全等级变更 回写到 worldData
+ * 将管线输出的扁平进度表 + 安全等级变更 + BOSS 变更 回写到 worldData
  * 同时根据进度阈值自动更新 house.revealed
  */
 export function applyProgressAndReveals(
@@ -48,25 +48,58 @@ export function applyProgressAndReveals(
   newProgressMap: Record<string, number>,
   houseSafetyUpdate: { houseId: string; newSafetyLevel: SafetyLevel } | null,
   additionalRevealHouseIds?: string[],
+  bossSpawn?: { locationKey: string; boss: ActiveBoss } | null,
+  bossDefeatedKey?: string | null,
 ): WorldData {
   return {
     ...worldData,
     nodes: worldData.nodes.map(n => {
       const nodeProgress = newProgressMap[`node_${n.id}`] ?? n.progress;
+      const nodeKey = `node_${n.id}`;
+
+      // Node BOSS 变更
+      let nodeActiveBoss = n.activeBoss;
+      if (bossSpawn && bossSpawn.locationKey === nodeKey) {
+        nodeActiveBoss = bossSpawn.boss;
+      }
+      if (bossDefeatedKey === nodeKey) {
+        nodeActiveBoss = null;
+      }
+
+      // Node safety: BOSS 击败 → safe
+      let nodeSafety = n.safetyLevel;
+      if (bossDefeatedKey === nodeKey) {
+        nodeSafety = 'safe';
+      }
+
       return {
         ...n,
         progress: nodeProgress,
+        safetyLevel: nodeSafety,
+        activeBoss: nodeActiveBoss,
         houses: n.houses.map((h, index) => {
           const houseProgress = newProgressMap[`house_${h.id}`] ?? h.progress;
           const revealedByProgress = nodeProgress >= (index + 1) * 30;
           const revealedByExtra = additionalRevealHouseIds?.includes(h.id);
+
+          // House BOSS 变更
+          const houseKey = `house_${h.id}`;
+          let houseActiveBoss = h.activeBoss;
+          if (bossSpawn && bossSpawn.locationKey === houseKey) {
+            houseActiveBoss = bossSpawn.boss;
+          }
+          if (bossDefeatedKey === houseKey) {
+            houseActiveBoss = null;
+          }
+
           return {
             ...h,
             progress: houseProgress,
             revealed: h.revealed || revealedByProgress || !!revealedByExtra,
+            activeBoss: houseActiveBoss,
             safetyLevel: houseSafetyUpdate?.houseId === h.id
               ? houseSafetyUpdate.newSafetyLevel
-              : h.safetyLevel,
+              : (bossDefeatedKey === houseKey ? 'safe' as SafetyLevel : h.safetyLevel),
           };
         }),
       };

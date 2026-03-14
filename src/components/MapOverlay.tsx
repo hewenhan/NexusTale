@@ -274,6 +274,9 @@ export function MapOverlay({ state, onClose }: MapOverlayProps) {
                                 {house.name}
                               </span>
                               <span className="text-[10px] text-zinc-500">({TYPE_LABELS[house.type] || house.type})</span>
+                              <span className={`text-[10px] px-1 py-px rounded border ${SAFETY_COLORS[house.safetyLevel]}`}>
+                                {SAFETY_LABELS[house.safetyLevel]}
+                              </span>
                             </div>
                             {houseProgress > 0 && (
                               <span className="text-[10px] font-mono text-zinc-400">{houseProgress}%</span>
