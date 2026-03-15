@@ -16,19 +16,8 @@ import {
   buildStoryPrompt,
   launchImageGen,
   runDisplaySequence,
+  getStartIndexForRecentTurns, getLastSceneVisuals,
 } from './turnSteps';
-
-// Helper to find the index of the Nth-to-last user message
-const getStartIndexForRecentTurns = (messages: { role: string }[], turns: number) => {
-  let count = 0;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === 'user') {
-      count++;
-      if (count === turns) return i;
-    }
-  }
-  return 0;
-};
 
 // ─── Main Hook ────────────────────────────────────────────────
 
@@ -535,7 +524,7 @@ export function useChatLogic() {
       }
 
       const messages = Array.isArray(text_sequence) ? text_sequence : [responseJson.text_response || "......"];
-      const lastVisuals = [...state.history].reverse().find(m => m.currentSceneVisuals)?.currentSceneVisuals || 'None yet';
+      const lastVisuals = getLastSceneVisuals(state);
 
       const newDebugState = {
         lastActionRoll: d20,

@@ -131,13 +131,7 @@ export function clampTension(val: number): 0 | 1 | 2 | 3 | 4 {
 }
 
 /** HP 描述文本 */
-export function getHpDescription(hp: number, language: 'zh' | 'en'): string {
-  if (language === 'zh') {
-    if (hp >= 80) return '健康无伤';
-    if (hp >= 50) return '轻微擦伤';
-    if (hp >= 30) return '受伤流血';
-    return '重伤咳血，濒临倒下';
-  }
+export function getHpDescription(hp: number): string {
   if (hp >= 80) return 'Healthy, no injuries';
   if (hp >= 50) return 'Minor scratches';
   if (hp >= 30) return 'Wounded, bleeding';

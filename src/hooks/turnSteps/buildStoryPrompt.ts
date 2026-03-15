@@ -5,18 +5,7 @@
 import { findNode, findHouse, getVisibleHouses, getHpDescription, applyProgressAndReveals } from '../../lib/pipeline';
 import { KEEP_RECENT_TURNS, INVENTORY_CAPACITY, type GameState } from '../../types/game';
 import type { PipelineResult } from '../../lib/pipeline';
-
-// Helper to find the index of the Nth-to-last user message
-const getStartIndexForRecentTurns = (messages: { role: string }[], turns: number) => {
-  let count = 0;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === 'user') {
-      count++;
-      if (count === turns) return i;
-    }
-  }
-  return 0;
-};
+import { getStartIndexForRecentTurns, getLastSceneVisuals } from './helpers';
 
 // ── 构建位置上下文 ──
 function buildLocationContext(state: GameState, resolution: PipelineResult, visionContext: string): string {
@@ -158,7 +147,7 @@ export function buildStoryPrompt(input: StoryPromptInput): string {
   const characterRoleString = buildCharacterRoleString(state);
   const inventoryAndQuestContext = buildInventoryAndQuestContext(state);
 
-  const lastVisuals = [...state.history].reverse().find(m => m.currentSceneVisuals)?.currentSceneVisuals || 'None yet';
+  const lastVisuals = getLastSceneVisuals(state);
 
   // ── Build recent history text ──
   const allMessagesForPrompt = [...state.history, { role: 'user', text: userInput } as const];
@@ -186,7 +175,7 @@ ${characterRoleString}
 
 当前状态参数：
 - 绝对位置与可用视野：${locationContext}
-- 健康状态：${getHpDescription(resolution.newHp, state.language)}（HP: ${resolution.newHp}/100）
+- 健康状态：${getHpDescription(resolution.newHp)}（HP: ${resolution.newHp}/100）
 - ${progressLabel}（【揭盲锁】：未满100%绝不可描写彻底探索完毕！）
 - 紧张等级: ${resolution.newTensionLevel}（0=和平, 1=探索, 2=冲突, 3=危机, 4=死斗）
 - 好感度: ${state.affection}/100
