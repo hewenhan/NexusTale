@@ -289,7 +289,7 @@ export function useChatLogic() {
             // Boss 战中使用任务道具 → 不消耗，视为发呆被打
             narrativeInstruction = `【系统大失败 - 找死】：在危机中居然分心想使用【${matchedItem.name}】！玩家被狠狠重创！请描写玩家因为分心而被痛击的惨烈场面。`;
           } else if (matchedItem) {
-            const atTargetLocation = resolution.newNodeId === currentStage.targetNodeId && resolution.newHouseId === currentStage.targetHouseId;
+            const atTargetLocation = resolution.newNodeId === currentStage.targetNodeId && (resolution.newHouseId || '') === (currentStage.targetHouseId || '');
             if (atTargetLocation) {
               // At target location → consume quest item
               resolution.newInventory = resolution.newInventory.filter(i => i.id !== matchedItem.id);
@@ -314,12 +314,11 @@ export function useChatLogic() {
       if (state.questChain && !resolution.newTransitState) {
         const currentStage = state.questChain[state.currentQuestStageIndex];
         if (currentStage && !currentStage.arrivedAtTarget
-          && resolution.newNodeId === currentStage.targetNodeId
-          && resolution.newNodeId !== state.currentNodeId) {
+          && resolution.newNodeId === currentStage.targetNodeId) {
           // First arrival at quest target - anchor crisis based on safety
           const targetNode = state.worldData?.nodes.find(n => n.id === currentStage.targetNodeId);
           const targetHouse = targetNode?.houses.find(h => h.id === currentStage.targetHouseId);
-          const atTargetLocation = resolution.newNodeId === currentStage.targetNodeId && resolution.newHouseId === currentStage.targetHouseId;
+          const atTargetLocation = resolution.newNodeId === currentStage.targetNodeId && (resolution.newHouseId || '') === (currentStage.targetHouseId || '');
           if (atTargetLocation) {
             const crisisTension = bossTensionFromSafety(targetHouse?.safetyLevel ?? targetNode?.safetyLevel);
             if (crisisTension && crisisTension > resolution.newTensionLevel) {
@@ -336,9 +335,9 @@ export function useChatLogic() {
             // 完全替换叙事指令：pipeline 生成的叙事基于旧紧张度，不适用于任务抵达的危机场景
             const finalTension = crisisTension ?? resolution.newTensionLevel;
             if (finalTension >= 4) {
-              narrativeInstruction = `【系统强制 - 任务目标抵达 / BOSS 战触发】：玩家抵达了任务目标所在地【${targetNode.name}】！这里极度危险，一股强大的敌意扑面而来——BOSS 级威胁已经出现！紧张度直接拉满至 ${finalTension} 级（死斗）。请描写抵达后立即遭遇 BOSS 级强敌的震撼场面，气氛必须极度紧张、压迫感十足。`;
+              narrativeInstruction = `【系统强制 - 任务目标抵达 / 绝境危机触发】：玩家抵达了任务目标所在地【${targetNode.name}】！这里极度危险，强大的危机扑面而来——绝境 级威胁已经出现！紧张度直接拉满至 ${finalTension} 级（死斗）。请描写抵达后立即遭遇 绝境 级威胁的震撼场面，气氛必须极度紧张、压迫感十足。`;
             } else if (finalTension >= 3) {
-              narrativeInstruction = `【系统强制 - 任务目标抵达 / 精英威胁】：玩家抵达了任务目标所在地【${targetNode.name}】！周围弥漫着强烈的危险气息，精英级威胁潜伏于此。紧张度升至 ${finalTension} 级。请描写抵达后感知到强大威胁逼近的紧张场面，NPC 应表现出警觉与不安。`;
+              narrativeInstruction = `【系统强制 - 任务目标抵达 / 中度威胁】：玩家抵达了任务目标所在地【${targetNode.name}】！周围弥漫着强烈的危险气息，中度威胁潜伏于此。紧张度升至 ${finalTension} 级。请描写抵达后感知到强大威胁逼近的紧张场面，NPC 应表现出警觉与不安。`;
             } else if (finalTension >= 2) {
               narrativeInstruction = `【系统强制 - 任务目标抵达 / 危机潜伏】：玩家抵达了任务目标所在地【${targetNode.name}】！这里并不太平，危险的征兆随处可见。紧张度升至 ${finalTension} 级。请描写抵达时察觉到异常与潜在危机的场面。`;
             } else {
