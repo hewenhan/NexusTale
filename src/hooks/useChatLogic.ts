@@ -298,7 +298,7 @@ export function useChatLogic() {
                 ri => ri.id !== matchedItem.id && resolution.newInventory.some(inv => inv.id === ri.id)
               );
               if (remainingRequired.length === 0) {
-                narrativeInstruction = `【系统强制 - 任务道具使用】：玩家成功使用了【${matchedItem.name}】，完成了当前任务环节并且消耗掉！\n` + narrativeInstruction;
+                narrativeInstruction = `【系统强制 - 任务道具使用】：玩家成功使用了【${matchedItem.name}】，完成了当前任务环节并且消耗掉！如果有下一环目标，请结合世界观和上下文任务描述来触发接下来的任务，两个任务要有逻辑因果关系\n` + narrativeInstruction;
               } else {
                 narrativeInstruction = `【系统强制 - 任务道具使用】：玩家使用了【${matchedItem.name}】。请描写道具消耗掉的效果。\n` + narrativeInstruction;
               }
