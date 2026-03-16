@@ -33,7 +33,7 @@ import { stepMilestone } from './140_milestone';
 import { stepHpSettlement } from './160_hpSettlement';
 import { stepDeathSettlement } from './180_deathSettlement';
 
-function buildSnapshot(state: GameState): PipelineSnapshot {
+function buildSnapshot(state: GameState, intent: IntentResult): PipelineSnapshot {
   return {
     hp: state.hp,
     tensionLevel: state.pacingState.tensionLevel,
@@ -42,6 +42,9 @@ function buildSnapshot(state: GameState): PipelineSnapshot {
     inTransit: !!state.transitState,
     transitProgress: state.transitState?.pathProgress ?? 0,
     inventory: state.inventory.map(i => ({ ...i })),
+    intent: intent.intent,
+    targetId: intent.targetId,
+    itemName: intent.itemName,
   };
 }
 
@@ -54,6 +57,12 @@ function buildPostSnapshot(ctx: PipelineContext): PipelineSnapshot {
     inTransit: !!ctx.newTransitState,
     transitProgress: ctx.newTransitState?.pathProgress ?? 0,
     inventory: ctx.newInventory.map(i => ({ ...i })),
+    intent: ctx.intent.intent,
+    targetId: ctx.intent.targetId,
+    itemName: ctx.intent.itemName,
+    tier: ctx.tier as PipelineSnapshot['tier'],
+    roll: ctx.effectiveRoll,
+    isSuccess: ctx.isSuccess,
   };
 }
 
@@ -126,7 +135,7 @@ function extractResult(ctx: PipelineContext, snapPre: PipelineSnapshot): Pipelin
 }
 
 export function runPipeline(state: GameState, intent: IntentResult, d20Roll: number): PipelineResult {
-  const snapPre = buildSnapshot(state);
+  const snapPre = buildSnapshot(state, intent);
   const ctx = createContext(state, intent, d20Roll);
 
   // ── 纯计算管线，不含叙事 ──

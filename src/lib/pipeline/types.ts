@@ -54,6 +54,13 @@ export interface PipelineSnapshot {
   inTransit: boolean;
   transitProgress: number;
   inventory: InventoryItem[];
+  // 意图 & 判定信息
+  intent: string;
+  targetId: string | null;
+  itemName?: string;
+  tier?: RollTier;
+  roll?: number;
+  isSuccess?: boolean;
 }
 
 // ─── 管线上下文：所有 step 共享的可变状态 ───
