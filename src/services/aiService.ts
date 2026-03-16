@@ -1,5 +1,4 @@
-import { ai, TEXT_MODEL, PRO_MODEL, PRO_IMAGE_MODEL, IMAGE_MODEL, LITE_MODEL } from '../lib/gemini';
-import { HarmCategory, HarmBlockThreshold } from '@google/genai';
+import { ai, TEXT_MODEL, PRO_MODEL, PRO_IMAGE_MODEL, IMAGE_MODEL, LITE_MODEL, SAFETY_SETTINGS_OFF } from '../lib/gemini';
 import type { IntentResult, WorldData, CharacterProfile, NodeData, GameState, InventoryItem, Rarity, SafetyLevel } from '../types/game';
 import { normalizeConnections, EQUIPMENT_BUFF_TABLE } from '../types/game';
 import { fmtConnectedNodes, fmtVisibleHouses, fmtRecentConversation, getLastIntent, fmtTransitRules, fmtSurvivalInstinct, fmtInventory, fmtCombatInstinct } from './intentHelpers';
@@ -89,7 +88,8 @@ export async function generateSummary(currentSummary: string, messagesToSummariz
   try {
     const summaryResult = await ai.models.generateContent({
       model: TEXT_MODEL,
-      contents: [{ role: 'user', parts: [{ text: summaryPrompt }] }]
+      contents: [{ role: 'user', parts: [{ text: summaryPrompt }] }],
+      config: { safetySettings: SAFETY_SETTINGS_OFF }
     });
     return summaryResult.text;
   } catch (e) {
@@ -129,24 +129,7 @@ export async function generateTurn(fullPrompt: string): Promise<any> {
       // 5. 反复读机神器 (Frequency Penalty - 频率惩罚)：0.0 到 2.0
       // 极其关键！跑团游戏最怕 AI 词穷（比如动不动就“空气中弥漫着XX”）。
       // 设置为 0.4 会惩罚它用过的形容词，逼它换个说法，完美配合咱们之前的“防雷同”策略！
-      safetySettings: [
-        {
-          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-          threshold: HarmBlockThreshold.OFF
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-          threshold: HarmBlockThreshold.OFF
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-          threshold: HarmBlockThreshold.OFF
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-          threshold: HarmBlockThreshold.OFF
-        },
-      ]
+      safetySettings: SAFETY_SETTINGS_OFF,
     }
   });
 
@@ -211,24 +194,7 @@ const traitPrefix = physicalTraitsLock
           aspectRatio: "9:16",
           imageSize: "512px"
         },
-        safetySettings: [
-          {
-            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-            threshold: HarmBlockThreshold.OFF
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-            threshold: HarmBlockThreshold.OFF
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-            threshold: HarmBlockThreshold.OFF
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-            threshold: HarmBlockThreshold.OFF
-          },
-        ]
+        safetySettings: SAFETY_SETTINGS_OFF,
       }
     });
 
@@ -356,7 +322,7 @@ Return ONLY a JSON object with this EXACT structure (no markdown):
   const result = await ai.models.generateContent({
     model: PRO_MODEL,
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    config: { responseMimeType: 'application/json' }
+    config: { responseMimeType: 'application/json', safetySettings: SAFETY_SETTINGS_OFF }
   });
 
   const text = result.text;
@@ -412,7 +378,8 @@ export async function fetchCustomLoadingMessages(worldview: string, language: 'z
   
   const result = await ai.models.generateContent({
     model: TEXT_MODEL,
-    contents: [{ role: 'user', parts: [{ text: prompt }] }]
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    config: { safetySettings: SAFETY_SETTINGS_OFF }
   });
 
   const text = result.text;
@@ -477,7 +444,7 @@ Return ONLY a JSON object with this structure (no markdown):
   const result = await ai.models.generateContent({
     model: TEXT_MODEL,
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    config: { responseMimeType: 'application/json' }
+    config: { responseMimeType: 'application/json', safetySettings: SAFETY_SETTINGS_OFF }
   });
 
   const text = result.text;
@@ -592,7 +559,7 @@ Return ONLY a JSON object (no markdown):
   const result = await ai.models.generateContent({
     model: TEXT_MODEL,
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    config: { responseMimeType: 'application/json' }
+    config: { responseMimeType: 'application/json', safetySettings: SAFETY_SETTINGS_OFF }
   });
 
   const text = result.text;
@@ -645,6 +612,7 @@ Return ONLY the narrator text, no JSON, no markdown.`;
     const result = await ai.models.generateContent({
       model: TEXT_MODEL,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: { safetySettings: SAFETY_SETTINGS_OFF }
     });
     return result.text?.trim() || '任务链已完成。新的冒险即将开始。';
   } catch (e) {
@@ -735,7 +703,7 @@ ${fmtCombatInstinct(state)}
   const result = await ai.models.generateContent({
     model: LITE_MODEL,
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    config: { responseMimeType: 'application/json' }
+    config: { responseMimeType: 'application/json', safetySettings: SAFETY_SETTINGS_OFF }
   });
 
   const text = result.text;
@@ -808,7 +776,8 @@ Art Style & Rendering Instructions:
         imageConfig: {
           aspectRatio: "16:9",
           imageSize: "2K"
-        }
+        },
+        safetySettings: SAFETY_SETTINGS_OFF,
       }
     });
 
@@ -848,12 +817,7 @@ Style: Semi-realistic anime/illustration style. Clean lighting, sharp details. T
           aspectRatio: "1:1",
           imageSize: "512px"
         },
-        safetySettings: [
-          { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.OFF },
-          { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.OFF },
-          { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.OFF },
-          { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.OFF },
-        ]
+        safetySettings: SAFETY_SETTINGS_OFF,
       }
     });
 

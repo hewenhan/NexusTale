@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 
 // Initialize Gemini API
 // Note: We use the server-side key for text generation if possible, but for client-side app logic 
@@ -12,3 +12,11 @@ export const PRO_MODEL = "gemini-3.1-pro-preview";
 export const PRO_IMAGE_MODEL = "gemini-3-pro-image-preview";
 export const IMAGE_MODEL = "gemini-3.1-flash-image-preview";
 export const LITE_MODEL = "gemini-2.5-flash-lite-preview-09-2025";
+
+// Shared safety settings — turn off all content filters for the RPG adventure engine
+export const SAFETY_SETTINGS_OFF = [
+  { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.OFF },
+  { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.OFF },
+  { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.OFF },
+  { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.OFF },
+];
