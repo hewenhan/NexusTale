@@ -1,4 +1,4 @@
-import { ai, TEXT_MODEL, PRO_MODEL, PRO_IMAGE_MODEL, IMAGE_MODEL, LITE_MODEL, SAFETY_SETTINGS_OFF } from '../lib/gemini';
+import { ai, TEXT_MODEL, PRO_MODEL, PRO_IMAGE_MODEL, IMAGE_MODEL, LITE_MODEL, SAFETY_SETTINGS_OFF, NOVELTY_CONFIG } from '../lib/gemini';
 import type { IntentResult, WorldData, CharacterProfile, NodeData, GameState, InventoryItem, Rarity, SafetyLevel } from '../types/game';
 import { normalizeConnections, EQUIPMENT_BUFF_TABLE } from '../types/game';
 import { fmtConnectedNodes, fmtVisibleHouses, fmtRecentConversation, getLastIntent, fmtTransitRules, fmtSurvivalInstinct, fmtInventory, fmtCombatInstinct } from './intentHelpers';
@@ -104,31 +104,7 @@ export async function generateTurn(fullPrompt: string): Promise<any> {
     contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
     config: {
       responseMimeType: 'application/json',
-      
-      // ⬇️ ====== 首席架构师的炼丹参数区 ====== ⬇️
-      
-      // 1. 创造力控制 (Temperature)：默认通常是 0.7 左右。
-      // 调到 0.85 ~ 0.9 是跑团游戏的甜点区。文案会变得极其生动、比喻丰富，
-      // 但又没有高到让它胡言乱语或者破坏 JSON 结构的程度。
-      temperature: 0.85, 
-
-      // 2. 逻辑兜底 (Top-P)：核采样。
-      // 限制模型只能从累计概率达到 0.9 的候选词中选择。
-      // 作用：配合较高的 temperature，它能“砍掉最离谱/不合逻辑的废话”，保证剧情发展不脱轨。
-      topP: 0.9,
-
-      // 3. 词汇多样性 (Top-K)：
-      // 扩大候选词汇库（默认通常是 40）。调高到 60 能让 AI 使用更罕见、更具文学性的词汇，
-      // 比如用“逼仄”代替“狭窄”，用“斑驳”代替“破旧”，大幅提升文本的高级感。
-      topK: 60,
-
-      // 4. 话题推进引擎 (Presence Penalty - 存在惩罚)：0.0 到 2.0
-      // 设置为 0.3 可以轻微惩罚已经出现过的话题。
-      // 作用：逼迫 AI 推进剧情，引导它发现新事物，而不是一直跟你扯皮“这里很危险”。
-
-      // 5. 反复读机神器 (Frequency Penalty - 频率惩罚)：0.0 到 2.0
-      // 极其关键！跑团游戏最怕 AI 词穷（比如动不动就“空气中弥漫着XX”）。
-      // 设置为 0.4 会惩罚它用过的形容词，逼它换个说法，完美配合咱们之前的“防雷同”策略！
+      ...NOVELTY_CONFIG,
       safetySettings: SAFETY_SETTINGS_OFF,
     }
   });
@@ -379,7 +355,7 @@ export async function fetchCustomLoadingMessages(worldview: string, language: 'z
   const result = await ai.models.generateContent({
     model: TEXT_MODEL,
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    config: { safetySettings: SAFETY_SETTINGS_OFF }
+    config: { safetySettings: SAFETY_SETTINGS_OFF, responseMimeType: 'application/json', ...NOVELTY_CONFIG }
   });
 
   const text = result.text;
@@ -444,7 +420,7 @@ Return ONLY a JSON object with this structure (no markdown):
   const result = await ai.models.generateContent({
     model: TEXT_MODEL,
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    config: { responseMimeType: 'application/json', safetySettings: SAFETY_SETTINGS_OFF }
+    config: { responseMimeType: 'application/json', safetySettings: SAFETY_SETTINGS_OFF, ...NOVELTY_CONFIG }
   });
 
   const text = result.text;
@@ -559,7 +535,7 @@ Return ONLY a JSON object (no markdown):
   const result = await ai.models.generateContent({
     model: TEXT_MODEL,
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    config: { responseMimeType: 'application/json', safetySettings: SAFETY_SETTINGS_OFF }
+    config: { responseMimeType: 'application/json', safetySettings: SAFETY_SETTINGS_OFF, ...NOVELTY_CONFIG }
   });
 
   const text = result.text;
@@ -612,7 +588,7 @@ Return ONLY the narrator text, no JSON, no markdown.`;
     const result = await ai.models.generateContent({
       model: TEXT_MODEL,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: { safetySettings: SAFETY_SETTINGS_OFF }
+      config: { safetySettings: SAFETY_SETTINGS_OFF, ...NOVELTY_CONFIG }
     });
     return result.text?.trim() || '任务链已完成。新的冒险即将开始。';
   } catch (e) {

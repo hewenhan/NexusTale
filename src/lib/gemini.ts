@@ -20,3 +20,9 @@ export const SAFETY_SETTINGS_OFF = [
   { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.OFF },
   { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.OFF },
 ];
+
+export const NOVELTY_CONFIG = {
+    temperature: 0.85, 
+    topP: 0.9,
+    topK: 60
+};

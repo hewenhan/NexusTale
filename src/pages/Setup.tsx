@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { useNavigate } from 'react-router-dom';
-import { ai, PRO_MODEL, SAFETY_SETTINGS_OFF } from '../lib/gemini';
+import { ai, NOVELTY_CONFIG, PRO_MODEL, SAFETY_SETTINGS_OFF } from '../lib/gemini';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader2 } from 'lucide-react';
 import { CharacterProfile, Gender, Orientation, DEFAULT_LOADING_MESSAGES, DEFAULT_PROFILE, INIT_PLAYER_PROFILE, INIT_COMPANION_PROFILE } from '../types/game';
@@ -148,7 +148,7 @@ export default function Setup() {
       const result = await ai.models.generateContent({
         model: PRO_MODEL,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: { safetySettings: SAFETY_SETTINGS_OFF }
+        config: { safetySettings: SAFETY_SETTINGS_OFF, responseMimeType: 'application/json', ...NOVELTY_CONFIG }
       });
 
       const text = result.text;
