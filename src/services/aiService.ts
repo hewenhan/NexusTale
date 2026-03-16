@@ -700,6 +700,7 @@ ${transitRules}
 
 **RECENT CONVERSATION (CRITICAL CONTEXT):**
 ${recentConversation || 'No prior conversation.'}
+${survivalInstinctRule}
 
 **INTENT RESOLUTION PIPELINE (STRICT WATERFALL RULES):**
 You MUST evaluate the player's input through this top-down pipeline. Match the FIRST applicable rule and IGNORE the rest.

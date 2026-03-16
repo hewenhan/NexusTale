@@ -6,7 +6,7 @@
  * 叙事拼装由外部 narrativeAssembler 根据 events + snap 差异完成。
  */
 
-import type { GameState, IntentResult, SafetyLevel, HouseData, ActiveBoss, InventoryItem } from '../../types/game';
+import type { GameState, IntentResult, IntentType, SafetyLevel, HouseData, ActiveBoss, InventoryItem } from '../../types/game';
 
 // ─── D20 掷骰结果档位 ───
 export type RollTier = 0 | 1 | 2; // 0=大失败, 1=普通, 2=大成功
@@ -55,7 +55,7 @@ export interface PipelineSnapshot {
   transitProgress: number;
   inventory: InventoryItem[];
   // 意图 & 判定信息
-  intent: string;
+  intent: IntentType;
   targetId: string | null;
   itemName?: string;
   tier?: RollTier;
@@ -67,8 +67,8 @@ export interface PipelineSnapshot {
 export interface PipelineContext {
   /** 只读：当前游戏快照（不可变异） */
   readonly state: GameState;
-  /** 只读：本轮意图判定结果 */
-  readonly intent: IntentResult;
+  /** 本轮意图（060 行为覆写可能修改，如 use_item → combat） */
+  intent: IntentResult;
 
   /** 结构化事件流 */
   events: GameEvent[];

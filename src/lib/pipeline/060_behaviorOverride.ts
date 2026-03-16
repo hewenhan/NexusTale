@@ -11,22 +11,33 @@ import type { PipelineContext } from './types';
 import { rollToTier } from './040_d20Roll';
 import { TENSION_ROUTE } from '../tensionConfig';
 
+/** 剥掉【】（）() 以及 rarity 标签，只留核心名称用于模糊比较 */
+function stripDecorators(s: string): string {
+  return s.replace(/[【】\[\]（）()]/g, '').replace(/\s*(Common|Uncommon|Rare|Epic|Legendary)\s*/gi, '').trim();
+}
+
 export function stepBehaviorOverride(ctx: PipelineContext): void {
   const { state, intent } = ctx;
   const tension = state.pacingState.tensionLevel;
 
   // ── 退敌道具：use_item + escape type + 危机 → 视为 combat ──
   if (intent.intent === 'use_item' && intent.itemName && tension >= 2) {
-    const escapeItem = state.inventory.find(
-      i => i.type === 'escape' && i.name === intent.itemName
-    ) || state.inventory.find(
-      i => i.type === 'escape' && (
-        i.name.includes(intent.itemName!) || intent.itemName!.includes(i.name)
-      )
-    );
+    const escapeItems = state.inventory.filter(i => i.type === 'escape');
+    const stripped = stripDecorators(intent.itemName);
+    console.log('[060] 退敌道具匹配', { intentRaw: intent.itemName, stripped, escapeItems: escapeItems.map(i => i.name) });
+    const escapeItem = escapeItems.find(i => i.name === intent.itemName)
+      || escapeItems.find(i => stripDecorators(i.name) === stripped)
+      || escapeItems.find(i => {
+        const sn = stripDecorators(i.name);
+        return sn.includes(stripped) || stripped.includes(sn);
+      });
+    console.log('[060] 匹配结果:', escapeItem ? escapeItem.name : 'null');
     if (escapeItem) {
       const combatRoute = TENSION_ROUTE[tension]?.['combat'];
       if (combatRoute) {
+        // 覆写意图为 combat，后续步骤统一走 combat 路径
+        ctx.intent = { ...intent, intent: 'combat' };
+        ctx.escapeItemUsed = escapeItem;
         ctx.tier = rollToTier(combatRoute.probabilities, ctx.effectiveRoll);
         ctx.formulaBreakdown += `\n[行为覆写] 退敌道具【${escapeItem.name}】视为combat → T${ctx.tier} ${['大失败', '普通', '大成功'][ctx.tier]}`;
         ctx.events.push({ type: 'behavior_override', description: `退敌道具【${escapeItem.name}】视为combat` });

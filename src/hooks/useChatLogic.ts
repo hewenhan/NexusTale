@@ -580,11 +580,11 @@ export function useChatLogic() {
       const lastVisuals = getLastSceneVisuals(state);
 
       const newDebugState = {
-        lastActionRoll: d20,
+        lastActionRoll: resolution.snapPost.roll ?? d20,
         lastSuccessThreshold: 0,
-        lastIsSuccess: resolution.isSuccess,
-        lastTensionLevel: state.pacingState.tensionLevel,
-        lastIntent: intent.intent,
+        lastIsSuccess: resolution.snapPost.isSuccess ?? resolution.isSuccess,
+        lastTensionLevel: resolution.snapPost.tensionLevel,
+        lastIntent: resolution.snapPost.intent,
         lastNarrativeInstruction: narrativeInstruction,
         lastFormula: resolution.formulaBreakdown,
         lastImagePrompt: image_prompt,

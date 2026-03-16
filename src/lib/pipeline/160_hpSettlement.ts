@@ -26,25 +26,14 @@ export function stepHpSettlement(ctx: PipelineContext): void {
   const tension = state.pacingState.tensionLevel;
   const action = intent.intent;
 
-  // ── 退敌道具处理 ──
-  if (action === 'use_item' && intent.itemName) {
-    const itemNameLower = intent.itemName.toLowerCase().trim();
-    const escapeItem = state.inventory.find(
-      i => i.type === 'escape' && i.name.toLowerCase().trim() === itemNameLower
-    ) || state.inventory.find(
-      i => i.type === 'escape' && (
-        i.name.includes(intent.itemName!) || intent.itemName!.includes(i.name)
-      )
-    );
-    if (escapeItem && tension >= 2) {
-      // 消耗道具
-      ctx.escapeItemUsed = escapeItem;
-      ctx.newInventory = ctx.newInventory.filter(i => i.id !== escapeItem.id);
-      // 退敌道具：全部免扣血（大失败=免伤，普通=退敌，大成功=秒杀解危）
-      ctx.isSuccess = ctx.tier > 0;
-      ctx.events.push({ type: 'escape_item_used', item: escapeItem, tier: ctx.tier });
-      return;
-    }
+  // ── 退敌道具处理（060 已匹配并存到 ctx.escapeItemUsed）──
+  if (ctx.escapeItemUsed) {
+    const escapeItem = ctx.escapeItemUsed;
+    ctx.newInventory = ctx.newInventory.filter(i => i.id !== escapeItem.id);
+    // 退敌道具：全部免扣血（大失败=免伤，普通=退敌，大成功=秒杀解危）
+    ctx.isSuccess = ctx.tier > 0;
+    ctx.events.push({ type: 'escape_item_used', item: escapeItem, tier: ctx.tier });
+    return;
   }
 
   // ── 安全区回血 ──
