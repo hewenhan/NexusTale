@@ -136,10 +136,12 @@ export interface StoryPromptInput {
   itemDropInstruction?: string | null;
   /** 是否期望 AI 在 get_item 字段返回道具信息 */
   expectGetItem?: boolean;
+  /** 由 narrativeAssembler + 调用方覆盖后得到的最终叙事指令 */
+  narrativeInstruction: string;
 }
 
 export function buildStoryPrompt(input: StoryPromptInput): string {
-  const { state, resolution, currentSummary, userInput, visionContext, itemDropInstruction, expectGetItem } = input;
+  const { state, resolution, currentSummary, userInput, visionContext, itemDropInstruction, expectGetItem, narrativeInstruction } = input;
 
   const locationContext = buildLocationContext(state, resolution, visionContext);
   const progressLabel = buildProgressLabel(resolution);
@@ -226,7 +228,7 @@ CORE RULES (泛用型高阶扮演引擎):
 8. **LANGUAGE**: 你必须用${state.language === 'zh' ? '中文' : 'English'}回复。
 
 本次检定的既定事实 (Required Outcome) - 极其重要：
-${resolution.narrativeInstruction}${themeInstruction}（不要和已有聊天记录出现同质化危机）
+${narrativeInstruction}${themeInstruction}（不要和已有聊天记录出现同质化危机）
 ${itemDropInstruction || ''}
 
 ⚠️ 【系统最高覆盖指令 (System Override)】：

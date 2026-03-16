@@ -47,7 +47,16 @@ export function stepTensionDelta(ctx: PipelineContext): void {
   // 确定查表用的 action key
   let routeKey: string = action;
   if (action === 'seek_quest') routeKey = 'default';
-  // T2/T3/T4 的 explore 按 combat 查（已在 config 中统一）
+  // 退敌道具 use_item 视为 combat（与 Step ③ 行为覆写一致）
+  if (action === 'use_item' && intent.itemName && tension >= 2) {
+    const hasEscape = state.inventory.some(
+      i => i.type === 'escape' && (
+        i.name === intent.itemName
+        || i.name.includes(intent.itemName!) || intent.itemName!.includes(i.name)
+      )
+    );
+    if (hasEscape) routeKey = 'combat';
+  }
 
   const route = table[routeKey] || table['default'];
   if (!route) return;

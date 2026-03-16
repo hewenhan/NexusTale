@@ -3,9 +3,9 @@ import { useGame } from '../contexts/GameContext';
 import { useAuth } from '../contexts/AuthContext';
 import { v4 as uuidv4 } from 'uuid';
 import { generateSummary, generateTurn, extractIntent, resolveObjectivePathfinding, generateQuestChain, generateQuestCompletionNarration } from '../services/aiService';
-import { runPipeline, buildVisionContext } from '../lib/pipeline';
+import { runPipeline, buildVisionContext, assembleNarrative } from '../lib/pipeline';
 import { useGrandNotification, type GrandNotificationData } from '../components/GrandNotification';
-import { SUMMARY_THRESHOLD, KEEP_RECENT_TURNS, INVENTORY_CAPACITY, bossTensionFromSafety, rollEscapeRarity, pickEscapeIcon } from '../types/game';
+import { SUMMARY_THRESHOLD, KEEP_RECENT_TURNS, INVENTORY_CAPACITY, BGM_LIST, bossTensionFromSafety, rollEscapeRarity, pickEscapeIcon } from '../types/game';
 import type { QuestStage, InventoryItem, Rarity } from '../types/game';
 
 import {
@@ -287,18 +287,30 @@ export function useChatLogic() {
         updateState({ debugOverrides: undefined });
       }
 
-      // ── Step 3: Narrative overrides ──
-      applyNarrativeOverrides(resolution, state, directorResult, isRetreatIntent);
+      // ── Step 3: Narrative assembly (pipeline events → narrative string) ──
+      let narrativeInstruction = assembleNarrative({
+        result: resolution,
+        intent,
+        state: resolveState,
+        moveTarget: resolution.moveTarget,
+      });
+
+      // ── Step 3.2: Narrative overrides (director, retreat, affection) ──
+      narrativeInstruction = applyNarrativeOverrides(narrativeInstruction, resolution, state, directorResult, isRetreatIntent);
 
       // ── Step 3.5: Quest chain post-pipeline logic ──
       // Quest item usage: use_item with quest item matching current stage requiredItems
+      // Boss 战中禁止使用任务道具：视为自杀发呆，不消耗道具
       if (intent.intent === 'use_item' && intent.itemName && state.questChain) {
         const currentStage = state.questChain[state.currentQuestStageIndex];
         if (currentStage && !currentStage.completed) {
           const matchedItem = currentStage.requiredItems.find(
             ri => ri.id === intent.itemName || ri.name === intent.itemName
           );
-          if (matchedItem) {
+          if (matchedItem && resolution.newTensionLevel >= 2) {
+            // Boss 战中使用任务道具 → 不消耗，视为发呆被打
+            narrativeInstruction = `【系统大失败 - 找死】：在危机中居然分心想使用【${matchedItem.name}】！玩家被狠狠重创！请描写玩家因为分心而被痛击的惨烈场面。`;
+          } else if (matchedItem) {
             const atTargetLocation = resolution.newNodeId === currentStage.targetNodeId;
             if (atTargetLocation) {
               // At target location → consume quest item
@@ -308,13 +320,13 @@ export function useChatLogic() {
                 ri => ri.id !== matchedItem.id && resolution.newInventory.some(inv => inv.id === ri.id)
               );
               if (remainingRequired.length === 0) {
-                resolution.narrativeInstruction = `【系统强制 - 任务道具使用】：玩家成功使用了【${matchedItem.name}】，完成了当前任务环节并且消耗掉！\n` + resolution.narrativeInstruction;
+                narrativeInstruction = `【系统强制 - 任务道具使用】：玩家成功使用了【${matchedItem.name}】，完成了当前任务环节并且消耗掉！\n` + narrativeInstruction;
               } else {
-                resolution.narrativeInstruction = `【系统强制 - 任务道具使用】：玩家使用了【${matchedItem.name}】。请描写道具消耗掉的效果。\n` + resolution.narrativeInstruction;
+                narrativeInstruction = `【系统强制 - 任务道具使用】：玩家使用了【${matchedItem.name}】。请描写道具消耗掉的效果。\n` + narrativeInstruction;
               }
             } else {
               // NOT at target location → keep the item, tell player where to go
-              resolution.narrativeInstruction = `【系统强制 - 任务道具无法使用】：玩家使用了【${matchedItem.name}】，请 NPC 结合上下文使用道具而不消耗道具\n` + resolution.narrativeInstruction;
+              narrativeInstruction = `【系统强制 - 任务道具无法使用】：玩家使用了【${matchedItem.name}】，请 NPC 结合上下文使用道具而不消耗道具\n` + narrativeInstruction;
             }
           }
         }
@@ -341,7 +353,17 @@ export function useChatLogic() {
               updated[prev.currentQuestStageIndex] = { ...updated[prev.currentQuestStageIndex], arrivedAtTarget: true };
               return { questChain: updated };
             });
-            resolution.narrativeInstruction = `【系统强制 - 任务目标抵达】：玩家抵达了任务目标所在地【${targetNode.name}】！这里危机四伏，需要小心行事。\n` + resolution.narrativeInstruction;
+            // 完全替换叙事指令：pipeline 生成的叙事基于旧紧张度，不适用于任务抵达的危机场景
+            const finalTension = crisisTension ?? resolution.newTensionLevel;
+            if (finalTension >= 4) {
+              narrativeInstruction = `【系统强制 - 任务目标抵达 / BOSS 战触发】：玩家抵达了任务目标所在地【${targetNode.name}】！这里极度危险，一股强大的敌意扑面而来——BOSS 级威胁已经出现！紧张度直接拉满至 ${finalTension} 级（死斗）。请描写抵达后立即遭遇 BOSS 级强敌的震撼场面，气氛必须极度紧张、压迫感十足。`;
+            } else if (finalTension >= 3) {
+              narrativeInstruction = `【系统强制 - 任务目标抵达 / 精英威胁】：玩家抵达了任务目标所在地【${targetNode.name}】！周围弥漫着强烈的危险气息，精英级威胁潜伏于此。紧张度升至 ${finalTension} 级。请描写抵达后感知到强大威胁逼近的紧张场面，NPC 应表现出警觉与不安。`;
+            } else if (finalTension >= 2) {
+              narrativeInstruction = `【系统强制 - 任务目标抵达 / 危机潜伏】：玩家抵达了任务目标所在地【${targetNode.name}】！这里并不太平，危险的征兆随处可见。紧张度升至 ${finalTension} 级。请描写抵达时察觉到异常与潜在危机的场面。`;
+            } else {
+              narrativeInstruction = `【系统强制 - 任务目标抵达】：玩家抵达了任务目标所在地【${targetNode.name}】！请描写抵达目的地的场面。`;
+            }
           }
         }
       }
@@ -358,7 +380,7 @@ export function useChatLogic() {
           escapeItemRarity = rollEscapeRarity();
           itemDropInstruction = `\n【搜刮结果 - 有收获】：发现了一件${escapeItemRarity}品质的道具！（根据世界观和当前场景合理创名），并在 get_item 字段中返回道具名称和简短说明。`;
         } else {
-          itemDropInstruction = `\n【搜刮结果 - 无收获】：结合世界观上下文合理描写`;
+          itemDropInstruction = `\n【搜刮结果 - 无收获】：结合世界观上下文描写没找到东西，但还有找的线索`;
         }
       }
 
@@ -376,6 +398,10 @@ export function useChatLogic() {
             newPresets.splice(idx, 1);
             return { equipmentPresets: newPresets };
           });
+          // Build equipment drop instruction for AI
+          const equipType = prerolledEquipDrop.type === 'weapon' ? '武器' : '防具';
+          const equipInstruction = `\n【装备掉落】：探索中发现了一件${prerolledEquipDrop.rarity}品质的${equipType}【${prerolledEquipDrop.name}】（${prerolledEquipDrop.description}）！请在叙事中自然地描写发现这件装备的过程。`;
+          itemDropInstruction = (itemDropInstruction || '') + equipInstruction;
         }
       }
 
@@ -408,6 +434,7 @@ export function useChatLogic() {
         state, resolution, currentSummary, userInput, visionContext,
         itemDropInstruction,
         expectGetItem: !!escapeItemRarity,
+        narrativeInstruction,
       });
 
       const responseJson = await generateTurn(fullPrompt);
@@ -523,6 +550,32 @@ export function useChatLogic() {
         }
       }
 
+      // ── Step 7.1: Unified BGM selection ──
+      // 统一入口：在 AI 回复完成后、显示消息之前，基于最终紧张度决定 BGM
+      // 此时 resolution.newTensionLevel 已经包含了 pipeline + Step 3.5 任务抵达等所有变更
+      let finalBgmKey: string | undefined;
+      if (resolution.tensionChanged) {
+        const candidates = BGM_LIST[resolution.newTensionLevel as keyof typeof BGM_LIST] || [];
+        finalBgmKey = candidates.length > 0
+          ? candidates[Math.floor(Math.random() * candidates.length)]
+          : undefined;
+      } else {
+        // 紧张度没变，沿用上一轮 BGM
+        for (let i = state.history.length - 1; i >= 0; i--) {
+          if (state.history[i].bgmKey) {
+            finalBgmKey = state.history[i].bgmKey;
+            break;
+          }
+        }
+      }
+      // Fallback：历史为空时按当前紧张度选
+      if (!finalBgmKey) {
+        const fallback = BGM_LIST[resolution.newTensionLevel as keyof typeof BGM_LIST] || [];
+        finalBgmKey = fallback.length > 0
+          ? fallback[Math.floor(Math.random() * fallback.length)]
+          : undefined;
+      }
+
       const messages = Array.isArray(text_sequence) ? text_sequence : [responseJson.text_response || "......"];
       const lastVisuals = getLastSceneVisuals(state);
 
@@ -532,7 +585,7 @@ export function useChatLogic() {
         lastIsSuccess: resolution.isSuccess,
         lastTensionLevel: state.pacingState.tensionLevel,
         lastIntent: intent.intent,
-        lastNarrativeInstruction: resolution.narrativeInstruction,
+        lastNarrativeInstruction: narrativeInstruction,
         lastFormula: resolution.formulaBreakdown,
         lastImagePrompt: image_prompt,
         lastImageError: undefined as string | undefined
@@ -553,7 +606,7 @@ export function useChatLogic() {
         debugState: newDebugState,
         sceneVisuals: scene_visuals_update,
         lastVisuals,
-        selectedBgmKey: resolution.selectedBgmKey,
+        selectedBgmKey: finalBgmKey,
         imagePromise,
         pendingNotifications,
         addMessage,

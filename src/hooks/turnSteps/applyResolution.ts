@@ -38,31 +38,37 @@ export function applyDebugOverrides(resolution: PipelineResult, debugOv: DebugOv
 
 /**
  * 注入导演系统、掉头返程、好感度检定的叙事覆盖
+ * 返回最终的 narrativeInstruction 字符串（不再 mutate resolution）
  */
 export function applyNarrativeOverrides(
+  narrativeInstruction: string,
   resolution: PipelineResult,
   state: GameState,
   directorResult: DirectorResult,
   isRetreatIntent: boolean,
-): void {
+): string {
+  let result = narrativeInstruction;
+
   // 导演系统叙事覆盖
   if (directorResult.narrativeOverride) {
-    resolution.narrativeInstruction = directorResult.narrativeOverride;
+    result = directorResult.narrativeOverride;
   }
 
   // 掉头返程叙事注入
   if (isRetreatIntent && state.transitState) {
     const origFromNode = state.worldData?.nodes.find(n => n.id === state.transitState!.fromNodeId);
     const returnToName = origFromNode?.name || state.transitState.fromNodeId || '来时的方向';
-    resolution.narrativeInstruction = `【系统强制 - 掉头返程】：玩家决定中途折返，掉头返回【${returnToName}】方向！路程进度已反转（当前返程进度${resolution.newTransitState?.pathProgress ?? 0}%）。请尊重玩家的返程决定，描写掉头折返的过程。\n` + resolution.narrativeInstruction;
+    result = `【系统强制 - 掉头返程】：玩家决定中途折返，掉头返回【${returnToName}】方向！路程进度已反转（当前返程进度${resolution.newTransitState?.pathProgress ?? 0}%）。请尊重玩家的返程决定，描写掉头折返的过程。\n` + result;
   }
 
   // 好感度检定叙事注入
   if (resolution.affectionTriggered === 'aid') {
-    resolution.narrativeInstruction += `\n【好感度援助】：同伴因与玩家关系亲密（好感度${state.affection}），在关键时刻出手相助！请结合同伴的【特长: ${state.companionProfile.specialties}】描写一段精彩的援助行动，使局面好转。`;
+    result += `\n【好感度援助】：同伴因与玩家关系亲密（好感度${state.affection}），在关键时刻出手相助！请结合同伴的【特长: ${state.companionProfile.specialties}】描写一段精彩的援助行动，使局面好转。`;
   } else if (resolution.affectionTriggered === 'sabotage') {
-    resolution.narrativeInstruction += `\n【好感度冷淡】：同伴因与玩家关系冷淡（好感度${state.affection}），在危急关头袖手旁观甚至落井下石！请结合同伴的性格描写冷漠、嘲讽或使绊子的反应，使局面雪上加霜。`;
+    result += `\n【好感度冷淡】：同伴因与玩家关系冷淡（好感度${state.affection}），在危急关头袖手旁观甚至落井下石！请结合同伴的性格描写冷漠、嘲讽或使绊子的反应，使局面雪上加霜。`;
   }
+
+  return result;
 }
 
 /**
