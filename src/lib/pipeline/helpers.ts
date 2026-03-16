@@ -25,6 +25,18 @@ export function getVisibleHouses(node: NodeData): HouseData[] {
   return node.houses.filter(h => h.revealed);
 }
 
+/** 直接持久化揭盲指定建筑（任务派发/推进时用） */
+export function revealHouseInWorld(worldData: WorldData, houseId: string): WorldData {
+  if (!houseId) return worldData;
+  return {
+    ...worldData,
+    nodes: worldData.nodes.map(n => ({
+      ...n,
+      houses: n.houses.map(h => h.id === houseId ? { ...h, revealed: true } : h),
+    })),
+  };
+}
+
 /**
  * 从 worldData 中提取扁平进度表，供管线内部使用
  */

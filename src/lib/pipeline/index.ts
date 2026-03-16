@@ -4,6 +4,6 @@
 
 export { runPipeline } from './runPipeline';
 export type { PipelineResult, PipelineContext, PipelineSnapshot, GameEvent, MoveTarget } from './types';
-export { findNode, findHouse, getVisibleHouses, buildVisionContext, getHpDescription, extractProgressMap, applyProgressAndReveals } from './helpers';
+export { findNode, findHouse, getVisibleHouses, buildVisionContext, getHpDescription, extractProgressMap, applyProgressAndReveals, revealHouseInWorld } from './helpers';
 export { assembleNarrative } from './narrativeAssembler';
 export type { NarrativeAssemblerInput } from './narrativeAssembler';

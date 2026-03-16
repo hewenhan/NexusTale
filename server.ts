@@ -165,7 +165,7 @@ async function startServer() {
         model: xai.image(model),
         prompt,
         ...(aspectRatio ? { aspectRatio } : {}),
-        ...(size ? { size } : {}),
+        // ...(size ? { size } : {}),
       });
       if (image.base64) {
         res.json({ base64: image.base64 });

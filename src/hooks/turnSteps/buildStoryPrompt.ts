@@ -193,7 +193,7 @@ ${characterRoleString}
 （⚠️揭盲锁：进度未满100%绝不可描写探索完毕）
 
 上一场视觉: "${lastVisuals}"
-当前故事摘要: "${currentSummary}"
+聊天记录之前的提要: "${currentSummary}"
 
 === 🧠 THE "HUMAN" BEHAVIORAL ENGINE (泛用人类心理学引擎) ===[1. 生理本能优先原则 (Biological Supremacy)]
 - 降维感知：第一反应永远是"生理感官"（温度、气味、痛觉等），而非逻辑分析。

@@ -127,6 +127,7 @@ export function stepMoveResolve(ctx: PipelineContext): void {
   // ─── move 位置解析 ─────
   if (action !== 'move') {
     ctx.moveTarget = null;
+    ctx.isSuccess = ctx.tier > 0;
     return;
   }
 
