@@ -132,7 +132,7 @@ export function stepD20Roll(ctx: PipelineContext): void {
   // 普通情况：查 tensionConfig 表
   // use_item + escape 道具在 060 会覆写为 combat，这里提前用 combat 路由
   let routeAction = action;
-  if (action === 'use_item' && ctx.intent.itemName && tension >= 2) {
+  if (action === 'use_item' && ctx.intent.itemId && tension >= 2) {
     routeAction = 'combat';
   }
   const route = getRoute(tension, routeAction);

@@ -9,7 +9,6 @@ import { SUMMARY_THRESHOLD, KEEP_RECENT_TURNS, INVENTORY_CAPACITY, BGM_LIST, bos
 import type { QuestStage, InventoryItem, Rarity } from '../types/game';
 
 import {
-  buildIntentContext,
   maybeEscalateToSeekQuest, runDirector, advanceQuestChain,
   applyDebugOverrides, applyNarrativeOverrides, buildStateUpdate, applyDebugDirectWrites,
   buildNotifications,
@@ -146,29 +145,8 @@ export function useChatLogic() {
       }
 
       // ── Step 1: Intent Extraction ──
-      const intentCtx = buildIntentContext(state);
       const visionContext = buildVisionContext(state);
-
-      const intent = await extractIntent(
-        userInput,
-        state.currentNodeId!,
-        state.currentHouseId,
-        intentCtx.visionContext,
-        intentCtx.connectedNodesInfo,
-        intentCtx.visibleHousesInfo,
-        state.currentObjective?.description || null,
-        intentCtx.recentConversation,
-        state.language,
-        state.pacingState.tensionLevel,
-        intentCtx.lastIntent,
-        intentCtx.transitInfo
-      );
-
-      // ── Step 1.5a: 特殊 targetId 归一化 ──
-      // "outdoors" 是 AI 返回的语义别名，归一化为 null，pipeline 自然走 exit-building
-      if (intent.targetId === 'outdoors') {
-        intent.targetId = null;
-      }
+      const intent = await extractIntent(userInput, state);
 
       if (intent.targetId === 'current_objective' && state.currentObjective && state.worldData) {
         const pathResult = resolveObjectivePathfinding(
@@ -301,11 +279,11 @@ export function useChatLogic() {
       // ── Step 3.5: Quest chain post-pipeline logic ──
       // Quest item usage: use_item with quest item matching current stage requiredItems
       // Boss 战中禁止使用任务道具：视为自杀发呆，不消耗道具
-      if (intent.intent === 'use_item' && intent.itemName && state.questChain) {
+      if (intent.intent === 'use_item' && intent.itemId && state.questChain) {
         const currentStage = state.questChain[state.currentQuestStageIndex];
         if (currentStage && !currentStage.completed) {
           const matchedItem = currentStage.requiredItems.find(
-            ri => ri.id === intent.itemName || ri.name === intent.itemName
+            ri => ri.id === intent.itemId
           );
           if (matchedItem && resolution.newTensionLevel >= 2) {
             // Boss 战中使用任务道具 → 不消耗，视为发呆被打
@@ -486,7 +464,7 @@ export function useChatLogic() {
 
       // ── Step 7.5: Quest stage completion check ──
       let questNarratorText: string | null = null;
-      if (intent.intent === 'use_item' && intent.itemName && state.questChain) {
+      if (intent.intent === 'use_item' && intent.itemId && state.questChain) {
         const stageIdx = state.currentQuestStageIndex;
         const currentStage = state.questChain[stageIdx];
         if (currentStage && !currentStage.completed) {

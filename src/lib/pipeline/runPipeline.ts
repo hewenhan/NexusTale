@@ -44,7 +44,7 @@ function buildSnapshot(state: GameState, intent: IntentResult): PipelineSnapshot
     inventory: state.inventory.map(i => ({ ...i })),
     intent: intent.intent,
     targetId: intent.targetId,
-    itemName: intent.itemName,
+    itemId: intent.itemId,
   };
 }
 
@@ -59,7 +59,7 @@ function buildPostSnapshot(ctx: PipelineContext): PipelineSnapshot {
     inventory: ctx.newInventory.map(i => ({ ...i })),
     intent: ctx.intent.intent,
     targetId: ctx.intent.targetId,
-    itemName: ctx.intent.itemName,
+    itemId: ctx.intent.itemId,
     tier: ctx.tier as PipelineSnapshot['tier'],
     roll: ctx.effectiveRoll,
     isSuccess: ctx.isSuccess,

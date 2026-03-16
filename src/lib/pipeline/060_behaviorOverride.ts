@@ -11,26 +11,15 @@ import type { PipelineContext } from './types';
 import { rollToTier } from './040_d20Roll';
 import { TENSION_ROUTE } from '../tensionConfig';
 
-/** 剥掉【】（）() 以及 rarity 标签，只留核心名称用于模糊比较 */
-function stripDecorators(s: string): string {
-  return s.replace(/[【】\[\]（）()]/g, '').replace(/\s*(Common|Uncommon|Rare|Epic|Legendary)\s*/gi, '').trim();
-}
-
 export function stepBehaviorOverride(ctx: PipelineContext): void {
   const { state, intent } = ctx;
   const tension = state.pacingState.tensionLevel;
 
   // ── 退敌道具：use_item + escape type + 危机 → 视为 combat ──
-  if (intent.intent === 'use_item' && intent.itemName && tension >= 2) {
+  if (intent.intent === 'use_item' && intent.itemId && tension >= 2) {
     const escapeItems = state.inventory.filter(i => i.type === 'escape');
-    const stripped = stripDecorators(intent.itemName);
-    console.log('[060] 退敌道具匹配', { intentRaw: intent.itemName, stripped, escapeItems: escapeItems.map(i => i.name) });
-    const escapeItem = escapeItems.find(i => i.name === intent.itemName)
-      || escapeItems.find(i => stripDecorators(i.name) === stripped)
-      || escapeItems.find(i => {
-        const sn = stripDecorators(i.name);
-        return sn.includes(stripped) || stripped.includes(sn);
-      });
+    console.log('[060] 退敌道具匹配', { itemId: intent.itemId, escapeItems: escapeItems.map(i => `${i.id}(${i.name})`) });
+    const escapeItem = escapeItems.find(i => i.id === intent.itemId);
     console.log('[060] 匹配结果:', escapeItem ? escapeItem.name : 'null');
     if (escapeItem) {
       const combatRoute = TENSION_ROUTE[tension]?.['combat'];

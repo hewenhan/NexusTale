@@ -57,7 +57,7 @@ export interface PipelineSnapshot {
   // 意图 & 判定信息
   intent: IntentType;
   targetId: string | null;
-  itemName?: string;
+  itemId?: string;
   tier?: RollTier;
   roll?: number;
   isSuccess?: boolean;

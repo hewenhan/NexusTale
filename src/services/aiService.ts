@@ -2,6 +2,7 @@ import { ai, TEXT_MODEL, PRO_MODEL, PRO_IMAGE_MODEL, IMAGE_MODEL, LITE_MODEL } f
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import type { IntentResult, WorldData, CharacterProfile, NodeData, GameState, InventoryItem, Rarity, SafetyLevel } from '../types/game';
 import { normalizeConnections, EQUIPMENT_BUFF_TABLE } from '../types/game';
+import { fmtConnectedNodes, fmtVisibleHouses, fmtRecentConversation, getLastIntent, fmtTransitRules, fmtSurvivalInstinct, fmtInventory, fmtCombatInstinct } from './intentHelpers';
 
 /**
  * 宏观寻路：BFS 找到从当前位置到目标的下一步微操。
@@ -655,95 +656,80 @@ Return ONLY the narrator text, no JSON, no markdown.`;
 /**
  * Step 1 of the two-step pipeline: Intent Router.
  * Uses a fast model to classify the user's action into an intent category.
+ * Internally builds all context from GameState — no pre-processing needed.
  */
 export async function extractIntent(
   userInput: string,
-  currentNodeId: string,
-  currentHouseId: string | null,
-  visibleContext: string,
-  connectedNodesInfo: string,
-  visibleHousesInfo: string,
-  currentObjectiveDesc: string | null,
-  recentConversation: string,
-  language: 'zh' | 'en' = 'zh',
-  tensionLevel: number = 0,
-  lastIntent: string | null = null,
-  transitInfo: { fromName: string; toName: string; progress: number } | null = null
+  state: GameState,
 ): Promise<IntentResult> {
-  // BUG2: 求生本能（Survival Instinct）强制法则
-  const survivalInstinctRule = tensionLevel >= 2
-    ? `\n\n【求生本能 (Survival Instinct) - 绝对强制法则】：
-当前紧张度 = ${tensionLevel}（${tensionLevel >= 3 ? '极度危险' : '危险'}状态）！上一次意图：${lastIntent || '无'}。
-在 Tension >= 2 的危险状态下，玩家任何带有情绪宣泄、恐慌、反抗、惊叫、咒骂、呐喊的文本（如"卧槽！"、"你这怪物别碰我！"、"啊啊啊"、"救命"、"滚开"等），哪怕没有明确的动作动词，都必须被归类为 "combat"（挣扎求生）。
-只有当玩家极其明确地表示放弃抵抗（如"我放弃了"、"我坐下等死"、"我不动了"、"随便吧"）时，才能判定为 "idle"。
-任何模糊的、情绪化的、带有求生本能的表达 → 强制归类为 "combat"。`
-    : '';
+  const lastIntent = getLastIntent(state);
 
-  // 1. 动态隔离旅途规则 (彻底消除幽灵指令干扰)
-// 1. 动态隔离旅途规则 (彻底消除幽灵指令干扰)
-const transitRules = transitInfo
-    ? `
-**TRANSIT STATE (ACTIVE):**
-- Traveling from [${transitInfo.fromName}] to [${transitInfo.toName}], Progress: ${transitInfo.progress}%.
-- **DIRECTION RULE**: If the player explicitly wants to retreat, turn back, or abort (e.g., "回去", "掉头", "退回出发地"), set direction="back". For normal chatting, exploring, or continuing the journey, set direction="forward".`
-    : `\n**TRANSIT STATE:** INACTIVE (Ignore direction rules, set direction to null).`;
+  const prompt = `你是一个严格的文本冒险游戏引擎的核心逻辑路由器。你唯一的工作是基于当前状态、空间上下文和对话历史，对玩家的真实意图进行分类
 
-  // 2. 终极 Prompt 组装 (Architectural Router Prompt)
-  const prompt = `You are the core logic router of a strict text adventure game engine. Your ONLY job is to classify the player's true intent based on the Current State, Spatial Context, and Conversation History.
+**当前状态:**
+- 当前位置: 节点 "${state.currentNodeId!}", 室内 "${state.currentHouseId || 'outdoors'}"
+- 相连节点: ${fmtConnectedNodes(state)}
+- 可见室内: ${fmtVisibleHouses(state)}
+- 当前目标: ${state.currentObjective?.description || '无'}
+- 可使用物品: ${fmtInventory(state)}
 
-**CURRENT STATE:**
-- Current Location: Node "${currentNodeId}", House "${currentHouseId || 'outdoors'}"
-- Connected Nodes: ${connectedNodesInfo || 'None'}
-- Visible Houses (in current node): ${visibleHousesInfo || 'None'}
-- Current Objective: ${currentObjectiveDesc || 'None'}
-${transitRules}
+${fmtTransitRules(state)}
 
-**RECENT CONVERSATION (CRITICAL CONTEXT):**
-${recentConversation || 'No prior conversation.'}
-${survivalInstinctRule}
+**近期对话 (关键上下文):**
+${fmtRecentConversation(state)}
+${fmtSurvivalInstinct(state)}
 
-**INTENT RESOLUTION PIPELINE (STRICT WATERFALL RULES):**
-You MUST evaluate the player's input through this top-down pipeline. Match the FIRST applicable rule and IGNORE the rest.
+**意图解析流水线 (严格的瀑布流规则):**
+你必须按照自上而下的流水线评估玩家的输入匹配第一个适用的规则并忽略其余规则
 
-**STEP 1: MICRO-SPACE EXIT (The "Get me out of here" Rule)**
-- **Condition**: Current House is NOT 'outdoors' AND player expresses physical spatial exit (e.g., "出去吧", "离开这", "出屋", "let's go out").
-- **Intent**: "move"
-- **TargetId**: "outdoors"
-- *Architect Note*: Even if they just finished a quest objective inside, the physical act of stepping outside the enclosure takes absolute priority. DO NOT route to seek_quest.
+**step 1: 微观空间退出 ("带我离开这里"规则)**
+- **条件**: 当前室内不是 'outdoors' 并且玩家表达要离开当前室内
+- **intent**: "move"
+- **targetId**: null
 
-**STEP 2: EXPLICIT DESTINATION (The "Map Navigation" Rule)**
-- **Condition**: Player explicitly names a specific target present in Connected Nodes or Visible Houses (e.g., "去浅层孢子林", "进装甲车").
-- **Intent**: "move"
-- **TargetId**: <The exact Node ID or House ID>
+【重要】相连节点和可见室内可为可抵达目标
+**step 1.5: 空间移动**
+- **条件**: 玩家表示前往可抵达目标
+- **intent**: "move"
+- **targetId**: <目标 ID>
 
-**STEP 3: MACRO PROGRESSION (The "Journey/Objective" Rule)**
-- **Condition**: Player explicitly mentions heading to the Current Objective, OR uses vague journey verbs (e.g., "出发", "继续赶路", "let's hit the road") while already 'outdoors' or ready to move on.
-- **Intent**: "seek_quest"
-- **TargetId**: "current_objective" (The backend engine handles the pathfinding).
-**STEP 4.5: ITEM USAGE (The "Use Item" Rule)**
-- **Condition**: Player explicitly attempts to use, activate, or deploy an item from their backpack (e.g., "使用XXX", "用这个道具", "activate the shield", "吃药").
-- **Intent**: "use_item"
-- **TargetId**: null
-- **itemName**: The name of the item player wants to use.
-**STEP 4: PHYSICAL INTERACTION & EXPLORATION (The "Hands-on" Rule)**
-- **Condition**: Player acts on the immediate environment (e.g., "搜刮尸体", "踹门", "检查箱子") WITHOUT intending to travel away.
-- **Intent**: "explore"
-- **TargetId**: null
+**step 2.5: 玩家找事儿干**
+- **条件**: 如果玩家看起来极度无聊
+- **intent**: "seek_quest"
+- **targetId**: null
 
-**STEP 6: ROLEPLAY & STANDBY (The "Idle" Rule)**
-- **Condition**: Pure conversation, emotional reactions, resting, or observations without physical progression.
-- **Intent**: "idle" (or "combat" / "suicidal_idle" if heavily applicable)
-- **TargetId**: null
+${fmtCombatInstinct(state)}
 
-=== REAL TASK ===
-Player Input: "${userInput}"
+**step 2: 宏观推进 ("旅程/目标"规则)**
+- **条件**: 结合上下文玩家表达出有前往当前去完成当前目标
+- **intent**: "seek_quest"
+- **targetId**: "current_objective"（后端引擎会处理寻路）
 
-Output strictly in this JSON schema. Return ONLY JSON, no markdown formatting:
+**step 4.5: 物品使用 ("使用物品"规则)**
+- **条件**: 玩家明确表示使用某个物品，并且该物品在当前可用物品列表中
+- **intent**: "use_item"
+- **targetId**: null
+- **itemId**: <物品 ID>
+
+**step 4: 物理交互与探索 ("动手"规则)**
+- **条件**: 玩家在这里找东西，或者表达出想要与环境进行物理交互（例如“检查”、“搜索”、“打开”、“进入”等），又没有明确的目标位置
+- **intent**: "explore"
+- **targetId**: null
+
+**step 6: 角色扮演与待机 ("空闲"规则)**
+- **条件**: 纯粹的对话、情绪反应、休息或没有物理推进的观察
+- **intent**: "idle"（如果高度适用，则为 "combat" 或 "suicidal_idle"）
+- **targetId**: null
+
+=== 实际任务 ===
+玩家输入: "${userInput}"
+
+严格按照以下 JSON 格式输出。仅返回 JSON，不要带有 markdown 格式标记:
 {
-  "intent": "<ONE of the categories above>",
-  "targetId": "<EXACT ID (e.g., 'n2'), 'current_objective' if seek_quest, 'outdoors' if exiting, or null>",
-  "direction": "<'forward', 'back', or null>",
-  "itemName": "<Name of item to use, or null if not use_item intent>"
+  "intent": "<上述类别之一>",
+  "targetId": "<确切的 ID>",
+  "direction": "<'forward', 'back', 或 null>",
+  "itemId": "<确切的 ID，如果意图不是 use_item 则填 null>"
 }`;
 
   const result = await ai.models.generateContent({
@@ -755,39 +741,30 @@ Output strictly in this JSON schema. Return ONLY JSON, no markdown formatting:
   const text = result.text;
   if (!text) return { intent: 'idle', targetId: null };
 
+  // 多级 JSON 解析：完整清洗 → 正则提取首个 {} → 放弃
+  let parsed: any = null;
   try {
-    const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    const parsed = JSON.parse(cleaned);
-    const validIntents = ['idle', 'explore', 'combat', 'suicidal_idle', 'move', 'seek_quest', 'use_item'];
-    if (validIntents.includes(parsed.intent)) {
-      const direction = parsed.direction === 'back' ? 'back' as const : parsed.direction === 'forward' ? 'forward' as const : undefined;
-      return { intent: parsed.intent, targetId: parsed.targetId || null, direction, itemName: parsed.itemName || undefined };
-    }
-  } catch (e) {
-    console.error("Intent extraction parse error, attempting regex fallback", e);
-    // Regex fallback: extract first {...} block
+    parsed = JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
+  } catch {
     const braceMatch = text.match(/\{[^}]*\}/);
     if (braceMatch) {
-      try {
-        const fallbackParsed = JSON.parse(braceMatch[0]);
-        const validIntents = ['idle', 'explore', 'combat', 'suicidal_idle', 'move', 'seek_quest', 'use_item'];
-        if (validIntents.includes(fallbackParsed.intent)) {
-          const direction = fallbackParsed.direction === 'back' ? 'back' as const : fallbackParsed.direction === 'forward' ? 'forward' as const : undefined;
-          return { intent: fallbackParsed.intent, targetId: fallbackParsed.targetId || null, direction, itemName: fallbackParsed.itemName || undefined };
-        }
-      } catch (e2) {
-        console.error("Regex fallback also failed", e2);
-      }
-    }
-    // Last resort: return lastIntent if available
-    if (lastIntent) {
-      const validIntents = ['idle', 'explore', 'combat', 'suicidal_idle', 'move', 'seek_quest', 'use_item'];
-      if (validIntents.includes(lastIntent)) {
-        console.warn("Using lastIntent as fallback:", lastIntent);
-        return { intent: lastIntent as IntentResult['intent'], targetId: null };
-      }
+      try { parsed = JSON.parse(braceMatch[0]); } catch { /* give up */ }
     }
   }
+
+  const validIntents = ['idle', 'explore', 'combat', 'suicidal_idle', 'move', 'seek_quest', 'use_item'];
+
+  if (parsed && validIntents.includes(parsed.intent)) {
+    const direction = parsed.direction === 'back' ? 'back' as const : parsed.direction === 'forward' ? 'forward' as const : undefined;
+    return { intent: parsed.intent, targetId: parsed.targetId || null, direction, itemId: parsed.itemId || undefined };
+  }
+
+  // 解析全败，用上轮意图兜底
+  if (lastIntent && validIntents.includes(lastIntent)) {
+    console.warn("Intent parse failed, using lastIntent fallback:", lastIntent);
+    return { intent: lastIntent as IntentResult['intent'], targetId: null };
+  }
+
   return { intent: 'idle', targetId: null };
 }
 

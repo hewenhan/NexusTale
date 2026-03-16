@@ -152,7 +152,7 @@ export interface IntentResult {
   intent: IntentType;
   targetId: string | null;
   direction?: 'forward' | 'back';
-  itemName?: string; // use_item 意图时，玩家试图使用的道具名
+  itemId?: string; // use_item 意图时，玩家试图使用的道具 ID
 }
 
 // --- Debug & Profile ---
