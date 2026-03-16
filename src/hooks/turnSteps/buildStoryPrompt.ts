@@ -4,6 +4,7 @@
 
 import { findNode, findHouse, getVisibleHouses, getHpDescription, applyProgressAndReveals } from '../../lib/pipeline';
 import { KEEP_RECENT_TURNS, INVENTORY_CAPACITY, type GameState } from '../../types/game';
+import { getModelName } from '../../types/modelConfig';
 import type { PipelineResult } from '../../lib/pipeline';
 import { getStartIndexForRecentTurns, getLastSceneVisuals } from './helpers';
 
@@ -221,7 +222,7 @@ ${itemDropInstruction || ''}
 
 OUTPUT FORMAT (JSON ONLY):
 {
-  "image_prompt": "First-person view for image generation...",
+  "image_prompt": "Provide a scene image prompt for ${getModelName('image')} model. First-person view, describe the visual scene...",
   "text_sequence":[
     "5-7段数组。严格执行 [5. 剧本排版语法协议]。",
     "节奏锯齿感：短段落(<10字)与中段落交替。",

@@ -1,4 +1,4 @@
-import { ai, TEXT_MODEL, PRO_MODEL, PRO_IMAGE_MODEL, IMAGE_MODEL, LITE_MODEL, SAFETY_SETTINGS_OFF, NOVELTY_CONFIG } from '../lib/gemini';
+import * as modelService from './modelService';
 import type { IntentResult, WorldData, CharacterProfile, NodeData, GameState, InventoryItem, Rarity, SafetyLevel } from '../types/game';
 import { normalizeConnections, EQUIPMENT_BUFF_TABLE } from '../types/game';
 import { fmtConnectedNodes, fmtVisibleHouses, fmtRecentConversation, getLastIntent, fmtTransitRules, fmtSurvivalInstinct, fmtInventory, fmtCombatInstinct } from './intentHelpers';
@@ -86,12 +86,7 @@ export async function generateSummary(currentSummary: string, messagesToSummariz
   `;
 
   try {
-    const summaryResult = await ai.models.generateContent({
-      model: TEXT_MODEL,
-      contents: [{ role: 'user', parts: [{ text: summaryPrompt }] }],
-      config: { safetySettings: SAFETY_SETTINGS_OFF }
-    });
-    return summaryResult.text;
+    return await modelService.generateText('text', summaryPrompt);
   } catch (e) {
     console.error("Summary generation failed", e);
     return undefined;
@@ -99,17 +94,7 @@ export async function generateSummary(currentSummary: string, messagesToSummariz
 }
 
 export async function generateTurn(fullPrompt: string): Promise<any> {
-  const textResult = await ai.models.generateContent({
-    model: TEXT_MODEL,
-    contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
-    config: {
-      responseMimeType: 'application/json',
-      ...NOVELTY_CONFIG,
-      safetySettings: SAFETY_SETTINGS_OFF,
-    }
-  });
-
-  const responseText = textResult.text;
+  const responseText = await modelService.generateText('text', fullPrompt, { jsonMode: true, novelty: true });
   if (!responseText) throw new Error("No text response");
   
   let responseJson;
@@ -162,29 +147,9 @@ const traitPrefix = physicalTraitsLock
     `.trim();
 
   try {
-    const imageResult = await ai.models.generateContent({
-      model: IMAGE_MODEL,
-      contents: [{ role: 'user', parts: [{ text: finalPrompt }] }],
-      config: {
-        imageConfig: {
-          aspectRatio: "9:16",
-          imageSize: "512px"
-        },
-        safetySettings: SAFETY_SETTINGS_OFF,
-      }
-    });
-
-    const finishReason = imageResult.candidates?.[0]?.finishReason;
-    if (finishReason === 'PROHIBITED_CONTENT') {
-      console.error('Image generation blocked: PROHIBITED_CONTENT', imageResult.candidates?.[0]?.finishMessage);
-      return IMAGE_PROHIBITED_SENTINEL;
-    }
-
-    for (const part of imageResult.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        return part.inlineData.data;
-      }
-    }
+    const result = await modelService.generateImage('image', finalPrompt, { aspectRatio: '9:16', size: '512px' });
+    if (result.prohibited) return IMAGE_PROHIBITED_SENTINEL;
+    if (result.base64) return result.base64;
   } catch (e) {
     console.error("Image generation failed", e);
   }
@@ -295,13 +260,7 @@ Return ONLY a JSON object with this EXACT structure (no markdown):
   }
 }`;
 
-  const result = await ai.models.generateContent({
-    model: PRO_MODEL,
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    config: { responseMimeType: 'application/json', safetySettings: SAFETY_SETTINGS_OFF }
-  });
-
-  const text = result.text;
+  const text = await modelService.generateText('pro', prompt, { jsonMode: true });
   if (!text) throw new Error("Failed to initialize world");
 
   const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -352,13 +311,7 @@ export async function fetchCustomLoadingMessages(worldview: string, language: 'z
     ${langInstruction}
   `;
   
-  const result = await ai.models.generateContent({
-    model: TEXT_MODEL,
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    config: { safetySettings: SAFETY_SETTINGS_OFF, responseMimeType: 'application/json', ...NOVELTY_CONFIG }
-  });
-
-  const text = result.text;
+  const text = await modelService.generateText('text', prompt, { jsonMode: true, novelty: true });
   if (text) {
     const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
     const messages = JSON.parse(jsonStr);
@@ -417,13 +370,7 @@ Return ONLY a JSON object with this structure (no markdown):
   }
 }`;
 
-  const result = await ai.models.generateContent({
-    model: TEXT_MODEL,
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    config: { responseMimeType: 'application/json', safetySettings: SAFETY_SETTINGS_OFF, ...NOVELTY_CONFIG }
-  });
-
-  const text = result.text;
+  const text = await modelService.generateText('text', prompt, { jsonMode: true, novelty: true });
   if (!text) throw new Error('Failed to generate equipment presets');
 
   const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -532,13 +479,7 @@ Return ONLY a JSON object (no markdown):
   ]
 }`;
 
-  const result = await ai.models.generateContent({
-    model: TEXT_MODEL,
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    config: { responseMimeType: 'application/json', safetySettings: SAFETY_SETTINGS_OFF, ...NOVELTY_CONFIG }
-  });
-
-  const text = result.text;
+  const text = await modelService.generateText('text', prompt, { jsonMode: true, novelty: true });
   if (!text) throw new Error('Failed to generate quest chain');
 
   const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -585,12 +526,8 @@ ${langInstruction}
 Return ONLY the narrator text, no JSON, no markdown.`;
 
   try {
-    const result = await ai.models.generateContent({
-      model: TEXT_MODEL,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: { safetySettings: SAFETY_SETTINGS_OFF, ...NOVELTY_CONFIG }
-    });
-    return result.text?.trim() || '任务链已完成。新的冒险即将开始。';
+    const text = await modelService.generateText('text', prompt, { novelty: true });
+    return text?.trim() || '任务链已完成。新的冒险即将开始。';
   } catch (e) {
     console.error('Quest completion narration failed:', e);
     return '任务链已完成。新的冒险即将开始。';
@@ -676,13 +613,7 @@ ${fmtCombatInstinct(state)}
   "itemId": "<确切的 ID，如果意图不是 use_item 则填 null>"
 }`;
 
-  const result = await ai.models.generateContent({
-    model: LITE_MODEL,
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    config: { responseMimeType: 'application/json', safetySettings: SAFETY_SETTINGS_OFF }
-  });
-
-  const text = result.text;
+  const text = await modelService.generateText('lite', prompt, { jsonMode: true });
   if (!text) return { intent: 'idle', targetId: null };
 
   // 多级 JSON 解析：完整清洗 → 正则提取首个 {} → 放弃
@@ -745,23 +676,8 @@ Art Style & Rendering Instructions:
 4. VIEWPOINT & VIBE: Bird's-eye view, atmospheric, immersive. Designed as a functional UI map screen for a sandbox RPG. Include stylized map pins/markers for locations.${styleBlock}`;
 
   try {
-    const imageResult = await ai.models.generateContent({
-      model: PRO_IMAGE_MODEL,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        imageConfig: {
-          aspectRatio: "16:9",
-          imageSize: "2K"
-        },
-        safetySettings: SAFETY_SETTINGS_OFF,
-      }
-    });
-
-    for (const part of imageResult.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        return part.inlineData.data;
-      }
-    }
+    const result = await modelService.generateImage('map', prompt, { aspectRatio: '16:9', size: '2K' });
+    if (result.base64) return result.base64;
   } catch (e) {
     console.error("Map image generation failed", e);
   }
@@ -785,23 +701,8 @@ World Setting: ${worldview}
 Style: Semi-realistic anime/illustration style. Clean lighting, sharp details. The character should look directly at the camera. Background should be simple and non-distracting.${styleBlock}`;
 
   try {
-    const imageResult = await ai.models.generateContent({
-      model: IMAGE_MODEL,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        imageConfig: {
-          aspectRatio: "1:1",
-          imageSize: "512px"
-        },
-        safetySettings: SAFETY_SETTINGS_OFF,
-      }
-    });
-
-    for (const part of imageResult.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        return part.inlineData.data;
-      }
-    }
+    const result = await modelService.generateImage('portrait', prompt, { aspectRatio: '1:1', size: '512px' });
+    if (result.base64) return result.base64;
   } catch (e) {
     console.error("Character portrait generation failed", e);
   }

@@ -2,7 +2,9 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env' });
+dotenv.config({ path: '.env.local', override: true });
 import { createServer } from "http";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -142,6 +144,45 @@ async function startServer() {
   });
 
   // --- End OAuth Routes ---
+
+  // --- Grok Image Proxy ---
+  // xAI SDK 是 Node.js 专用，浏览器端直接调用会被 CORS 拦截
+  // 通过后端代理，用 SDK 生成图片后返回 base64 给前端
+  app.post('/api/grok/image', async (req, res) => {
+    const { prompt, model, aspectRatio, size } = req.body;
+    if (!prompt || !model) {
+      return res.status(400).json({ error: 'Missing prompt or model' });
+    }
+    const apiKey = process.env.GROK_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'GROK_API_KEY not configured' });
+    }
+    try {
+      const { createXai } = await import('@ai-sdk/xai');
+      const { generateImage } = await import('ai');
+      const xai = createXai({ apiKey });
+      const { image } = await generateImage({
+        model: xai.image(model),
+        prompt,
+        ...(aspectRatio ? { aspectRatio } : {}),
+        ...(size ? { size } : {}),
+      });
+      if (image.base64) {
+        res.json({ base64: image.base64 });
+      } else {
+        res.json({ error: 'No image generated' });
+      }
+    } catch (e: any) {
+      const msg = (e?.message || '').toLowerCase();
+      if (msg.includes('safety') || msg.includes('policy') || msg.includes('content')) {
+        return res.json({ prohibited: true });
+      }
+      console.error('Grok image proxy error:', e);
+      res.status(500).json({ error: e?.message || 'Grok image generation failed' });
+    }
+  });
+
+  // --- End Grok Image Proxy ---
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

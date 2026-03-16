@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { useNavigate } from 'react-router-dom';
-import { ai, NOVELTY_CONFIG, PRO_MODEL, SAFETY_SETTINGS_OFF } from '../lib/gemini';
+import { generateText } from '../services/modelService';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader2 } from 'lucide-react';
 import { CharacterProfile, Gender, Orientation, DEFAULT_LOADING_MESSAGES, DEFAULT_PROFILE, INIT_PLAYER_PROFILE, INIT_COMPANION_PROFILE } from '../types/game';
@@ -145,13 +145,7 @@ export default function Setup() {
         No markdown formatting.
       `;
 
-      const result = await ai.models.generateContent({
-        model: PRO_MODEL,
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: { safetySettings: SAFETY_SETTINGS_OFF, responseMimeType: 'application/json', ...NOVELTY_CONFIG }
-      });
-
-      const text = result.text;
+      const text = await generateText('pro', prompt, { jsonMode: true, novelty: true });
       if (!text) throw new Error("No text generated");
       const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
       const parsed = JSON.parse(jsonStr);
