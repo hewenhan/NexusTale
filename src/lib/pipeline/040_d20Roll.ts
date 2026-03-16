@@ -93,6 +93,8 @@ export function stepD20Roll(ctx: PipelineContext): void {
     // buff 是 20-80 的百分比，转化为 D20 加值：buff/100 * 5 → 1~4 点
     const rollBonus = Math.max(1, Math.round(ctx.weaponBuff / 100 * 5));
     ctx.effectiveRoll = Math.min(20, ctx.effectiveRoll + rollBonus);
+    ctx.weaponName = bestWeapon!.name;
+    ctx.weaponRollBonus = rollBonus;
     weaponDetail = ` | 武器[${bestWeapon!.name}]buff=${ctx.weaponBuff}% → +${rollBonus}→${ctx.effectiveRoll}`;
   }
 

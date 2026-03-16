@@ -122,6 +122,8 @@ export interface PipelineContext {
   newInventory: InventoryItem[];
   isSuccess: boolean;
   weaponBuff: number;
+  weaponName: string | null;
+  weaponRollBonus: number;
 
   // ── 调试信息 ──
   debugFormula: string;
@@ -154,6 +156,8 @@ export interface PipelineResult {
   formulaBreakdown: string;
   tensionChanged: boolean;
   armorReduction: number;
+  weaponName: string | null;
+  weaponRollBonus: number;
   /** move 解析结果 */
   moveTarget: import('./types').MoveTarget | null;
   /** 管线产出的结构化事件流 */

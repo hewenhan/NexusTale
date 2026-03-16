@@ -101,6 +101,8 @@ function createContext(state: GameState, intent: IntentResult, d20Roll: number):
     newInventory: state.inventory.map(item => ({ ...item })),
     isSuccess: false,
     weaponBuff: 0,
+    weaponName: null,
+    weaponRollBonus: 0,
     debugFormula: '',
   };
 }
@@ -127,6 +129,8 @@ function extractResult(ctx: PipelineContext, snapPre: PipelineSnapshot): Pipelin
     formulaBreakdown: ctx.formulaBreakdown,
     tensionChanged: ctx.tensionChanged,
     armorReduction: ctx.armorReduction,
+    weaponName: ctx.weaponName,
+    weaponRollBonus: ctx.weaponRollBonus,
     moveTarget: ctx.moveTarget,
     events: ctx.events,
     snapPre,

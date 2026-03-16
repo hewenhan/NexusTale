@@ -110,6 +110,12 @@ export function assembleNarrative(input: NarrativeAssemblerInput): string {
   // ── 优先级 7：常规叙事（基于 tension + action + tier） ──
   const mainNarrative = buildMainNarrative(result, intent, state, input.moveTarget, tier, roll, tension);
 
+  // ── 附加：武器加成描述 ──
+  let weaponSuffix = '';
+  if (result.weaponName && result.weaponRollBonus > 0 && tension >= 2) {
+    weaponSuffix = `\n（武器【${result.weaponName}】在战斗中发挥了作用，为检定提供了+${result.weaponRollBonus}点加成。请在叙事中自然地描写武器的战斗表现。）`;
+  }
+
   // ── 附加：防具减伤描述 ──
   let armorSuffix = '';
   const hpEvt = findEvent(events, 'hp_change');
@@ -117,7 +123,7 @@ export function assembleNarrative(input: NarrativeAssemblerInput): string {
     armorSuffix = `\n（防具【${hpEvt.armorName}】发挥了作用，减伤${hpEvt.armorReduction}%，实际受到的伤害比预期更低。请在叙事中描写减伤的细节。）`;
   }
 
-  return prependDeath(narrative, mainNarrative + armorSuffix);
+  return prependDeath(narrative, mainNarrative + weaponSuffix + armorSuffix);
 }
 
 // ─── 死亡前缀 ──
