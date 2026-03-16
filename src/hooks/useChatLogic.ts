@@ -318,7 +318,8 @@ export function useChatLogic() {
           && resolution.newNodeId !== state.currentNodeId) {
           // First arrival at quest target - anchor crisis based on safety
           const targetNode = state.worldData?.nodes.find(n => n.id === currentStage.targetNodeId);
-          if (targetNode) {
+          const targetHouse = targetNode?.houses.find(h => h.id === currentStage.targetHouseId);
+          if (targetHouse || (targetNode && targetHouse === undefined)) {
             const crisisTension = bossTensionFromSafety(targetNode.safetyLevel);
             if (crisisTension && crisisTension > resolution.newTensionLevel) {
               resolution.newTensionLevel = crisisTension;
