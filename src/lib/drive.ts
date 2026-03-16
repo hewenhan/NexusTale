@@ -72,9 +72,30 @@ export async function uploadImageToDrive(accessToken: string, base64Data: string
   }
 }
 
+const IMAGE_CACHE_NAME = 'drive-image-cache';
+
+async function getCachedBlob(fileName: string): Promise<Blob | null> {
+  try {
+    const cache = await caches.open(IMAGE_CACHE_NAME);
+    const resp = await cache.match(fileName);
+    return resp ? await resp.blob() : null;
+  } catch { return null; }
+}
+
+async function putCachedBlob(fileName: string, blob: Blob): Promise<void> {
+  try {
+    const cache = await caches.open(IMAGE_CACHE_NAME);
+    await cache.put(fileName, new Response(blob));
+  } catch { /* best-effort */ }
+}
+
 export async function getImageUrlByName(accessToken: string, fileName: string): Promise<string | null> {
   try {
-    // Search for file
+    // 1. Check browser cache first
+    const cached = await getCachedBlob(fileName);
+    if (cached) return URL.createObjectURL(cached);
+
+    // 2. Search Drive for file
     const q = `name = '${fileName}' and trashed = false`;
     const searchRes = await fetch(
       `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`,
@@ -86,8 +107,7 @@ export async function getImageUrlByName(accessToken: string, fileName: string): 
 
     const fileId = searchData.files[0].id;
 
-    // Download file content
-    // We need to fetch the blob with the auth token
+    // 3. Download file content
     const fileRes = await fetch(
       `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -99,6 +119,10 @@ export async function getImageUrlByName(accessToken: string, fileName: string): 
     }
 
     const blob = await fileRes.blob();
+
+    // 4. Cache for next time
+    await putCachedBlob(fileName, blob);
+
     return URL.createObjectURL(blob);
   } catch (e) {
     console.error("Failed to get image", e);

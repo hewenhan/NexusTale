@@ -289,7 +289,7 @@ export function useChatLogic() {
             // Boss 战中使用任务道具 → 不消耗，视为发呆被打
             narrativeInstruction = `【系统大失败 - 找死】：在危机中居然分心想使用【${matchedItem.name}】！玩家被狠狠重创！请描写玩家因为分心而被痛击的惨烈场面。`;
           } else if (matchedItem) {
-            const atTargetLocation = resolution.newNodeId === currentStage.targetNodeId;
+            const atTargetLocation = resolution.newNodeId === currentStage.targetNodeId && resolution.newHouseId === currentStage.targetHouseId;
             if (atTargetLocation) {
               // At target location → consume quest item
               resolution.newInventory = resolution.newInventory.filter(i => i.id !== matchedItem.id);
@@ -319,8 +319,9 @@ export function useChatLogic() {
           // First arrival at quest target - anchor crisis based on safety
           const targetNode = state.worldData?.nodes.find(n => n.id === currentStage.targetNodeId);
           const targetHouse = targetNode?.houses.find(h => h.id === currentStage.targetHouseId);
-          if (targetHouse || (targetNode && targetHouse === undefined)) {
-            const crisisTension = bossTensionFromSafety(targetNode.safetyLevel);
+          const atTargetLocation = resolution.newNodeId === currentStage.targetNodeId && resolution.newHouseId === currentStage.targetHouseId;
+          if (atTargetLocation) {
+            const crisisTension = bossTensionFromSafety(targetHouse?.safetyLevel ?? targetNode?.safetyLevel);
             if (crisisTension && crisisTension > resolution.newTensionLevel) {
               resolution.newTensionLevel = crisisTension;
               resolution.tensionChanged = true;

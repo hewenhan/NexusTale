@@ -221,8 +221,9 @@ OUTPUT FORMAT (JSON ONLY):
   "image_prompt": "First-person view for image generation...",
   "text_sequence":[
     "5-7段数组。纯对话和动作音效，无第一人称叙事。",
+    "【旁白】描述或者其它NPC对话要加前缀：【旁白】、【NPC-XXX】、【玩家-XXX】以示区分，【扮演对象】说话不需要加",
     "节奏锯齿感：短段落(<10字)与中段落交替。",
-    "最后一段必须是陈述句、感慨或动作，严禁出现问号结尾！"
+    "最后一段必须是陈述句、感慨或动作，严禁出现问号结尾！",
   ],
   "scene_visuals_update": "仅进入新地点时提供，否则为空字符串",
   "hp_description": "结合当前生命值，用一句简短的话描述玩家当前的物理感官或肌肉状态",
