@@ -1,5 +1,5 @@
 /**
- * 图片生成：prompt 增强 + generateImage + uploadToDrive
+ * 图片生成：根据 image_characters 动态注入角色外貌 + generateImage + uploadToDrive
  */
 
 import { generateImage, IMAGE_PROHIBITED_SENTINEL } from '../../services/aiService';
@@ -8,6 +8,8 @@ import type { GameState } from '../../types/game';
 
 export interface ImageGenDeps {
   imagePrompt: string | undefined;
+  /** LLM 输出的 image_characters: { "角色名": true } */
+  imageCharacters?: Record<string, boolean>;
   isAuthenticated: boolean;
   accessToken: string | null;
   state: GameState;
@@ -16,32 +18,36 @@ export interface ImageGenDeps {
 }
 
 export function launchImageGen(deps: ImageGenDeps): Promise<string | undefined> {
-  const { imagePrompt, isAuthenticated, accessToken, state, debugState } = deps;
+  const { imagePrompt, imageCharacters, isAuthenticated, accessToken, state, debugState } = deps;
 
   if (!imagePrompt || !isAuthenticated || !accessToken) {
     return Promise.resolve(undefined);
   }
 
-  // 注入角色外貌提词
-  const characterAppearance = state.companionProfile.appearancePrompt;
-  const enrichedImagePrompt = characterAppearance
-    ? `${imagePrompt}\n\nIMPORTANT - The companion character in this scene has the following fixed appearance: ${characterAppearance}`
-    : imagePrompt;
+  // 根据 image_characters 动态注入在场角色的外貌锁定
+  const chars = imageCharacters && typeof imageCharacters === 'object' ? imageCharacters : {};
+  const appearanceParts: string[] = [];
 
-  // 构建物理特征锁定字符串
-  const cp = state.companionProfile;
-  const physicalTraitsLock = [
-    cp.skinColor && `Skin: ${cp.skinColor}`,
-    cp.height && `Height: ${cp.height}`,
-    cp.weight && `Build: ${cp.weight}`,
-    cp.age && `Age: ${cp.age}`,
-    cp.hairStyle && `Hair Style: ${cp.hairStyle}`,
-    cp.hairColor && `Hair Color: ${cp.hairColor}`,
-  ].filter(Boolean).join(', ') || undefined;
+  const companionName = state.companionProfile.name;
+  if (companionName && chars[companionName] && state.companionProfile.appearancePrompt) {
+    appearanceParts.push(`[${companionName}] appearance: ${state.companionProfile.appearancePrompt}`);
+  }
+
+  const playerName = state.playerProfile.name;
+  if (playerName && chars[playerName] && state.playerProfile.appearancePrompt) {
+    appearanceParts.push(`[${playerName}] appearance: ${state.playerProfile.appearancePrompt}`);
+  }
+
+  const appearanceBlock = appearanceParts.length > 0
+    ? `\n\nCHARACTER APPEARANCE LOCK:\n${appearanceParts.join('\n')}`
+    : '';
+
+  const artStyle = state.artStylePrompt || 'cinematic realistic';
+  const finalPrompt = `${imagePrompt}${appearanceBlock}\n\nArt style: ${artStyle}`;
 
   return (async () => {
     try {
-      const base64Data = await generateImage(enrichedImagePrompt, state.artStylePrompt || undefined, physicalTraitsLock);
+      const base64Data = await generateImage(finalPrompt);
       if (base64Data === IMAGE_PROHIBITED_SENTINEL) {
         debugState.lastImageError = 'PROHIBITED_CONTENT';
         return IMAGE_PROHIBITED_SENTINEL;

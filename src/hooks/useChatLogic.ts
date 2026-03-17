@@ -432,7 +432,7 @@ export function useChatLogic() {
       });
 
       const responseJson = await generateTurn(fullPrompt);
-      const { image_prompt, text_sequence, scene_visuals_update, hp_description, encounter_tag, affection_change, get_item } = responseJson;
+      const { image_prompt, image_characters, text_sequence, scene_visuals_update, hp_description, encounter_tag, affection_change, get_item } = responseJson;
 
       // ── Step 7: Post-LLM state updates ──
       if (typeof affection_change === 'number' && affection_change !== 0) {
@@ -589,6 +589,7 @@ export function useChatLogic() {
       // ── Step 8: Image generation (async, non-blocking) ──
       const imagePromise = launchImageGen({
         imagePrompt: image_prompt,
+        imageCharacters: image_characters,
         isAuthenticated,
         accessToken,
         state,

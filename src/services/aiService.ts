@@ -139,19 +139,7 @@ export async function generateTurn(fullPrompt: string): Promise<any> {
 
 export const IMAGE_PROHIBITED_SENTINEL = '__PROHIBITED_CONTENT__';
 
-export async function generateImage(imagePrompt: string, artStylePrompt?: string, physicalTraitsLock?: string): Promise<string | undefined> {
-  // Prepend locked physical traits to ensure character consistency
-const traitPrefix = physicalTraitsLock
-    ? `### SUBJECT CHARACTER (The Companion - [COMPANION]) ###\nAppearance: ${physicalTraitsLock}\n\n`
-    : '';
-  const finalPrompt = `
-    ${traitPrefix}
-    ### SCENE DESCRIPTION ###
-    ${imagePrompt} (Note: Whenever the companion appears, use the reference [COMPANION])
-    ### MANDATORY ART STYLE ###
-    ${artStylePrompt}
-    `.trim();
-
+export async function generateImage(finalPrompt: string): Promise<string | undefined> {
   try {
     const result = await modelService.generateImage('image', finalPrompt, { aspectRatio: '9:16', size: '512px' });
     if (result.prohibited) return IMAGE_PROHIBITED_SENTINEL;
