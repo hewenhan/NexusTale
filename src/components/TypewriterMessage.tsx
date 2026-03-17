@@ -73,6 +73,14 @@ export const TypewriterMessage = memo(function TypewriterMessage({
     }
   }, []);
 
+  // 非动画模式（instant 或 animate=false）：mount 后立即触发 onComplete
+  useEffect(() => {
+    if (!shouldAnimate && onComplete) {
+      onComplete();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 打字完成时触发回调
   useEffect(() => {
     if (isComplete && !completeFiredRef.current) {
@@ -101,7 +109,8 @@ export const TypewriterMessage = memo(function TypewriterMessage({
 
     // 按阅读速度计算总时长：每秒 CHARS_PER_SECOND 个字
     const totalLen = text.length;
-    const baseDuration = durationMs ?? Math.max(800, (totalLen / CHARS_PER_SECOND) * 1000);
+    const speedFactor = speed === 'fast' ? 1 / 2 : 1;
+    const baseDuration = (durationMs ?? Math.max(800, (totalLen / CHARS_PER_SECOND) * 1000)) * speedFactor;
     const avgInterval = Math.max(5, baseDuration / totalLen);
 
     let currentLen = displayedLength;

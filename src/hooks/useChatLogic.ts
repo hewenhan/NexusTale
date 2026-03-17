@@ -76,7 +76,15 @@ export function useChatLogic() {
       return Promise.resolve();
     }
     return new Promise<void>(resolve => {
-      typewriterResolveRef.current = resolve;
+      const timeout = setTimeout(() => {
+        console.warn('[waitForTypewriter] timed out after 30s, auto-resolving');
+        typewriterResolveRef.current = null;
+        resolve();
+      }, 30_000);
+      typewriterResolveRef.current = () => {
+        clearTimeout(timeout);
+        resolve();
+      };
     });
   }, []);
 

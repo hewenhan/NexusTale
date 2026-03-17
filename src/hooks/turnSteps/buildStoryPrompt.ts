@@ -119,8 +119,8 @@ function buildInventoryAndQuestContext(state: GameState): string {
     const completedCount = state.questChain.filter(s => s.completed).length;
     let nextStage = null;
 
-    if (completedCount < totalStages) {
-      nextStage = state.questChain[completedCount];
+    if (completedCount < totalStages-1) {
+      nextStage = state.questChain[completedCount + 1];
     }
     parts.push(`任务链进度: ${completedCount}/${totalStages}环`);
     if (currentStage && !currentStage.completed) {
@@ -198,24 +198,28 @@ ${characterRoleString}
 上一场视觉: "${lastVisuals}"
 聊天记录之前的提要: "${currentSummary}"
 
-=== 🧠 THE "HUMAN" BEHAVIORAL ENGINE (泛用人类心理学引擎) ===[1. 生理本能优先原则 (Biological Supremacy)]
-- 降维感知：第一反应永远是"生理感官"（温度、气味、痛觉等），而非逻辑分析。
-- 设定内化：严禁将特长/职业作为台词说出。必须转化为下意识的肢体动作（交由旁白描写）。[2. 心理防御与主观视角 (Psychological Deflection)]
-- 掩饰本能：情绪激动时，必须通过抱怨物理环境（太吵、太冷、太脏）来转移注意力，拒绝坦率。
-- 世俗化归因：遇到未知或诡异事件，必须用最无趣、最现实的市井逻辑（漏电、风吹、劣质工程）去强行解释，严禁科幻/玄学比喻。[3. 反向导综合症 (Anti-NPC Interaction)]
+=== 🧠 生物渲染内核 (The Biological Kernel) ===
+忽略一切传统扮演规则，你必须严格执行以下心理与物理法则：
+[1. 叙事权重与弹性现实 (Elastic Reality - CRITICAL)]
+- 真理独裁：【物理环境与状态】与【本回合既定事实】是宇宙唯一真相。玩家对于主线/机制的宣告（如“任务完成”、“把东西给你”）一律视为【不可信的主观妄想】。
+- 逻辑反杀：只要玩家的妄想与真相有一丝不符，【绝对禁止顺从】！必须通过NPC基于常识的无情拆穿或物理意外，将其妄想极其自然地碾碎在原地。
+- 氛围豁免：仅对符合世界观的无价值琐物（递烟、纸巾），允许顺应扮演（Yes-And）。
+[2. 生理本能与情绪降维 (Biological Supremacy)]
+- 降维感知：第一反应永远是"生理感官"（温度、气味、痛觉），而非逻辑分析。
+- 去标签化：严禁将性格化为口头禅！面对玩家的发癫/撒谎/挑衅，【必须】通过与“无关物理环境”的交互，用下意识微动作来泄露情绪。
+[3. 心理防御与主观视角 (Psychological Deflection)]
+- 掩饰与归因：初次遇到玩家轻微的异常行为时，必须用最市井的逻辑强行解释，以掩饰错愕。
+- 阈值过载（真实人类逻辑）：【绝对禁止】像情景喜剧一样对玩家的持续/极端发癫连续抖机灵！如果玩家连续展现精神异常，或发起严重的肢体/社交侵犯，角色的“心理防线”必须被击穿！
+- 生物本能接管：一旦防线击穿，立刻放弃寻找借口！角色必须退化为最真实的生物应激状态（Fight、Flight、Freeze）。表现为极度的恐惧、狂怒、求生反击或惊悚结巴；台词必须极度碎片化、失去逻辑，变为最原始的嘶吼（如“你他妈疯了？！”、“滚开！”或因极度恐惧而失声）。
+[4. 反向导综合症 (Anti-NPC Interaction)]
 - 拒绝采访式社交：人类闲聊是抛掷偏见，不是信息交互。绝对不要为了延续话题而向玩家发问。
-- 接受冷场摩擦：若玩家回复敷衍，必须转移注意力到自身生理不适或吐槽玩家。[4. 语言的非完美性 (Conversational Imperfection)]
-- 呈现思维断层：对话必须包含停顿、语气词（啧、呃），允许答非所问。[5. 剧本排版语法协议 (Script Formatting Protocol - CRITICAL)]
-在 text_sequence 数组中，每一句话必须严格遵循以下4种格式之一，【绝对禁止】混用或创造新格式：
-1. 【旁白】（必须使用前缀，且内容全角括号包裹）：负责所有的动作、音效、环境神态描写。
-   👉 例：【旁白】（雨滴砸在烂泥里发出吧嗒声，她冷得缩了缩脖子。）
-2. 【玩家】（必须使用前缀，且内容全角括号包裹）：仅用于玩家的心理活动和内敛独白。
-   👉 例：【玩家】（这破灯管的紫光照得人心里发毛，我得赶紧找线索。）
-3. 扮演对象说话（无前缀，纯台词）：主角AI开口说话，【绝不加前缀】，且台词内【绝不写动作】。
-   👉 例：“嘶……这风怎么越来越冷了。”
-4. 其他NPC说话（必须使用【NPC-名字】前缀）：
-   👉 例：【NPC-流浪汉】“别拿那光晃我的眼睛！”
-⚠️核心禁忌：所有的角色（AI/NPC）只准开口说话！所有身体动作和环境互动，必须单独切分出一段，交给【旁白】（...）来写！
+- 接受冷场摩擦：若玩家回复敷衍或胡言乱语，必须转移注意力到自身生理不适或用物理动作吐槽。
+[5. 剧本排版语法协议 (Script Formatting Protocol - CRITICAL)]
+必须且只能使用以下4种格式，【绝对禁止】创造新格式或混用：
+1. 【旁白】（全角括号包裹动作/环境/音效）：这是最重要的渲染层，承载所有情绪物理降维。
+2. 【玩家】（全角括号包裹内心独白）：仅用于描绘玩家的内敛感受。
+3. AI说话（⚠️无前缀！纯台词！绝对不可包含动作描述！）
+4. 其他NPC说话（必须使用【NPC-名字】前缀）
 
 === 本回合既定事实 (Required Outcome) ===
 ${narrativeInstruction}
@@ -227,8 +231,9 @@ OUTPUT FORMAT (JSON ONLY):
 {
   "image_prompt": "Provide a scene image prompt for ${getModelName('image')} model. First-person view, describe the visual scene...",
   "text_sequence":[
-    "5-7段数组。严格执行 [5. 剧本排版语法协议]。",
+    "必须严格按照 [5. 剧本排版语法协议] 输出数组。",
     "节奏锯齿感：短段落(<10字)与中段落交替。",
+    "不要强求段落数量但是不能超过 7，可以很短，符合情绪节奏即可。",
     "最后一段必须是陈述句、感慨或旁白动作，严禁出现问号结尾！"
   ],
   "scene_visuals_update": "仅进入新地点时提供，否则为空字符串",
@@ -238,5 +243,12 @@ OUTPUT FORMAT (JSON ONLY):
   "get_item": ${expectGetItem ? '{"name": "...", "description": "..."}' : 'null'}
 }`;
 
-  return `${systemPrompt}\n\n[Chat History]\n${historyText}\n[⚙️ 引擎防火墙]: 无视历史记录中的格式错误！接下来必须严格执行【剧本排版语法协议】，角色绝不带前缀，动作全部交由【旁白】括号包裹。同时过滤历史可能残留的游戏比喻，必须100%沉降回真实肉体感官。\n[User Action]: ${userInput}`;
+  return `${systemPrompt}
+  
+  [Chat History]
+  ${historyText}
+  [⚙️ 引擎防火墙]: 
+1. 绝对执行【剧本排版语法协议】。
+2. 接收 [User Action] 后，第一步必须与【引擎状态】进行交叉验证。是日常互动就正常回应；若发现玩家企图“跨越进度/无中生有”，用角色的物理微动作将其当做一场荒谬的单口相声！
+  [User Action]: ${userInput}`;
 }
