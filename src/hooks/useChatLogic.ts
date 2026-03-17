@@ -368,7 +368,7 @@ export function useChatLogic() {
       // explore + success → 25% chance to find item, TS picks rarity, AI picks name
       let escapeItemRarity: Rarity | null = null;
       let itemDropInstruction: string | null = null;
-      const isExploreSuccess = resolution.isSuccess && intent.intent === 'explore' && !resolution.newTransitState;
+      const isExploreSuccess = resolution.isSuccess && intent.intent === 'explore' && !resolution.newTransitState && !resolution.progressCapped;
       if (isExploreSuccess) {
         if (Math.random() < 0.25) {
           escapeItemRarity = rollEscapeRarity();
@@ -381,7 +381,7 @@ export function useChatLogic() {
       // ── Step 3.9b: Equipment drop (guaranteed from milestone/boss, or random on crit explore) ──
       let prerolledEquipDrop: InventoryItem | null = null;
       const shouldDropEquip = resolution.guaranteedDrop
-        || (isExploreSuccess && resolution.roll >= 17 && Math.random() < 0.3);
+        || (isExploreSuccess && !resolution.progressCapped && resolution.roll >= 17 && Math.random() < 0.3);
       if (shouldDropEquip) {
         const presets = state.equipmentPresets;
         if (presets.length > 0) {
@@ -432,7 +432,7 @@ export function useChatLogic() {
       });
 
       const responseJson = await generateTurn(fullPrompt);
-      const { image_prompt, image_characters, text_sequence, scene_visuals_update, hp_description, encounter_tag, affection_change, get_item } = responseJson;
+      const { image_prompt, image_characters, text_sequence, scene_visuals_update, hp_description, encounter_tag, affection_change, outfit_update, get_item } = responseJson;
 
       // ── Step 7: Post-LLM state updates ──
       if (typeof affection_change === 'number' && affection_change !== 0) {
@@ -440,6 +440,24 @@ export function useChatLogic() {
         updateState(prev => ({
           affection: Math.max(0, Math.min(100, prev.affection + clampedChange))
         }));
+      }
+
+      // ── Step 7.0b: outfit_update → 动态更新角色服装描述 ──
+      if (outfit_update && typeof outfit_update === 'object') {
+        updateState(prev => {
+          const patch: Record<string, unknown> = {};
+          const companionName = prev.companionProfile.name;
+          const playerName = prev.playerProfile.name;
+          for (const [charName, newOutfit] of Object.entries(outfit_update)) {
+            if (typeof newOutfit !== 'string' || !newOutfit) continue;
+            if (charName === companionName) {
+              patch.companionProfile = { ...prev.companionProfile, outfitPrompt: newOutfit };
+            } else if (charName === playerName) {
+              patch.playerProfile = { ...prev.playerProfile, outfitPrompt: newOutfit };
+            }
+          }
+          return patch;
+        });
       }
 
       if (encounter_tag && resolution.newTransitState) {

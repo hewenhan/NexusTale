@@ -29,13 +29,21 @@ export function launchImageGen(deps: ImageGenDeps): Promise<string | undefined> 
   const appearanceParts: string[] = [];
 
   const companionName = state.companionProfile.name;
-  if (companionName && chars[companionName] && state.companionProfile.appearancePrompt) {
-    appearanceParts.push(`[${companionName}] appearance: ${state.companionProfile.appearancePrompt}`);
+  const companionBody = state.companionProfile.bodyPrompt;
+  const companionOutfit = state.companionProfile.outfitPrompt;
+  if (companionName && chars[companionName] && companionBody) {
+    const parts = [`[${companionName}] body: ${companionBody}`];
+    if (companionOutfit) parts.push(`[${companionName}] outfit: ${companionOutfit}`);
+    appearanceParts.push(...parts);
   }
 
   const playerName = state.playerProfile.name;
-  if (playerName && chars[playerName] && state.playerProfile.appearancePrompt) {
-    appearanceParts.push(`[${playerName}] appearance: ${state.playerProfile.appearancePrompt}`);
+  const playerBody = state.playerProfile.bodyPrompt;
+  const playerOutfit = state.playerProfile.outfitPrompt;
+  if (playerName && chars[playerName] && playerBody) {
+    const parts = [`[${playerName}] body: ${playerBody}`];
+    if (playerOutfit) parts.push(`[${playerName}] outfit: ${playerOutfit}`);
+    appearanceParts.push(...parts);
   }
 
   const appearanceBlock = appearanceParts.length > 0

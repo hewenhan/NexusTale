@@ -149,11 +149,12 @@ export function stepMoveResolve(ctx: PipelineContext): void {
           ctx.moveSucceeded = true;
           ctx.isSuccess = true;
         } else {
-          // 踏上旅途
+          // 踏上旅途：初始进度由 D20 tier 决定
+          const initialProgress = ctx.tier === 0 ? 0 : (ctx.tier === 1 ? 25 : 50);
           ctx.newTransitState = {
             fromNodeId: state.currentNodeId!,
             toNodeId: mt.targetNodeId,
-            pathProgress: 0,
+            pathProgress: initialProgress,
             lockedTheme: null,
           };
           ctx.newHouseId = null;
@@ -196,10 +197,12 @@ export function stepMoveResolve(ctx: PipelineContext): void {
         if (mt.fromBuilding) {
           ctx.newHouseId = null;
         } else {
+          // T2 战术撤退：初始进度由 D20 tier 决定
+          const initialProgress = ctx.tier === 0 ? 0 : (ctx.tier === 1 ? 25 : 50);
           ctx.newTransitState = {
             fromNodeId: state.currentNodeId!,
             toNodeId: mt.targetNodeId,
-            pathProgress: 5,
+            pathProgress: initialProgress,
             lockedTheme: null,
           };
           ctx.newHouseId = null;
@@ -248,7 +251,7 @@ export function stepMoveResolve(ctx: PipelineContext): void {
         ctx.moveSucceeded = false;
         ctx.isSuccess = false;
       } else if (ctx.tier === 2) {
-        // 大成功：极限逃生，踏上旅途
+        // 大成功：极限逃生，踏上旅途（大成功固定 50% 起步）
         const nextNodeId = mt.type === 'cross-node' ? mt.targetNodeId : state.currentNodeId;
         ctx.newTransitState = {
           fromNodeId: state.currentNodeId!,

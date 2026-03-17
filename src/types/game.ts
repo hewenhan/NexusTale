@@ -222,7 +222,10 @@ export interface CharacterProfile {
   description: string;
   personality: string;
   background: string;
-  appearancePrompt: string;
+  /** 固定身体特征（脸型、发色、瞳色、体型、肤色等），不含服装 */
+  bodyPrompt: string;
+  /** 当前服装状态，可被 LLM 动态更新 */
+  outfitPrompt: string;
   isFleshedOut: boolean;
 }
 
@@ -330,7 +333,7 @@ export const DEFAULT_PROFILE: CharacterProfile = {
   hairStyle: '', hairColor: '',
   personalityDesc: '', specialties: '', hobbies: '', dislikes: '',
   description: '', personality: '', background: '',
-  appearancePrompt: '', isFleshedOut: false,
+  bodyPrompt: '', outfitPrompt: '', isFleshedOut: false,
 };
 export const SUMMARY_THRESHOLD = 20;
 export const KEEP_RECENT_TURNS = 10;

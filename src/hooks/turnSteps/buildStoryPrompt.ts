@@ -242,6 +242,7 @@ OUTPUT FORMAT (JSON ONLY):
   "hp_description": "结合当前生命值，用一句简短的话描述玩家当前的物理感官或肌肉状态",
   "encounter_tag": "2-4字遭遇主题(仅旅途/危机提供)",
   "affection_change": 整数(符合喜好则正，触犯厌恶则负，无影响0),
+  "outfit_update": {"角色名": "新的英文服装描述"} 或 null。仅当本回合某角色的服装/穿着发生了实质变化时才填写（如换装、脱衣、穿甲、淋湿等），否则为 null。描述应包含完整的当前穿着状态，不是增量变化。,
   "get_item": ${expectGetItem ? '{"name": "...", "description": "..."}' : 'null'}
 }`;
 

@@ -250,8 +250,9 @@ export default function Chat() {
           doGenerateMap(result.worldData, state.worldview, finalArtStyle);
 
           // Generate companion portrait in background (non-blocking, with retry)
-          if (result.companionProfile.appearancePrompt && isAuthenticated && accessToken) {
-            doGeneratePortrait(result.companionProfile.appearancePrompt, state.worldview, finalArtStyle);
+          const fullAppearance = [result.companionProfile.bodyPrompt, result.companionProfile.outfitPrompt].filter(Boolean).join('; ');
+          if (fullAppearance && isAuthenticated && accessToken) {
+            doGeneratePortrait(fullAppearance, state.worldview, finalArtStyle);
           }
         };
 

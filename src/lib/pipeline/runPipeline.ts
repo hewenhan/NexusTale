@@ -120,6 +120,7 @@ function extractResult(ctx: PipelineContext, snapPre: PipelineSnapshot): Pipelin
     newTransitState: ctx.newTransitState,
     roll: ctx.rawRoll,
     isSuccess: ctx.isSuccess,
+    progressCapped: ctx.progressCapped,
     houseSafetyUpdate: ctx.houseSafetyUpdate,
     bossSpawn: ctx.bossSpawn,
     bossDefeatedKey: ctx.bossDefeatedKey,

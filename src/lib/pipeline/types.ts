@@ -147,6 +147,7 @@ export interface PipelineResult {
   newTransitState: GameState['transitState'];
   roll: number;
   isSuccess: boolean;
+  progressCapped: boolean;
   houseSafetyUpdate: { houseId: string; newSafetyLevel: SafetyLevel } | null;
   bossSpawn: { locationKey: string; boss: ActiveBoss } | null;
   bossDefeatedKey: string | null;

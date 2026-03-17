@@ -210,7 +210,8 @@ Fill in all "Not specified" fields with creative values fitting the worldview. K
 
 **Task 4: Flesh Out AI Companion Character**
 Same as Task 3, PLUS generate:
-- appearancePrompt: DETAILED, STABLE visual description for image generation (hair color/style, eye color, skin tone, facial features, body type, clothing with colors/materials, accessories. Physical traits MUST appear at the VERY BEGINNING).
+- bodyPrompt: PERMANENT physical traits ONLY for image generation consistency (hair color/style, eye color, skin tone, facial features, body type/build, distinguishing marks). NO clothing, NO accessories. This NEVER changes.
+- outfitPrompt: Current clothing/accessories/outfit description for image generation (garment types, colors, materials, accessories, footwear). This CAN change as the story progresses.
 - initialAffection: number 0-100 (how warmly they'd feel toward a stranger. Cold/hostile: 10-30. Neutral/cautious: 35-55. Friendly/warm: 55-75. Rarely above 75.)
 
 IMPORTANT: The two characters should feel like they BELONG in this world. Their names, appearances, backgrounds should be consistent with the worldview and with each other's existence in the same universe.
@@ -249,7 +250,8 @@ Return ONLY a JSON object with this EXACT structure (no markdown):
     "hairStyle": "string", "hairColor": "string",
     "personalityDesc": "string", "specialties": "string", "hobbies": "string", "dislikes": "string",
     "description": "string", "personality": "string", "background": "string",
-    "appearancePrompt": "string",
+    "bodyPrompt": "string",
+    "outfitPrompt": "string",
     "initialAffection": 50
   }
 }`;
