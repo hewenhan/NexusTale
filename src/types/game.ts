@@ -238,6 +238,8 @@ export interface GameState {
   isFirstRun: boolean;
   summary: string;
   turnsSinceLastSummary: number;
+  /** 摘要已覆盖到 state.history 的哪个索引（exclusive），0 = 无摘要 */
+  summaryCoveredUpTo: number;
   loadingMessages: string[];
   language: 'zh' | 'en';
 
@@ -332,6 +334,8 @@ export const DEFAULT_PROFILE: CharacterProfile = {
 };
 export const SUMMARY_THRESHOLD = 20;
 export const KEEP_RECENT_TURNS = 10;
+/** 摘要最大字符数（中文），防止无限膨胀 */
+export const SUMMARY_MAX_CHARS = 1500;
 export const ENABLE_DEBUG_UI = true;
 
 export const BGM_LIST = {
@@ -394,6 +398,7 @@ export const INITIAL_STATE: GameState = {
   isFirstRun: true,
   summary: "",
   turnsSinceLastSummary: 0,
+  summaryCoveredUpTo: 0,
   loadingMessages: DEFAULT_LOADING_MESSAGES,
   language: 'zh',
 

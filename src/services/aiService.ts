@@ -73,16 +73,22 @@ export function resolveObjectivePathfinding(
 
 export async function generateSummary(currentSummary: string, messagesToSummarize: any[], language: 'zh' | 'en' = 'zh'): Promise<string | undefined> {
   const textToSummarize = messagesToSummarize.map(m => `${m.role}: ${m.text}`).join('\n');
-  const langInstruction = language === 'zh' ? 'Translate to Chinese.' : 'Translate to English.';
+  const langInstruction = language === 'zh' ? '用中文输出。' : 'Write in English.';
   const summaryPrompt = `
-    Current Summary: "${currentSummary}"
-    
-    New Conversation to Append:
-    ${textToSummarize}
-    
-    Task: Update the summary to include the key events from the new conversation. Keep it concise but retain important plot points, inventory changes, and current status.
-    Return ONLY the new summary text.
-    ${langInstruction}
+Current Summary (older events):
+"${currentSummary}"
+
+New Conversation to Incorporate (HIGHER PRIORITY — preserve more detail):
+${textToSummarize}
+
+Task:
+1. Merge the current summary with the new conversation into a single updated summary.
+2. The new conversation events are MORE RECENT and should receive MORE DETAIL (2-3 sentences each key event).
+3. Older events from the current summary should be COMPRESSED more aggressively (1 sentence or combine related events).
+4. Always retain: critical plot turning points, character deaths/revivals, key NPC encounters, quest progress, major inventory changes, and location transitions.
+5. STRICT LENGTH LIMIT: The total summary must NOT exceed 1500 characters. If it would exceed, compress the oldest events further or drop trivial details.
+6. Return ONLY the updated summary text, no extra formatting.
+${langInstruction}
   `;
 
   try {

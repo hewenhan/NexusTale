@@ -125,23 +125,29 @@ export function useChatLogic() {
     try {
       // ── Step 0: Summary maintenance ──
       let currentSummary = state.summary;
-      let turnsCount = state.turnsSinceLastSummary + 1;
+      const coveredUpTo = state.summaryCoveredUpTo ?? 0;
 
-      const isLongHistoryWithoutSummary = state.summary === "" && state.history.filter(m => m.role === 'user').length > (SUMMARY_THRESHOLD + KEEP_RECENT_TURNS);
+      // 统计未被摘要覆盖的 user 轮数（含当前输入）
+      const unsummarizedHistory = state.history.slice(coveredUpTo);
+      const unsummarizedUserTurns = unsummarizedHistory.filter(m => m.role === 'user').length + 1; // +1 = 当前输入
 
-      if (turnsCount >= SUMMARY_THRESHOLD || isLongHistoryWithoutSummary) {
+      if (unsummarizedUserTurns > SUMMARY_THRESHOLD) {
+        // 需要摘要：把 coveredUpTo 到 newBoundary 之间的消息压缩进摘要
         const allMessages = [...state.history, { role: 'user', text: userInput } as const];
-        const recentStartIndex = getStartIndexForRecentTurns(allMessages, KEEP_RECENT_TURNS);
-        if (recentStartIndex > 0) {
-          const newSummary = await generateSummary(currentSummary, allMessages.slice(0, recentStartIndex) as any, state.language);
+        const newBoundary = getStartIndexForRecentTurns(allMessages, KEEP_RECENT_TURNS);
+        if (newBoundary > coveredUpTo) {
+          const chunkToSummarize = allMessages.slice(coveredUpTo, newBoundary);
+          const newSummary = await generateSummary(currentSummary, chunkToSummarize as any, state.language);
           if (newSummary) {
             currentSummary = newSummary;
-            turnsCount = 0;
-            updateState({ summary: currentSummary, turnsSinceLastSummary: 0 });
+            // newBoundary 可能等于 state.history.length（指向当前 userInput），
+            // 但 summaryCoveredUpTo 索引是 state.history 的，最大不超过 state.history.length
+            updateState({
+              summary: currentSummary,
+              summaryCoveredUpTo: Math.min(newBoundary, state.history.length),
+            });
           }
         }
-      } else {
-        updateState({ turnsSinceLastSummary: turnsCount });
       }
 
       // ── Step 1: Intent Extraction ──

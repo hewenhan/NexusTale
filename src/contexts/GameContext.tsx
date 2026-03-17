@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { GameState, INITIAL_STATE, ChatMessage, DEFAULT_LOADING_MESSAGES, DEFAULT_PROFILE, normalizeConnections, WorldData } from '../types/game';
+import { GameState, INITIAL_STATE, ChatMessage, DEFAULT_LOADING_MESSAGES, DEFAULT_PROFILE, normalizeConnections, WorldData, KEEP_RECENT_TURNS } from '../types/game';
 import { v4 as uuidv4 } from 'uuid';
 
 interface GameContextType {
@@ -19,8 +19,21 @@ const GameContext = createContext<GameContextType | undefined>(undefined);
  * Extend this function if new migration logic is needed for future versions.
  */
 function migrateSave(parsed: any): any {
-  // Example: if (parsed.version < 2) { ... }
-  // Currently, no legacy migration is performed. Only for future compatibility.
+  // Migration: 旧存档有 summary 但没有 summaryCoveredUpTo，需要估算边界
+  if (parsed.summary && parsed.summary !== '' && parsed.summaryCoveredUpTo === undefined) {
+    const history: any[] = parsed.history || [];
+    let count = 0;
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (history[i].role === 'user') {
+        count++;
+        if (count === KEEP_RECENT_TURNS) {
+          parsed.summaryCoveredUpTo = i;
+          break;
+        }
+      }
+    }
+    if (parsed.summaryCoveredUpTo === undefined) parsed.summaryCoveredUpTo = 0;
+  }
   return parsed;
 }
 

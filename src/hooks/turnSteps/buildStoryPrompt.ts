@@ -3,10 +3,10 @@
  */
 
 import { findNode, findHouse, getVisibleHouses, getHpDescription, applyProgressAndReveals } from '../../lib/pipeline';
-import { KEEP_RECENT_TURNS, INVENTORY_CAPACITY, type GameState } from '../../types/game';
+import { INVENTORY_CAPACITY, type GameState } from '../../types/game';
 import { getModelName } from '../../types/modelConfig';
 import type { PipelineResult } from '../../lib/pipeline';
-import { getStartIndexForRecentTurns, getLastSceneVisuals } from './helpers';
+import { getLastSceneVisuals } from './helpers';
 
 // ── 构建位置上下文 ──
 function buildLocationContext(state: GameState, resolution: PipelineResult, visionContext: string): string {
@@ -166,9 +166,12 @@ export function buildStoryPrompt(input: StoryPromptInput): string {
   const lastVisuals = getLastSceneVisuals(state);
 
   // ── Build recent history text ──
+  // 如果有摘要，从摘要边界之后开始；否则发送完整历史
   const allMessagesForPrompt = [...state.history, { role: 'user', text: userInput } as const];
-  const promptStartIndex = getStartIndexForRecentTurns(allMessagesForPrompt, KEEP_RECENT_TURNS);
-  const recentHistory = allMessagesForPrompt.slice(promptStartIndex);
+  const coveredUpTo = (currentSummary && (state.summaryCoveredUpTo ?? 0) > 0)
+    ? (state.summaryCoveredUpTo ?? 0)
+    : 0;
+  const recentHistory = allMessagesForPrompt.slice(coveredUpTo);
   const historyText = recentHistory.map(m => `${m.role}: ${m.text}`).join('\n');
 
   const systemPrompt = `你是本引擎的沉浸式图文渲染节点。你的唯一目标是执行【既定事实】，并进行极度拟真的"人类行为学"渲染。

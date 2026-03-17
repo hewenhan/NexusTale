@@ -35,6 +35,11 @@ function resolveMoveTarget(
     };
   }
 
+  // 在建筑内，目标是当前节点 → 退出建筑
+  if (targetId && targetId === state.currentNodeId && state.currentHouseId) {
+    return { type: 'exit-building' };
+  }
+
   // 进入/切换建筑
   if (targetId && currentNode) {
     const visibleHouses = getVisibleHouses(currentNode);
