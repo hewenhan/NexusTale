@@ -10,22 +10,31 @@
 
 <p align="center">
 	<strong>不是看别人冒险。</strong><br />
-	<strong>而是你的一句话，真的把旅程推向别处。</strong>
+	<strong>而是自由开口，然后看世界真的因此改变。</strong>
+</p>
+
+<p align="center">
+	<a href="#story-slice"><strong>查看剧情切片</strong></a> ·
+	<a href="#world-and-map"><strong>看地图与 UI</strong></a> ·
+	<a href="#why-it-hooks"><strong>为什么会上头</strong></a>
 </p>
 
 如果你喜欢文字冒险，却受不了固定选项、重复桥段和一眼能望到头的剧情路线，界域物语就是为这种不甘心而做的。
 
 它想给你的，不是“一个能陪你聊天的 AI”。
 
-它想给你的，是一种更接近真正冒险的感觉:
+它想给你的，是一种更接近真正冒险的感觉。
 
-你说出口的话，会把你带去别的地方。
+你可以自由说话。
 
-你做出的决定，会让旅途偏向别的方向。
+但你得到的，不是“被礼貌接住的一段回复”。
 
-你在意的人，会影响你活不活得下来。
+你得到的是一整套真的会继续往前滚动的结果:
 
-你以为只是随口一说的一句试探、逞强、心软、冲动，最后都可能变成一条路线、一个任务、一场战斗、一次错过，或者一次你很久都忘不掉的同行。
+- 你说出口的话，会把你带去别的地方
+- 你做出的决定，会让旅途偏向别的方向
+- 你在意的人，会影响你活不活得下来
+- 你以为只是随口一说的一句试探、逞强、心软、冲动，最后都可能变成一条路线、一个任务、一场战斗、一次错过，或者一次你很久都忘不掉的同行
 
 <p align="center"><strong>你不是在输入台词。</strong> <strong>你是在推动命运。</strong></p>
 
@@ -60,6 +69,8 @@
 >
 > 你是在往里走，而这个世界会跟着你的脚步一起变形。
 
+<div id="world-and-map"></div>
+
 ## 🌒 你会在里面经历什么
 
 ### 你会真的在路上 🛤️
@@ -79,10 +90,15 @@
 
 区域、节点、建筑、揭盲、探索进度，都会持续参与游戏过程。你会知道自己身在何处，正在逼近什么，又刚刚把哪一块未知真正变成了已知。
 
+<p align="center"><strong>你不是在同一个场景里聊天。</strong> <strong>你是在一张真正会展开的地图上前进。</strong></p>
+
 <p align="center">
-	<img src="screenshot/m1.webp" alt="界域物语 AI 生成地图" width="31%" />
-	<img src="screenshot/m2.webp" alt="界域物语地图 UI PC 端" width="31%" />
-	<img src="screenshot/m3.webp" alt="界域物语地图 UI 移动端" width="31%" />
+	<img src="screenshot/m1.webp" alt="界域物语 AI 生成地图" width="96%" />
+</p>
+
+<p align="center">
+	<img src="screenshot/m2.webp" alt="界域物语地图 UI PC 端" width="48%" />
+	<img src="screenshot/m3.webp" alt="界域物语地图 UI 移动端" width="48%" />
 </p>
 
 ### 你会接到不是一句话就结束的任务 📜
@@ -117,6 +133,8 @@
 
 当紧张度开始升高、血量开始见底、BOSS 压力真正落下来时，你会很清楚地感觉到，这个世界不是在配合你演戏。
 
+<p align="center"><strong>你可以乱来。</strong> <strong>但这个世界不会一直纵容你。</strong></p>
+
 ### 你会在意同行的人 ❤️
 
 很多游戏让你记住的是事件。
@@ -135,6 +153,8 @@
 	<img src="screenshot/e9.webp" alt="界域物语演示图 e9" width="48%" />
 	<img src="screenshot/e10.webp" alt="界域物语演示图 e10" width="48%" />
 </p>
+
+<div id="why-it-hooks"></div>
 
 ## 🔥 为什么它会让人停不下来
 
@@ -158,12 +178,6 @@
 
 这两件事放在一起，才会让一次冒险既有代入感，也有上头感。
 
-### 因为它会记住你走过的路
-
-界域物语已经具备长流程摘要与连续叙事能力，长线游玩时不会那么轻易把中段经历抹掉。
-
-你更容易得到一种完整旅程的感觉，而不是玩久了就像每轮都在重新开机。
-
 <p align="center"><strong>你不会只想知道“后面写了什么”。</strong></p>
 <p align="center"><strong>你会想知道“如果我再说一句，会发生什么”。</strong></p>
 
@@ -184,7 +198,9 @@
 - 画面、音乐、通知和文字一起服务沉浸感
 - 长线冒险更能记住你已经经历过什么
 
-## 🎬 一段实际游玩切片
+<div id="story-slice"></div>
+
+## 🎬 查看剧情切片
 
 下面这一组截图，是一段相对完整、连续推进的冒险过程。
 
@@ -193,6 +209,8 @@
 不是摆拍。
 
 而是界域物语真正会给出的那种体验: 进入场景，发生对话，局势推进，画面变化，关系拉近，风险逼近，然后让你忍不住想继续往下看。
+
+<p align="center"><strong>先看最能说明问题的 9 张。</strong></p>
 
 <p align="center">
 	<img src="screenshot/ff1.webp" alt="界域物语剧情截图 ff1" width="31%" />
@@ -212,14 +230,14 @@
 	<img src="screenshot/ff9.webp" alt="界域物语剧情截图 ff9" width="31%" />
 </p>
 
+<details>
+<summary><strong>展开更多剧情截图（ff10 - ff34）</strong></summary>
+
 <p align="center">
 	<img src="screenshot/ff10.webp" alt="界域物语剧情截图 ff10" width="31%" />
 	<img src="screenshot/ff11.webp" alt="界域物语剧情截图 ff11" width="31%" />
 	<img src="screenshot/ff12.webp" alt="界域物语剧情截图 ff12" width="31%" />
 </p>
-
-<details>
-<summary><strong>展开完整剧情截图流（ff13 - ff34）</strong></summary>
 
 <p align="center">
 	<img src="screenshot/ff13.webp" alt="界域物语剧情截图 ff13" width="31%" />
