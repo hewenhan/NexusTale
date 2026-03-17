@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { X, Heart, Shield, MapPin, Target } from 'lucide-react';
+import { X, Heart, Shield, MapPin, Target, RefreshCw, User } from 'lucide-react';
 import { GameState, RARITY_COLORS } from '../types/game';
 import { useAuth } from '../contexts/AuthContext';
 import { getImageUrlByName } from '../lib/drive';
@@ -9,13 +9,18 @@ import { extractProgressMap } from '../lib/pipeline';
 interface StatusSidebarProps {
   state: GameState;
   onClose: () => void;
+  onRegenerateCompanionPortrait?: () => void;
+  onRegeneratePlayerPortrait?: () => void;
 }
 
-export function StatusSidebar({ state, onClose }: StatusSidebarProps) {
+export function StatusSidebar({ state, onClose, onRegenerateCompanionPortrait, onRegeneratePlayerPortrait }: StatusSidebarProps) {
   const currentNode = state.worldData?.nodes.find(n => n.id === state.currentNodeId);
   const currentHouse = currentNode?.houses.find(h => h.id === state.currentHouseId);
   const { accessToken } = useAuth();
   const [portraitUrl, setPortraitUrl] = useState<string | null>(null);
+  const [playerPortraitUrl, setPlayerPortraitUrl] = useState<string | null>(null);
+  const [regenCompanion, setRegenCompanion] = useState(false);
+  const [regenPlayer, setRegenPlayer] = useState(false);
 
   const progressMap = useMemo(
     () => state.worldData ? extractProgressMap(state.worldData) : {},
@@ -30,6 +35,15 @@ export function StatusSidebar({ state, onClose }: StatusSidebarProps) {
     });
     return () => { cancelled = true; };
   }, [state.characterPortraitFileName, accessToken]);
+
+  useEffect(() => {
+    if (!state.playerPortraitFileName || !accessToken) return;
+    let cancelled = false;
+    getImageUrlByName(accessToken, state.playerPortraitFileName).then(url => {
+      if (!cancelled && url) setPlayerPortraitUrl(url);
+    });
+    return () => { cancelled = true; };
+  }, [state.playerPortraitFileName, accessToken]);
 
   return (
     <>
@@ -234,11 +248,27 @@ export function StatusSidebar({ state, onClose }: StatusSidebarProps) {
           <div>
             <h3 className="text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider">角色设定</h3>
             <div className="bg-zinc-950 border border-zinc-800 p-3 rounded-lg text-sm text-zinc-300 space-y-2">
-              {portraitUrl && (
-                <div className="flex justify-center mb-3">
-                  <img src={portraitUrl} alt="角色头像" className="w-24 h-24 rounded-full object-cover border-2 border-zinc-700" />
+              <div className="flex justify-center mb-3">
+                <div className="relative group/avatar">
+                  {portraitUrl ? (
+                    <img src={portraitUrl} alt="角色头像" className="w-24 h-24 rounded-full object-cover border-2 border-zinc-700" />
+                  ) : (
+                    <div className="w-24 h-24 rounded-full border-2 border-zinc-700 bg-zinc-800 flex items-center justify-center">
+                      <User className="w-10 h-10 text-zinc-600" />
+                    </div>
+                  )}
+                  {onRegenerateCompanionPortrait && (
+                    <button
+                      onClick={async () => { setRegenCompanion(true); await onRegenerateCompanionPortrait(); setRegenCompanion(false); }}
+                      disabled={regenCompanion}
+                      className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-zinc-700 border border-zinc-600 flex items-center justify-center hover:bg-zinc-600 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="重新生成头像"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 text-zinc-300 ${regenCompanion ? 'animate-spin' : ''}`} />
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
               <div><span className="text-zinc-500">姓名：</span>{state.companionProfile.name}</div>
               {state.companionProfile.gender && <div><span className="text-zinc-500">性别：</span>{state.companionProfile.gender === 'Male' ? '男' : state.companionProfile.gender === 'Female' ? '女' : state.companionProfile.gender === 'Non-binary' ? '非二元' : '其他'}</div>}
               {state.companionProfile.age && <div><span className="text-zinc-500">年龄：</span>{state.companionProfile.age}</div>}
@@ -263,6 +293,27 @@ export function StatusSidebar({ state, onClose }: StatusSidebarProps) {
             <div>
               <h3 className="text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider">玩家档案</h3>
               <div className="bg-zinc-950 border border-zinc-800 p-3 rounded-lg text-sm text-zinc-300 space-y-1">
+                <div className="flex justify-center mb-3">
+                  <div className="relative group/avatar">
+                    {playerPortraitUrl ? (
+                      <img src={playerPortraitUrl} alt="玩家头像" className="w-24 h-24 rounded-full object-cover border-2 border-zinc-700" />
+                    ) : (
+                      <div className="w-24 h-24 rounded-full border-2 border-zinc-700 bg-zinc-800 flex items-center justify-center">
+                        <User className="w-10 h-10 text-zinc-600" />
+                      </div>
+                    )}
+                    {onRegeneratePlayerPortrait && (
+                      <button
+                        onClick={async () => { setRegenPlayer(true); await onRegeneratePlayerPortrait(); setRegenPlayer(false); }}
+                        disabled={regenPlayer}
+                        className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-zinc-700 border border-zinc-600 flex items-center justify-center hover:bg-zinc-600 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="重新生成头像"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 text-zinc-300 ${regenPlayer ? 'animate-spin' : ''}`} />
+                      </button>
+                    )}
+                  </div>
+                </div>
                 <div><span className="text-zinc-500">姓名：</span>{state.playerProfile.name}</div>
                 {state.playerProfile.gender && <div><span className="text-zinc-500">性别：</span>{
                   state.playerProfile.gender === 'Male' ? '男' :

@@ -182,7 +182,7 @@ function buildMainNarrative(
         : `node_${result.newNodeId}`;
       const progress = result.newProgressMap[activeProgressKey] || 0;
       const progressGain = tier === 2 ? 40 : 15;
-      return buildSafeExploreNarrative(roll, progressGain, progress);
+      return buildSafeExploreNarrative(roll, progressGain, progress, tier);
     }
     return buildSafeIdleNarrative();
   }

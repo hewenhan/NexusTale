@@ -16,6 +16,7 @@ export interface ImageResult {
 interface TextOptions {
   jsonMode?: boolean;
   novelty?: boolean;
+  thinkLevel?: 'minimal' | 'low' | 'medium' | 'high';
 }
 
 interface ImageOptions {
@@ -33,6 +34,7 @@ async function geminiText(model: string, prompt: string, opts?: TextOptions): Pr
       safetySettings: SAFETY_SETTINGS_OFF,
       ...(opts?.jsonMode ? { responseMimeType: 'application/json' } : {}),
       ...(opts?.novelty ? NOVELTY_CONFIG : {}),
+      ...(opts?.thinkLevel ? { thinkingConfig: { thinkingLevel: opts.thinkLevel as any } } : {}),
     },
   });
   return result.text ?? undefined;

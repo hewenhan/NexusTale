@@ -100,7 +100,7 @@ ${langInstruction}
 }
 
 export async function generateTurn(fullPrompt: string): Promise<any> {
-  const responseText = await modelService.generateText('text', fullPrompt, { jsonMode: true, novelty: true });
+  const responseText = await modelService.generateText('text', fullPrompt, { jsonMode: true, novelty: true, thinkLevel: 'minimal' });
   if (!responseText) throw new Error("No text response");
   
   let responseJson;
@@ -207,6 +207,9 @@ Generate a concise English art style prompt describing the ideal illustration st
 
 **Task 3: Flesh Out Player Character**
 Fill in all "Not specified" fields with creative values fitting the worldview. Keep user-provided values. Generate: name, age, gender, orientation, skinColor, height, weight, hairStyle, hairColor, personalityDesc, specialties, hobbies, dislikes, description, personality, background.
+ALSO generate for the player:
+- bodyPrompt: PERMANENT physical traits ONLY for image generation consistency (hair color/style, eye color, skin tone, facial features, body type/build, distinguishing marks). NO clothing, NO accessories. This NEVER changes.
+- outfitPrompt: Current clothing/accessories/outfit description for image generation (garment types, colors, materials, accessories, footwear). This CAN change as the story progresses.
 
 **Task 4: Flesh Out AI Companion Character**
 Same as Task 3, PLUS generate:
@@ -242,7 +245,9 @@ Return ONLY a JSON object with this EXACT structure (no markdown):
     "skinColor": "string", "height": "string", "weight": "string",
     "hairStyle": "string", "hairColor": "string",
     "personalityDesc": "string", "specialties": "string", "hobbies": "string", "dislikes": "string",
-    "description": "string", "personality": "string", "background": "string"
+    "description": "string", "personality": "string", "background": "string",
+    "bodyPrompt": "string",
+    "outfitPrompt": "string"
   },
   "companionProfile": {
     "name": "string", "age": "string", "gender": "string", "orientation": "string",

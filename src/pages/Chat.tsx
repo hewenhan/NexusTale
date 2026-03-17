@@ -41,6 +41,7 @@ export default function Chat() {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const [portraitUrl, setPortraitUrl] = useState<string | null>(null);
+  const [playerPortraitUrl, setPlayerPortraitUrl] = useState<string | null>(null);
   const chatAreaRef = useRef<HTMLDivElement>(null);
   
   // Retry dialog for failed AI requests
@@ -127,6 +128,16 @@ export default function Chat() {
     });
     return () => { cancelled = true; };
   }, [state.characterPortraitFileName, accessToken]);
+
+  // Load player portrait from Drive
+  useEffect(() => {
+    if (!state.playerPortraitFileName || !accessToken) return;
+    let cancelled = false;
+    getImageUrlByName(accessToken, state.playerPortraitFileName).then(url => {
+      if (!cancelled && url) setPlayerPortraitUrl(url);
+    });
+    return () => { cancelled = true; };
+  }, [state.playerPortraitFileName, accessToken]);
 
   // Loading Message State
   const [currentLoadingMessage, setCurrentLoadingMessage] = useState(DEFAULT_LOADING_MESSAGES[0]);
@@ -253,6 +264,23 @@ export default function Chat() {
           const fullAppearance = [result.companionProfile.bodyPrompt, result.companionProfile.outfitPrompt].filter(Boolean).join('; ');
           if (fullAppearance && isAuthenticated && accessToken) {
             doGeneratePortrait(fullAppearance, state.worldview, finalArtStyle);
+          }
+
+          // Generate player portrait in background (non-blocking)
+          const playerAppearance = [result.playerProfile.bodyPrompt, result.playerProfile.outfitPrompt].filter(Boolean).join('; ');
+          if (playerAppearance && isAuthenticated && accessToken) {
+            (async () => {
+              try {
+                const base64 = await generateCharacterPortrait(playerAppearance, state.worldview, finalArtStyle);
+                if (base64 && accessToken) {
+                  const fileName = `ai_rpg_player_portrait_${Date.now()}.png`;
+                  await uploadImageToDrive(accessToken, base64, fileName);
+                  updateState({ playerPortraitFileName: fileName });
+                }
+              } catch (e) {
+                console.error('Player portrait generation failed', e);
+              }
+            })();
           }
         };
 
@@ -715,7 +743,7 @@ export default function Chat() {
           data={state.history}
           initialTopMostItemIndex={state.history.length - 1}
           followOutput="smooth"
-          context={{ onDelete: handleDeleteMessage, imageUrls, characterName, playerName: state.playerProfile.name || '你', onImageLoaded: handleImageLoaded, portraitUrl, totalMessages: state.history.length, textSpeed, flushPendingNotifications: wrappedFlushNotifications, animatedIds: animatedIdsRef.current }}
+          context={{ onDelete: handleDeleteMessage, imageUrls, characterName, playerName: state.playerProfile.name || '你', onImageLoaded: handleImageLoaded, portraitUrl, playerPortraitUrl, totalMessages: state.history.length, textSpeed, flushPendingNotifications: wrappedFlushNotifications, animatedIds: animatedIdsRef.current }}
           itemContent={(index, msg, context) => {
             const isLast = index === context.totalMessages - 1;
             const isLastModel = msg.role === 'model' && isLast;
@@ -728,6 +756,7 @@ export default function Chat() {
                   characterName={context.characterName}
                   playerName={context.playerName}
                   portraitUrl={context.portraitUrl}
+                  playerPortraitUrl={context.playerPortraitUrl}
                   imageUrl={msg.imageFileName ? context.imageUrls[msg.imageFileName] : undefined}
                   onImageLoaded={context.onImageLoaded}
                   onDelete={() => context.onDelete(index)}
@@ -790,7 +819,30 @@ export default function Chat() {
 
       <AnimatePresence>
         {showStatus && (
-          <StatusSidebar state={state} onClose={() => setShowStatus(false)} />
+          <StatusSidebar
+            state={state}
+            onClose={() => setShowStatus(false)}
+            onRegenerateCompanionPortrait={async () => {
+              const appearance = [state.companionProfile.bodyPrompt, state.companionProfile.outfitPrompt].filter(Boolean).join('; ');
+              if (!appearance || !accessToken) return;
+              const base64 = await generateCharacterPortrait(appearance, state.worldview, state.artStylePrompt);
+              if (base64 && accessToken) {
+                const fileName = `ai_rpg_portrait_${Date.now()}.png`;
+                await uploadImageToDrive(accessToken, base64, fileName);
+                updateState({ characterPortraitFileName: fileName });
+              }
+            }}
+            onRegeneratePlayerPortrait={async () => {
+              const appearance = [state.playerProfile.bodyPrompt, state.playerProfile.outfitPrompt].filter(Boolean).join('; ');
+              if (!appearance || !accessToken) return;
+              const base64 = await generateCharacterPortrait(appearance, state.worldview, state.artStylePrompt);
+              if (base64 && accessToken) {
+                const fileName = `ai_rpg_player_portrait_${Date.now()}.png`;
+                await uploadImageToDrive(accessToken, base64, fileName);
+                updateState({ playerPortraitFileName: fileName });
+              }
+            }}
+          />
         )}
       </AnimatePresence>
 

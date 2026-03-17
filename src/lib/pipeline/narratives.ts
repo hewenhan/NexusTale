@@ -131,8 +131,8 @@ export function buildTransitNarrative(
 }
 
 // ─── 安全区探索叙事 ───
-export function buildSafeExploreNarrative(roll: number, progressGain: number, currentProgress: number): string {
-  return `【系统指令】：安全区域内的平稳探索。进度+${progressGain}（当前${currentProgress}%）。Roll=${roll}，请描写安全搜刮、平稳推进的场面，不会有任何危险。`;
+export function buildSafeExploreNarrative(roll: number, progressGain: number, currentProgress: number, tier: number): string {
+  return `【系统指令】：安全区域内的平稳探索。进度+${progressGain}（当前${currentProgress}%）。Roll=${roll}，请描写安全搜刮、${tier === 2 ? '顺利推进' : '平稳推进'}的场面，不会有任何危险。`;
 }
 
 // ─── 安全区休整叙事 ───

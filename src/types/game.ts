@@ -260,6 +260,7 @@ export interface GameState {
   currentWorldId: string | null;
   currentNodeId: string | null;
   characterPortraitFileName: string | null;
+  playerPortraitFileName: string | null;
   currentHouseId: string | null; // null = outdoors in Node
 
   // 新增：旅途状态。null 表示在具体地点内；非 null 表示正在赶路。
@@ -419,6 +420,7 @@ export const INITIAL_STATE: GameState = {
   currentWorldId: null,
   currentNodeId: null,
   characterPortraitFileName: null,
+  playerPortraitFileName: null,
   currentHouseId: null,
   transitState: null,
   exhaustedThemes: [],

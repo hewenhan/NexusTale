@@ -14,6 +14,7 @@ interface ChatMessageItemProps {
   characterName: string;
   playerName?: string;
   portraitUrl?: string | null;
+  playerPortraitUrl?: string | null;
   animate?: boolean;
   textSpeed?: TextSpeed;
   isLastModelMessage?: boolean;
@@ -24,7 +25,7 @@ interface ChatMessageItemProps {
   onDelete?: () => void;
 }
 
-export const ChatMessageItem = React.memo(({ msg, characterName, playerName = '你', portraitUrl, imageUrl, onImageLoaded, onDelete, animate = false, textSpeed = 'normal', isLastModelMessage = false, durationMs, onTypewriterComplete }: ChatMessageItemProps) => {
+export const ChatMessageItem = React.memo(({ msg, characterName, playerName = '你', portraitUrl, playerPortraitUrl, imageUrl, onImageLoaded, onDelete, animate = false, textSpeed = 'normal', isLastModelMessage = false, durationMs, onTypewriterComplete }: ChatMessageItemProps) => {
   const { accessToken } = useAuth();
   const [isLoadingImage, setIsLoadingImage] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -177,7 +178,11 @@ export const ChatMessageItem = React.memo(({ msg, characterName, playerName = '�
       {/* User Avatar */}
       {msg.role === 'user' && (
         <div className="w-10 h-10 rounded-full bg-zinc-700 shrink-0 overflow-hidden border border-zinc-600 flex items-center justify-center mt-1 sm:mt-5">
-          <span className="text-zinc-400 text-xs">{playerName[0]}</span>
+          {playerPortraitUrl ? (
+            <img src={playerPortraitUrl} alt={playerName} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-zinc-400 text-xs">{playerName[0]}</span>
+          )}
         </div>
       )}
 
