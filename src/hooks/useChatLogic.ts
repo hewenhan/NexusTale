@@ -368,13 +368,23 @@ export function useChatLogic() {
       // explore + success → 25% chance to find item, TS picks rarity, AI picks name
       let escapeItemRarity: Rarity | null = null;
       let itemDropInstruction: string | null = null;
-      const isExploreSuccess = resolution.isSuccess && intent.intent === 'explore' && !resolution.newTransitState && !resolution.progressCapped;
+      const isExploreSuccess = resolution.isSuccess && intent.intent === 'explore' && !resolution.progressCapped;
       if (isExploreSuccess) {
         if (Math.random() < 0.25) {
           escapeItemRarity = rollEscapeRarity();
-          itemDropInstruction = `【搜刮结果 - 有收获】：发现了一件${escapeItemRarity}品质的道具！（根据世界观和当前场景合理创名，不要和已有物品重复！根据对话合理化描述获得过程），并在 get_item 字段中返回道具名称和简短说明。`;
+          if (resolution.newTransitState) {
+            itemDropInstruction = `【搜刮结果 - 有收获】：在赶路途中获得了一件${escapeItemRarity}品质的道具！`;
+          } else {
+            itemDropInstruction = `【搜刮结果 - 有收获】：获得了一件${escapeItemRarity}品质的道具！`;
+          }
+          itemDropInstruction += `（根据世界观和当前场景合理创名，不要和已有物品重复！根据对话合理化描述获得过程），并在 get_item 字段中返回道具名称和简短说明。`;
         } else {
-          itemDropInstruction = `【搜刮结果 - 无收获】：结合世界观上下文描写没找到东西，但还有找的线索`;
+          if (resolution.newTransitState) {
+            itemDropInstruction = `【搜刮结果 - 无收获】：在赶路途中没有找到任何道具，但还有找的线索`;
+          } else {
+            itemDropInstruction = `【搜刮结果 - 无收获】：结合世界观上下文描写没找到东西，但还有找的线索`;
+          }
+          itemDropInstruction += `（请不要写成“你在地上翻了半天，什么都没找到”这种尴尬的修辞，合理化描述搜刮过程和线索）。`;
         }
       }
 

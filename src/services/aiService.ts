@@ -100,7 +100,7 @@ ${langInstruction}
 }
 
 export async function generateTurn(fullPrompt: string): Promise<any> {
-  const responseText = await modelService.generateText('text', fullPrompt, { jsonMode: true, novelty: true, thinkLevel: 'low' });
+  const responseText = await modelService.generateText('text', fullPrompt, { jsonMode: true, novelty: true, thinkLevel: 'medium' });
   if (!responseText) throw new Error("No text response");
   
   let responseJson;
