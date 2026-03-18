@@ -238,7 +238,7 @@ ${itemDropInstruction || ''}
 
 OUTPUT FORMAT (JSON ONLY):
 {
-  "image_prompt": "为 ${getModelName('image')} 出图提供的英文场景描述。仅客观描述物理环境、光影、人物位置，不写情绪定性词，不写人物外貌长相。",
+  "image_prompt": "为 ${getModelName('image')} 出图提供的英文场景描述。仅客观描述物理环境、光影、人物位置，不写情绪定性词，只写伴游NPC和玩家以外的人物外貌长相。！重要！剧情图的关键细节描写时，禁止出现玩家或伴游NPC的外貌、服饰、动作等具体特征。",
   "image_characters": { "本场景画面中实际可见的角色标记。如: {\"${state.companionProfile.name}\": true} 或 {} "},
   "text_sequence":[
     {"type":"narration","content":"旁白文本示例"},
