@@ -27,7 +27,8 @@ export interface ModelRoute {
 export const MODEL_CONFIG: Record<ModelRole, ModelRoute> = {
   text:     { provider: 'gemini', model: 'gemini-3-flash-preview' },
   pro:      { provider: 'gemini', model: 'gemini-3.1-pro-preview' },
-  lite:     { provider: 'gemini', model: 'gemini-2.5-flash-lite-preview-09-2025' },
+  // lite:     { provider: 'gemini', model: 'gemini-2.5-flash-lite-preview-09-2025' },
+  lite:     { provider: 'gemini', model: 'gemini-3.1-flash-lite-preview' },
   image:    { provider: 'grok', model: 'grok-imagine-image' },
   portrait: { provider: 'grok', model: 'grok-imagine-image' },
   map:      { provider: 'gemini', model: 'gemini-3-pro-image-preview' },

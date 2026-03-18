@@ -559,81 +559,56 @@ export async function extractIntent(
 ): Promise<IntentExtractionResult> {
   const lastIntent = getLastIntent(state);
 
-  const prompt = `你是一个严格的文本冒险游戏引擎的核心逻辑路由器。你唯一的工作是基于当前状态、空间上下文和对话历史，对玩家的真实意图进行分类
+  const prompt = `你是一个顶级文本冒险游戏的 DM (地下城主)。
+抛弃一切机械式的规则匹配、IF-ELSE判断和关键字绑定！
+你的唯一任务是：基于当前世界的氛围（和平、无聊或生死危机），像真正的人类一样，看破玩家花哨的表层动作，直击其背后的【真实动机】。
 
-**当前状态:**
+**当前世界状态:**
 - 当前位置: 节点 "${state.currentNodeId!}", 室内 "${state.currentHouseId || 'outdoors'}"
-- 相连节点: ${fmtConnectedNodes(state)}
+- 相连节点: ${fmtConnectedNodes(state)}, current_objective (任务目标)
 - 可见室内: ${fmtVisibleHouses(state)}
 - 当前目标: ${state.currentObjective?.description || '无'}
 - 可使用物品: ${fmtInventory(state)}
 
 ${fmtTransitRules(state)}
 
-**近期对话 (关键上下文):**
-${fmtRecentConversation(state)}
-${fmtSurvivalInstinct(state)}
+**近期上下文 (用于感知当前氛围是和平、无聊还是生死危机):**
+${true && fmtRecentConversation(state) ? fmtRecentConversation(state) : ''}
+${false && fmtSurvivalInstinct(state) ? fmtSurvivalInstinct(state) : ''}
+${false && fmtCombatInstinct(state) ? fmtCombatInstinct(state) : ''}
 
-**意图解析流水线 (严格的瀑布流规则):**
-你必须按照自上而下的流水线评估玩家的输入匹配第一个适用的规则并忽略其余规则
+**系统支持的 7 种核心意图 (原汁原味的概念定义):**
+- idle: 闲聊
+- explore: 探索/搜刮
+- use_item: 使用背包物品
+- seek_quest: 如果玩家看起来极度无聊/要找点事儿干
+- combat: 对抗危机的行为，可能是闪转腾挪，等待寻找攻击位置，伺机而动都可以
+- move: 空间移动需求，战斗时的危机撤退行为
+- suicidal_idle: 危机时刻的发呆行为，类似危险关头还在说笑，闲聊
 
-**step 1: 微观空间退出 ("带我离开这里"规则)**
-- **条件**: 当前室内不是 'outdoors' 并且玩家表达要离开当前室内
-- **intent**: "move"
-- **targetId**: null
+**DM 的裁决哲学 (如何保持自信与怀疑):**
+1. 【情境张力法则】：永远把动作放进“氛围”里去衡量！在激烈的战斗/高危上下文中，玩家去“摸、拽、打开”危险源或怪物，这往往不是平静的 explore，而是带有极高风险的暴力互动或终结技(combat)！
+2. 【合理的极度自信】：只有当玩家的动机与当前的氛围【完全吻合且毫无杂念】时，才极度自信（例如：平时纯跑路就是 move；打架时纯挥拳就是 combat；闲着没事纯翻垃圾桶就是 explore）。
+3. 【必须触发 Confuse 的红线】：如果当前是高危/战斗上下文，而玩家的动作在字面上却像是在“和平探索(explore)”、“随意走动(move)”或“闲聊(idle)”，这种【氛围与动作的错位】往往意味着动机撕裂！你必须触发 confuse.sure = true，并诚实地给出 combat 与其他意图的权重对比！
 
-【重要】相连节点和可见室内可为可抵达目标
-**step 1.5: 空间移动**
-- **条件**: 玩家表示前往可抵达目标
-- **intent**: "move"
-- **targetId**: <目标 ID>
+=== 玩家输入 ===
+"${userInput}"
 
-**step 2.5: 玩家找事儿干**
-- **条件**: 如果玩家看起来极度无聊
-- **intent**: "seek_quest"
-- **targetId**: null
-
-${fmtCombatInstinct(state)}
-
-**step 2: 宏观推进 ("旅程/目标"规则)**
-- **条件**: 结合上下文玩家表达出有前往当前去完成当前目标
-- **intent**: "seek_quest"
-- **targetId**: "current_objective"（后端引擎会处理寻路）
-
-**step 4.5: 物品使用 ("使用物品"规则)**
-- **条件**: 玩家表示使用某个物品，并且该物品在当前可用物品列表中
-- **intent**: "use_item"
-- **targetId**: null
-- **itemId**: <物品 ID>
-
-**step 4: 物理交互与探索 ("动手"规则)**
-- **条件**: 玩家在这里找东西，或者表达出想要与环境进行物理交互（例如“检查”、“搜索”、“打开”、“进入”等），又没有明确的目标位置
-- **intent**: "explore"
-- **targetId**: null
-
-**step 6: 角色扮演与待机 ("空闲"规则)**
-- **条件**: 纯粹的对话、情绪反应、休息或没有物理推进的观察
-- **intent**: "idle"（如果高度适用，则为 "combat" 或 "suicidal_idle"）
-- **targetId**: null
-
-=== 实际任务 ===
-玩家输入: "${userInput}"
-
-严格按照以下 JSON 格式输出。仅返回 JSON，不要带有 markdown 格式标记:
+请只输出纯 JSON，不要带 markdown 标记：
 {
-  "intent": "<上述类别之一>",
-  "targetId": "<确切的 ID>",
+  "intent": "<从上述 7 种分类中选择最核心的一个>",
+  "targetId": "<确切的 ID，无则填 null>",
   "direction": "<'forward', 'back', 或 null>",
-  "itemId": "<确切的 ID，如果意图不是 use_item 则填 null>",
+  "itemId": "<确切的 ID，无则填 null>",
   "confuse": {
-    "sure": <是否无法确定意图，如果是，请尽量猜测但标记为 true，否则 false>,
-    "reason": "<如果 confuse 是 true，这里说明为什么不确定；否则填 null>",
-    "type": [{
-      "confidence": <0-1 之间的数字，表示对该意图的置信度>,
-      "intent": "<如果 confuse 是 true，这里列出可能的意图类别>",
-      "targetId": "<确切的 ID>",
-      "direction": "<'forward', 'back', 或 null>",
-      "itemId": "<确切的 ID，如果意图不是 use_item 则填 null>"
+    "sure": <只要核心动机清晰唯一就填 false；若遇到诉求撕裂、严重歧义、表意破碎，填 true>,
+    "reason": "<如果 sure 为 true，用人类大白话解释动机哪里冲突了；否则填 null>",
+    "type":[{
+      "confidence": <0到1之间的置信度>,
+      "intent": "<可能的意图>",
+      "targetId": "<ID 或 null>",
+      "direction": "<方向 或 null>",
+      "itemId": "<ID 或 null>"
     }]
   }
 }`;

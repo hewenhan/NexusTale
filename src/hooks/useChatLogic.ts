@@ -211,11 +211,11 @@ export function useChatLogic() {
       const visionContext = buildVisionContext(state);
       const extraction = await extractIntent(userInput, state);
       let intent = extraction.intent;
+      console.log("Intent original:", intent);
 
       // ── Step 1.1: Confuse interception — pause for user disambiguation ──
       if (extraction.confuse?.sure) {
         intent = await waitForConfuseResolution(extraction.confuse, extraction.intent);
-        console.log("Intent (user-resolved confuse):", intent);
       }
 
       if (intent.targetId === 'current_objective' && state.currentObjective && state.worldData) {
@@ -225,8 +225,6 @@ export function useChatLogic() {
         intent.intent = pathResult.intent;
         intent.targetId = pathResult.targetId;
         console.log("Intent (pathfinding resolved):", intent);
-      } else {
-        console.log("Intent:", intent);
       }
 
       // ── Step 1.5b: Director system ──

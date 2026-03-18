@@ -157,9 +157,6 @@ export interface TextSegment {
 // --- Intent Types ---
 export type IntentType = 'idle' | 'explore' | 'combat' | 'suicidal_idle' | 'move' | 'seek_quest' | 'use_item';
 
-/** 对玩家可见的意图类型（隐藏 suicidal_idle） */
-export type VisibleIntentType = Exclude<IntentType, 'suicidal_idle'>;
-
 export interface IntentResult {
   intent: IntentType;
   targetId: string | null;
@@ -187,8 +184,9 @@ export interface IntentExtractionResult {
 }
 
 // --- Intent Display Labels ---
-export const INTENT_LABELS: Record<VisibleIntentType, string> = {
+export const INTENT_LABELS: Record<IntentType, string> = {
   idle: '原地待命',
+  suicidal_idle: '原地待命',
   explore: '探索周围',
   combat: '战斗',
   move: '移动',

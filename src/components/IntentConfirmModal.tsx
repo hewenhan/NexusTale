@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, Check, ChevronDown, ChevronRight, Minimize2, X } from 'lucide-react';
-import type { ConfuseData, ConfuseCandidate, IntentResult, IntentType, VisibleIntentType, NodeData, InventoryItem } from '../types/game';
+import type { ConfuseData, ConfuseCandidate, IntentResult, IntentType, NodeData, InventoryItem } from '../types/game';
 import { INTENT_LABELS, DIRECTION_LABELS } from '../types/game';
 
 // ── Types ──
@@ -22,11 +22,6 @@ interface IntentConfirmModalProps {
 }
 
 // ── Helpers ──
-
-/** Filter out suicidal_idle from candidates and merge confidence for display */
-function getVisibleCandidates(candidates: ConfuseCandidate[]): ConfuseCandidate[] {
-  return candidates.filter(c => c.intent !== 'suicidal_idle');
-}
 
 /** Build a confidence map: intent → max confidence among candidates */
 function buildConfidenceMap(candidates: ConfuseCandidate[]): Map<string, number> {
@@ -72,43 +67,51 @@ export function IntentConfirmModal({
   onConfirm,
   onMinimize,
 }: IntentConfirmModalProps) {
-  const visibleCandidates = useMemo(() => getVisibleCandidates(confuse.type), [confuse.type]);
-  const confidenceMap = useMemo(() => buildConfidenceMap(visibleCandidates), [visibleCandidates]);
+  const confidenceMap = useMemo(() => buildConfidenceMap(confuse.type), [confuse.type]);
 
   // Deduplicated intent list sorted by confidence
+  // Ensure we don't show multiple intents with the same duplicate label
   const intentOptions = useMemo(() => {
-    const seen = new Set<string>();
-    const opts: VisibleIntentType[] = [];
-    for (const c of visibleCandidates) {
-      if (!seen.has(c.intent) && c.intent !== 'suicidal_idle') {
-        seen.add(c.intent);
-        opts.push(c.intent as VisibleIntentType);
+    const sorted = [...confuse.type].sort((a, b) => b.confidence - a.confidence);
+    const seenLabel = new Set<string>();
+    const opts: IntentType[] = [];
+    
+    for (const c of sorted) {
+      const label = INTENT_LABELS[c.intent];
+      if (!seenLabel.has(label)) {
+        seenLabel.add(label);
+        opts.push(c.intent);
       }
     }
-    return opts.sort((a, b) => (confidenceMap.get(b) ?? 0) - (confidenceMap.get(a) ?? 0));
-  }, [visibleCandidates, confidenceMap]);
+    return opts;
+  }, [confuse.type]);
 
-  // Default to highest-confidence visible intent
-  const defaultVisibleIntent = defaultIntent.intent === 'suicidal_idle'
-    ? (intentOptions[0] ?? 'idle')
-    : defaultIntent.intent;
+  // Handle fallback if the default intent was deduplicated out
+  const resolvedDefaultIntent = useMemo(() => {
+    if (intentOptions.includes(defaultIntent.intent)) {
+      return defaultIntent.intent;
+    }
+    const defaultLabel = INTENT_LABELS[defaultIntent.intent];
+    const matchByLabel = intentOptions.find(opt => INTENT_LABELS[opt] === defaultLabel);
+    return matchByLabel ?? intentOptions[0] ?? 'idle';
+  }, [defaultIntent.intent, intentOptions]);
 
   const [phase, setPhase] = useState<Phase>('intent');
-  const [selectedIntent, setSelectedIntent] = useState<VisibleIntentType>(defaultVisibleIntent as VisibleIntentType);
+  const [selectedIntent, setSelectedIntent] = useState<IntentType>(resolvedDefaultIntent);
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(defaultIntent.targetId);
   const [selectedDirection, setSelectedDirection] = useState<'forward' | 'back' | null>(defaultIntent.direction ?? null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(defaultIntent.itemId ?? null);
 
   const needsDetails = selectedIntent === 'move' || selectedIntent === 'use_item';
 
-  const handleIntentSelect = useCallback((intent: VisibleIntentType) => {
+  const handleIntentSelect = useCallback((intent: IntentType) => {
     setSelectedIntent(intent);
     // Reset sub-options when intent changes
-    const bestCandidate = visibleCandidates.find(c => c.intent === intent);
+    const bestCandidate = confuse.type.find(c => c.intent === intent);
     setSelectedTargetId(bestCandidate?.targetId ?? null);
     setSelectedDirection(bestCandidate?.direction ?? null);
     setSelectedItemId(bestCandidate?.itemId ?? null);
-  }, [visibleCandidates]);
+  }, [confuse.type]);
 
   const handleProceed = useCallback(() => {
     if (needsDetails && phase === 'intent') {
@@ -173,7 +176,7 @@ export function IntentConfirmModal({
               <div className="flex gap-2">
                 {(['forward', 'back'] as const).map(dir => {
                   const isSelected = dir === selectedDirection;
-                  const confidence = getDirectionConfidence(visibleCandidates, dir);
+                  const confidence = getDirectionConfidence(confuse.type, dir);
                   return (
                     <button
                       key={dir}
@@ -211,7 +214,7 @@ export function IntentConfirmModal({
               </button>
               {connectedNodes.map(node => {
                 const isSelected = node.id === selectedTargetId;
-                const confidence = getTargetConfidence(visibleCandidates, 'move', node.id);
+                const confidence = getTargetConfidence(confuse.type, 'move', node.id);
                 return (
                   <button
                     key={node.id}
@@ -242,7 +245,7 @@ export function IntentConfirmModal({
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {inventory.map(item => {
               const isSelected = item.id === selectedItemId;
-              const confidence = getItemConfidence(visibleCandidates, item.id);
+              const confidence = getItemConfidence(confuse.type, item.id);
               return (
                 <button
                   key={item.id}
@@ -271,7 +274,7 @@ export function IntentConfirmModal({
   };
 
   const renderConfirmPhase = () => {
-    const intentLabel = INTENT_LABELS[selectedIntent as VisibleIntentType] ?? selectedIntent;
+    const intentLabel = INTENT_LABELS[selectedIntent] ?? selectedIntent;
     const targetNode = connectedNodes.find(n => n.id === selectedTargetId);
     const selectedItem = inventory.find(i => i.id === selectedItemId);
 
