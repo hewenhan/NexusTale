@@ -1,5 +1,5 @@
 import * as modelService from './modelService';
-import type { IntentResult, IntentExtractionResult, ConfuseData, ConfuseCandidate, WorldData, CharacterProfile, NodeData, GameState, InventoryItem, Rarity, SafetyLevel } from '../types/game';
+import type { IntentResult, IntentExtractionResult, ConfuseData, ConfuseCandidate, WorldData, CharacterProfile, NodeData, GameState, InventoryItem, Rarity, SafetyLevel, QuestStage, QuestCompletionCeremony, ChatMessage } from '../types/game';
 import { normalizeConnections, EQUIPMENT_BUFF_TABLE } from '../types/game';
 import { fmtConnectedNodes, fmtVisibleHouses, fmtRecentConversation, getLastIntent, fmtTransitRules, fmtSurvivalInstinct, fmtInventory, fmtCombatInstinct } from './intentHelpers';
 
@@ -519,32 +519,101 @@ Return ONLY a JSON object (no markdown):
 }
 
 /**
- * 任务完成旁白：由 AI 生成一段颁奖式的任务完成叙述
+ * 任务完成大典：由 AI 生成结构化的多段式庆典叙述
  */
 export async function generateQuestCompletionNarration(
   worldview: string,
-  questDescription: string,
-  companionName: string,
+  questChain: QuestStage[],
+  playerProfile: CharacterProfile,
+  companionProfile: CharacterProfile,
+  affection: number,
+  recentMessages: ChatMessage[],
+  summary: string,
   language: 'zh' | 'en' = 'zh'
-): Promise<string> {
-  const langInstruction = language === 'zh' ? '用中文回复。' : 'Reply in English.';
-  const prompt = `You are the narrator of an RPG text adventure. The player and their companion ${companionName} have just completed a multi-stage quest chain.
+): Promise<QuestCompletionCeremony> {
+  const langInstruction = language === 'zh' ? 'All text MUST be in Chinese.' : 'All content MUST be in English.';
 
+  const stagesDesc = questChain.map((s, i) =>
+    `Stage ${i + 1}: [${s.targetLocationName}] ${s.description} (items: ${s.requiredItems.map(r => r.name).join(', ')})`
+  ).join('\n');
+
+  const affectionLabel = affection < 30 ? 'cold/distant' : affection < 60 ? 'neutral/warming' : 'close/trusting';
+
+  const recentLog = recentMessages.slice(-15).map(m => `${m.role}: ${m.text}`).join('\n');
+
+  const prompt = `You are a legendary chronicler penning the definitive account of an epic quest. The player and companion have just completed a MAJOR multi-stage quest chain. Write in the style of epic chronicle narration — grand, sweeping, with the gravitas of myth being forged. Every word should carry weight.
+
+=== WORLD ===
 Worldview: "${worldview}"
-Completed Quest: "${questDescription}"
 
-Write a short (2-3 sentences), dramatic, third-person narrator passage celebrating the completion of this quest chain. Be poetic but concise. Do NOT use dialogue — it's pure narration.
+=== CHARACTERS ===
+Player: ${playerProfile.name} — ${playerProfile.personality || playerProfile.personalityDesc || 'adventurer'}. Background: ${playerProfile.background || 'unknown'}. Specialties: ${playerProfile.specialties || 'various'}.
+Companion: ${companionProfile.name} — ${companionProfile.personality || companionProfile.personalityDesc || 'companion'}. Background: ${companionProfile.background || 'unknown'}.
+Current Relationship: affection ${affection}/100 (${affectionLabel})
+
+=== QUEST CHAIN (all stages, now ALL completed) ===
+${stagesDesc}
+
+=== STORY SUMMARY (earlier events) ===
+${summary || '(no earlier summary)'}
+
+=== RECENT CONVERSATION (vivid details to reference) ===
+${recentLog || '(no recent logs)'}
+
+=== YOUR TASK ===
+Generate a structured JSON celebrating this quest completion. All text is third-person narration (NO dialogue, no quotes). Write with the grandeur of an epic saga — every section should feel monumental.
+
+1. "recap": An array with EXACTLY ${questChain.length} strings. Each string is 2-3 RICH sentences recapping that stage — paint the scene, reference the specific location name, the challenge overcome, and the emotional stakes. Each should read like a chapter summary from a legendary tale.
+
+2. "climax": 5-8 sentences. A dramatic, poetic, EXPANSIVE depiction of the FINAL act. Describe the environment, the tension, the player's defining moment. Reference their personality, abilities, and the specific challenge. Build to an emotional crescendo. This is the heart of the chronicle — do NOT rush it.
+
+3. "companionReaction": 2-3 sentences. How ${companionProfile.name} reacts to this achievement, consistent with their personality (${companionProfile.personalityDesc || companionProfile.personality || 'their nature'}) and current affection level (${affectionLabel}). A cold companion might show grudging, hard-won respect; a close one might reveal vulnerability or unguarded warmth. Describe their body language and inner shift. Pure narration.
+
+4. "reward": { "title": an epic, resonant title for the achievement (like a legendary milestone engraved in history), "description": 3-5 sentences describing how completing this quest chain has fundamentally transformed the world, the characters, and the balance of power — tie it deeply to the worldview's core themes and the quest's original purpose }
+
+5. "epilogue": 3-5 sentences. A forward-looking closing passage. How will this achievement echo through the ages? What new horizon opens? How has the bond between ${playerProfile.name} and ${companionProfile.name} been irrevocably changed? End with a line that feels like the final sentence of a great chapter.
+
+6. "affectionDelta": a number 5-15 representing how much this shared triumph should boost the companion's affection.
 
 ${langInstruction}
 
-Return ONLY the narrator text, no JSON, no markdown.`;
+Return ONLY a JSON object (no markdown):
+{
+  "recap": ["stage 1 recap...", "stage 2 recap...", ...],
+  "climax": "dramatic final act...",
+  "companionReaction": "companion's reaction...",
+  "reward": { "title": "achievement title", "description": "world impact..." },
+  "epilogue": "forward-looking closing...",
+  "affectionDelta": 10
+}`;
 
   try {
-    const text = await modelService.generateText('text', prompt, { novelty: true });
-    return text?.trim() || '任务链已完成。新的冒险即将开始。';
+    const text = await modelService.generateText('text', prompt, { jsonMode: true, novelty: true });
+    if (!text) throw new Error('Empty response');
+    const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+
+    return {
+      recap: Array.isArray(parsed.recap) ? parsed.recap.map(String) : questChain.map((_, i) => `第 ${i + 1} 环已完成。`),
+      climax: typeof parsed.climax === 'string' ? parsed.climax : '冒险者完成了这段艰辛的旅程。',
+      companionReaction: typeof parsed.companionReaction === 'string' ? parsed.companionReaction : `${companionProfile.name}默默点了点头。`,
+      reward: {
+        title: parsed.reward?.title || '任务完成',
+        description: parsed.reward?.description || '一段传奇就此落幕，新的篇章即将展开。',
+      },
+      epilogue: typeof parsed.epilogue === 'string' ? parsed.epilogue : '这段传奇将永远铭刻于这片土地的记忆之中，而新的篇章正悄然翻开。',
+      affectionDelta: Math.max(5, Math.min(15, Number(parsed.affectionDelta) || 10)),
+    };
   } catch (e) {
-    console.error('Quest completion narration failed:', e);
-    return '任务链已完成。新的冒险即将开始。';
+    console.error('Quest completion ceremony generation failed:', e);
+    return {
+      recap: questChain.map((s, i) => `第 ${i + 1} 环：${s.targetLocationName}的挑战已被征服。`),
+      climax: '经历了重重险阻，冒险者终于站在了胜利的终点。',
+      companionReaction: `${companionProfile.name}露出了一丝不易察觉的微笑。`,
+      reward: { title: '任务链完成', description: '这段旅程永远改变了这片土地的命运。新的冒险即将开始。' },
+      epilogue: '这段传奇将永远铭刻于这片土地的记忆之中，而新的篇章正悄然翻开。',
+      affectionDelta: 10,
+    };
   }
 }
 

@@ -132,6 +132,19 @@ export interface QuestStage {
   arrivedAtTarget: boolean;
 }
 
+// --- Quest Completion Ceremony ---
+export interface QuestCompletionCeremony {
+  recap: string[];           // 2-3 sentences per stage recap
+  climax: string;            // 5-8 sentences, dramatic final act
+  companionReaction: string; // 2-3 sentences, companion POV
+  reward: {
+    title: string;           // e.g. "暗影封印已解除"
+    description: string;     // 3-5 sentences, world/character change
+  };
+  epilogue: string;          // 3-5 sentences, lasting impact on world & destiny
+  affectionDelta: number;    // suggested +5 to +15
+}
+
 // --- Equipment Presets ---
 /**
  * 装备 buff 分布表（每稀有度 5 件）

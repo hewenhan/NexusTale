@@ -25,6 +25,7 @@ import { InventoryPanel } from '../components/InventoryPanel';
 import { DiscardPanel } from '../components/DiscardPanel';
 import { IntentConfirmModal } from '../components/IntentConfirmModal';
 import { PendingIntentBanner } from '../components/PendingIntentBanner';
+import { QuestCeremonyOverlay } from '../components/QuestCeremonyOverlay';
 import { uploadImageToDrive, getImageUrlByName } from '../lib/drive';
 import { initializeWorld, fetchCustomLoadingMessages, generateMapImage, generateCharacterPortrait, generateEquipmentPresets } from '../services/aiService';
 
@@ -78,7 +79,7 @@ export default function Chat() {
   // 已播放过打字动画的消息 ID 集合（防止 Virtuoso 卸载/重挂时重新打字）
   const animatedIdsRef = useRef<Set<string>>(new Set(state.history.map(m => m.id)));
 
-  const { isProcessing, handleTurn, flushPendingNotifications, pendingBagItem, resolveBagDiscard, rejectBagItem, pendingConfuse, isConfuseModalVisible, resolveConfuse, minimizeConfuse, restoreConfuse } = useChatLogic();
+  const { isProcessing, handleTurn, flushPendingNotifications, pendingBagItem, resolveBagDiscard, rejectBagItem, pendingConfuse, isConfuseModalVisible, resolveConfuse, minimizeConfuse, restoreConfuse, pendingCeremony, dismissCeremony } = useChatLogic();
 
   // ── Deferred display snapshot ──
   // Progress bar & objective only update after the last typewriter message completes
@@ -902,6 +903,16 @@ export default function Chat() {
         onDiscard={resolveBagDiscard}
         onRejectIncoming={rejectBagItem}
       />
+
+      <AnimatePresence>
+        {pendingCeremony && (
+          <QuestCeremonyOverlay
+            ceremony={pendingCeremony}
+            companionName={state.companionProfile.name}
+            onDismiss={dismissCeremony}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showProfileModal && (

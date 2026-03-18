@@ -6,7 +6,7 @@ import { generateSummary, generateTurn, extractIntent, resolveObjectivePathfindi
 import { runPipeline, buildVisionContext, assembleNarrative, revealHouseInWorld } from '../lib/pipeline';
 import { useGrandNotification, type GrandNotificationData } from '../components/GrandNotification';
 import { SUMMARY_THRESHOLD, KEEP_RECENT_TURNS, INVENTORY_CAPACITY, BGM_LIST, bossTensionFromSafety, rollEscapeRarity, pickEscapeIcon } from '../types/game';
-import type { QuestStage, InventoryItem, Rarity, TextSegment, IntentResult, ConfuseData } from '../types/game';
+import type { QuestStage, QuestCompletionCeremony, InventoryItem, Rarity, TextSegment, IntentResult, ConfuseData } from '../types/game';
 
 import {
   maybeEscalateToSeekQuest, runDirector, advanceQuestChain,
@@ -77,6 +77,10 @@ export function useChatLogic() {
   const setPendingNotificationsRef = useCallback((notifications: Omit<GrandNotificationData, 'id'>[]) => {
     pendingNotificationsRef.current = notifications;
   }, []);
+
+  // ── Quest ceremony overlay state ──
+  const [pendingCeremony, setPendingCeremony] = useState<QuestCompletionCeremony | null>(null);
+  const dismissCeremony = useCallback(() => setPendingCeremony(null), []);
 
   // ── Intent confuse: blocking disambiguation state ──
   const [pendingConfuse, setPendingConfuse] = useState<{
@@ -431,7 +435,7 @@ export function useChatLogic() {
           } else {
             itemDropInstruction = `【搜刮结果 - 有收获】：获得了一件${escapeItemRarity}品质的道具！`;
           }
-          itemDropInstruction += `（根据世界观和当前场景合理创名，不要和已有物品重复！根据对话合理化描述获得过程），并在 get_item 字段中返回道具名称和简短说明。`;
+          itemDropInstruction += `（根据世界观和当前场景合理创名，不要和已有物品重复！不要和当前任务/任务链有关！根据对话合理化描述获得过程），并在 get_item 字段中返回道具名称和简短说明。`;
         } else {
           if (resolution.newTransitState) {
             itemDropInstruction = `【搜刮结果 - 无收获】：在赶路途中没有找到任何道具，但还有找的线索`;
@@ -458,7 +462,7 @@ export function useChatLogic() {
           });
           // Build equipment drop instruction for AI
           const equipType = prerolledEquipDrop.type === 'weapon' ? '武器' : '防具';
-          const equipInstruction = `【装备掉落】：探索中发现了一件${prerolledEquipDrop.rarity}品质的${equipType}【${prerolledEquipDrop.name}】（${prerolledEquipDrop.description}）！请在叙事中自然地描写发现这件装备的过程。`;
+          const equipInstruction = `【装备掉落】：探索中发现了一件${prerolledEquipDrop.rarity}品质的${equipType}【${prerolledEquipDrop.name}】（${prerolledEquipDrop.description}）！请在叙事中自然地描写发现这件装备的过程。不要和当前任务/任务链有关！`;
           itemDropInstruction = (itemDropInstruction || '') + equipInstruction;
         }
       }
@@ -572,7 +576,7 @@ export function useChatLogic() {
       }
 
       // ── Step 7.5: Quest stage completion check ──
-      let questNarratorText: string | null = null;
+      let questCeremony: QuestCompletionCeremony | null = null;
       if (intent.intent === 'use_item' && intent.itemId && state.questChain) {
         const stageIdx = state.currentQuestStageIndex;
         const currentStage = state.questChain[stageIdx];
@@ -587,21 +591,33 @@ export function useChatLogic() {
             const { nextObjective, questCompleted } = advanceQuestChain(state);
 
             if (questCompleted) {
-              // All stages done → generate narrator text + clear quest chain
+              // All stages done → generate structured ceremony
               try {
-                questNarratorText = await generateQuestCompletionNarration(
+                questCeremony = await generateQuestCompletionNarration(
                   state.worldview,
-                  state.questChain.map(s => s.description).join(' → '),
-                  state.companionProfile.name,
+                  state.questChain,
+                  state.playerProfile,
+                  state.companionProfile,
+                  state.affection,
+                  state.history,
+                  state.summary,
                   state.language
                 );
               } catch {
-                questNarratorText = '任务链已完成。新的冒险即将开始。';
+                questCeremony = {
+                  recap: state.questChain.map((s, i) => `第 ${i + 1} 环：${s.targetLocationName}的挑战已被征服。`),
+                  climax: '经历了重重险阻，冒险者终于站在了胜利的终点。',
+                  companionReaction: `${state.companionProfile.name}露出了一丝不易察觉的微笑。`,
+                  reward: { title: '任务链完成', description: '这段旅程永远改变了这片土地的命运。新的冒险即将开始。' },
+                  epilogue: '这段传奇将永远铭刻于这片土地的记忆之中，而新的篇章正悄然翻开。',
+                  affectionDelta: 10,
+                };
               }
-              updateState({
-                questChain: state.questChain.map((s, i) => i === stageIdx ? { ...s, completed: true } : s),
+              updateState(prev => ({
+                questChain: (prev.questChain || []).map((s, i) => i === stageIdx ? { ...s, completed: true } : s),
                 currentObjective: null,
-              });
+                affection: Math.min(100, prev.affection + (questCeremony?.affectionDelta ?? 10)),
+              }));
             } else if (nextObjective) {
               // Advance to next stage
               const nextStageData = state.questChain[stageIdx + 1];
@@ -727,14 +743,11 @@ export function useChatLogic() {
         await addItemToBag(item, rollingInvRef);
       }
 
-      // ── Step 9.6: Quest completion narrator message ──
-      if (questNarratorText) {
-        addMessage({
-          id: uuidv4(),
-          role: 'narrator',
-          text: questNarratorText,
-          timestamp: Date.now(),
-        });
+      // ── Step 9.6: Quest completion ceremony overlay ──
+      if (questCeremony) {
+        // Wait for chat typewriter to finish so sound effects don't overlap
+        await waitForTypewriter();
+        setPendingCeremony(questCeremony);
       }
 
     } catch (error) {
@@ -765,5 +778,8 @@ export function useChatLogic() {
     resolveConfuse,
     minimizeConfuse,
     restoreConfuse,
+    // Quest completion ceremony
+    pendingCeremony,
+    dismissCeremony,
   };
 }
