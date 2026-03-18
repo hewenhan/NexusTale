@@ -3,11 +3,11 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import type { ChatMessage, GameState, DebugState } from '../../types/game';
+import type { ChatMessage, GameState, DebugState, TextSegment } from '../../types/game';
 import type { GrandNotificationData } from '../../components/GrandNotification';
 
 export interface DisplayDeps {
-  messages: string[];
+  messages: TextSegment[];
   debugState: DebugState;
   sceneVisuals: string | undefined;
   lastVisuals: string;
@@ -37,10 +37,13 @@ export async function runDisplaySequence(deps: DisplayDeps): Promise<void> {
 
   let lastMsgId = uuidv4();
 
+  const firstSeg = messages[0];
   addMessage({
     id: lastMsgId,
     role: 'model',
-    text: messages[0],
+    text: firstSeg.content,
+    segmentType: firstSeg.type,
+    npcName: firstSeg.name,
     timestamp: Date.now(),
     debugState,
     currentSceneVisuals: sceneVisuals || lastVisuals,
@@ -65,11 +68,14 @@ export async function runDisplaySequence(deps: DisplayDeps): Promise<void> {
     await waitForTypewriter();
     await new Promise(resolve => setTimeout(resolve, 1000));
 
+    const seg = messages[i];
     lastMsgId = uuidv4();
     addMessage({
       id: lastMsgId,
       role: 'model',
-      text: messages[i],
+      text: seg.content,
+      segmentType: seg.type,
+      npcName: seg.name,
       timestamp: Date.now() + i,
       bgmKey: selectedBgmKey
     });
@@ -80,11 +86,14 @@ export async function runDisplaySequence(deps: DisplayDeps): Promise<void> {
     waitForTypewriter().then(() => new Promise(resolve => setTimeout(resolve, 1000)))
   ]);
 
+  const lastSeg = messages[messages.length - 1];
   lastMsgId = uuidv4();
   addMessage({
     id: lastMsgId,
     role: 'model',
-    text: messages[messages.length - 1],
+    text: lastSeg.content,
+    segmentType: lastSeg.type,
+    npcName: lastSeg.name,
     timestamp: Date.now() + messages.length - 1,
     imageFileName: fileName,
     bgmKey: selectedBgmKey

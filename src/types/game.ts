@@ -145,6 +145,15 @@ export const EQUIPMENT_BUFF_TABLE: Record<Rarity, number[]> = {
   legendary: [72, 74, 76, 78, 80],
 };
 
+// --- Text Segment Types ---
+export type SegmentType = 'narration' | 'player_thought' | 'npc_dialogue' | 'ai_dialogue';
+
+export interface TextSegment {
+  type: SegmentType;
+  name?: string; // only for npc_dialogue
+  content: string;
+}
+
 // --- Intent Types ---
 export type IntentType = 'idle' | 'explore' | 'combat' | 'suicidal_idle' | 'move' | 'seek_quest' | 'use_item';
 
@@ -313,6 +322,8 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'model' | 'narrator';
   text: string;
+  segmentType?: SegmentType;
+  npcName?: string;
   imageFileName?: string;
   timestamp: number;
   // Snapshot of game state AFTER this message was processed

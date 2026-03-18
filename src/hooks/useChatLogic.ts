@@ -6,7 +6,7 @@ import { generateSummary, generateTurn, extractIntent, resolveObjectivePathfindi
 import { runPipeline, buildVisionContext, assembleNarrative, revealHouseInWorld } from '../lib/pipeline';
 import { useGrandNotification, type GrandNotificationData } from '../components/GrandNotification';
 import { SUMMARY_THRESHOLD, KEEP_RECENT_TURNS, INVENTORY_CAPACITY, BGM_LIST, bossTensionFromSafety, rollEscapeRarity, pickEscapeIcon } from '../types/game';
-import type { QuestStage, InventoryItem, Rarity } from '../types/game';
+import type { QuestStage, InventoryItem, Rarity, TextSegment } from '../types/game';
 
 import {
   maybeEscalateToSeekQuest, runDirector, advanceQuestChain,
@@ -620,7 +620,19 @@ export function useChatLogic() {
           : undefined;
       }
 
-      const messages = Array.isArray(text_sequence) ? text_sequence : [responseJson.text_response || "......"];
+      const messages: TextSegment[] = Array.isArray(text_sequence)
+        ? text_sequence.map((seg: any) => {
+            // Support new structured format
+            if (seg && typeof seg === 'object' && seg.type && seg.content) {
+              return { type: seg.type, content: seg.content, name: seg.name } as TextSegment;
+            }
+            // Backward compatible: plain string → ai_dialogue
+            if (typeof seg === 'string') {
+              return { type: 'ai_dialogue' as const, content: seg };
+            }
+            return { type: 'ai_dialogue' as const, content: String(seg) };
+          })
+        : [{ type: 'ai_dialogue' as const, content: responseJson.text_response || "......" }];
       const lastVisuals = getLastSceneVisuals(state);
 
       const newDebugState = {

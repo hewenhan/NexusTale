@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Image as ImageIcon, Loader2, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
-import { ChatMessage, ENABLE_DEBUG_UI } from '../types/game';
+import { ChatMessage, ENABLE_DEBUG_UI, SegmentType } from '../types/game';
 import { getImageUrlByName } from '../lib/drive';
 import { useAuth } from '../contexts/AuthContext';
 import { IMAGE_PROHIBITED_SENTINEL } from '../services/aiService';
@@ -23,6 +23,49 @@ interface ChatMessageItemProps {
   imageUrl?: string;
   onImageLoaded: (fileName: string, url: string) => void;
   onDelete?: () => void;
+}
+
+/** Determine rendering side based on role + segmentType */
+function getMessageSide(role: string, segmentType?: SegmentType): 'left' | 'right' | 'center' {
+  if (role === 'user') return 'right';
+  if (role === 'narrator') return 'center';
+  if (segmentType === 'player_thought') return 'right';
+  return 'left';
+}
+
+/** Get display name for the message */
+function getDisplayName(role: string, characterName: string, playerName: string, segmentType?: SegmentType, npcName?: string): string {
+  if (role === 'user') return playerName;
+  if (segmentType === 'player_thought') return playerName;
+  if (segmentType === 'npc_dialogue') return npcName || 'NPC';
+  if (segmentType === 'narration') return '旁白';
+  return characterName;
+}
+
+/** Bubble style classes per segment type */
+function getBubbleClasses(role: string, segmentType?: SegmentType): string {
+  if (role === 'user') return 'bg-emerald-600 text-white rounded-tr-sm';
+  switch (segmentType) {
+    case 'player_thought':
+      return 'bg-sky-950/50 border border-sky-800/40 text-sky-100 rounded-tr-sm';
+    case 'npc_dialogue':
+      return 'bg-violet-950/40 border border-violet-800/30 text-zinc-100 rounded-tl-sm';
+    case 'narration':
+      return 'bg-amber-950/30 border border-amber-700/30 text-amber-100/90 rounded-tl-sm';
+    case 'ai_dialogue':
+    default:
+      return 'bg-zinc-900 border border-zinc-800 rounded-tl-sm';
+  }
+}
+
+/** Name label color per segment type */
+function getNameColor(segmentType?: SegmentType): string {
+  switch (segmentType) {
+    case 'player_thought': return 'text-sky-400/70';
+    case 'npc_dialogue': return 'text-violet-400/70';
+    case 'narration': return 'text-amber-500/70';
+    default: return 'text-zinc-500';
+  }
 }
 
 export const ChatMessageItem = React.memo(({ msg, characterName, playerName = '你', portraitUrl, playerPortraitUrl, imageUrl, onImageLoaded, onDelete, animate = false, textSpeed = 'normal', isLastModelMessage = false, durationMs, onTypewriterComplete }: ChatMessageItemProps) => {
@@ -53,17 +96,30 @@ export const ChatMessageItem = React.memo(({ msg, characterName, playerName = '�
     };
   }, [msg.imageFileName, imageUrl, accessToken, onImageLoaded]);
 
+  const side = getMessageSide(msg.role, msg.segmentType);
+  const displayName = getDisplayName(msg.role, characterName, playerName, msg.segmentType, msg.npcName);
+  const showLeftAvatar = side === 'left';
+  const showRightAvatar = side === 'right';
+  const isModelAnim = msg.role === 'model';
+
+  // Determine which portrait to show on the left side  
+  const leftHasPortrait = msg.segmentType !== 'narration' && msg.segmentType !== 'npc_dialogue';
+  const leftPortrait = leftHasPortrait ? portraitUrl : null;
+
+  // Determine which portrait to show on the right side
+  const rightPortrait = playerPortraitUrl;
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={clsx(
         "flex w-full mx-auto py-1 sm:py-4 px-2 sm:px-4 gap-2 sm:gap-3 relative group",
-        msg.role === 'user' ? "justify-end" : msg.role === 'narrator' ? "justify-center" : "justify-start"
+        side === 'right' ? "justify-end" : side === 'center' ? "justify-center" : "justify-start"
       )}
     >
-      {/* Narrator message (centered, no avatar) */}
-      {msg.role === 'narrator' && (
+      {/* System narrator message (centered, no avatar) — only for role='narrator' */}
+      {side === 'center' && (
         <div className="max-w-[85%] bg-amber-950/30 border border-amber-600/40 rounded-xl px-5 py-3 shadow-lg shadow-amber-500/5">
           <div className="text-xs text-amber-500 font-medium mb-1 text-center">📜 旁白</div>
           <div className="text-sm text-amber-200/90 leading-relaxed text-center italic">
@@ -79,34 +135,48 @@ export const ChatMessageItem = React.memo(({ msg, characterName, playerName = '�
         </div>
       )}
 
-      {/* AI Avatar */}
-      {msg.role === 'model' && (
+      {/* Left-side Avatar */}
+      {showLeftAvatar && (
         <div 
-          className={`w-10 h-10 sm:w-20 sm:h-20 rounded-xl bg-zinc-800 shrink-0 overflow-hidden border border-zinc-700 flex items-center justify-center mt-1 sm:mt-5 ${portraitUrl ? 'cursor-pointer hover:ring-2 hover:ring-zinc-500 transition-all' : ''}`}
-          onClick={() => { if (portraitUrl) setIsAvatarFullscreen(true); }}
+          className={clsx(
+            "w-10 h-10 sm:w-20 sm:h-20 rounded-xl shrink-0 overflow-hidden border flex items-center justify-center mt-1 sm:mt-5",
+            msg.segmentType === 'narration'
+              ? "bg-amber-950/40 border-amber-700/30"
+              : msg.segmentType === 'npc_dialogue'
+                ? "bg-violet-950/40 border-violet-700/30"
+                : "bg-zinc-800 border-zinc-700",
+            leftPortrait ? 'cursor-pointer hover:ring-2 hover:ring-zinc-500 transition-all' : ''
+          )}
+          onClick={() => { if (leftPortrait) setIsAvatarFullscreen(true); }}
         >
-          {portraitUrl ? (
-            <img src={portraitUrl} alt={characterName} className="w-full h-full object-cover" />
+          {leftPortrait ? (
+            <img src={leftPortrait} alt={displayName} className="w-full h-full object-cover" />
+          ) : msg.segmentType === 'narration' ? (
+            <span className="text-amber-500 text-base sm:text-xl">📜</span>
+          ) : msg.segmentType === 'npc_dialogue' ? (
+            <span className="text-violet-400 text-base sm:text-xl">🗣️</span>
           ) : (
             <span className="text-zinc-500 text-xs">{characterName[0]}</span>
           )}
         </div>
       )}
 
-      {msg.role !== 'narrator' && (
+      {side !== 'center' && (
       <div className={clsx(
         "flex flex-col max-w-[75%]",
-        msg.role === 'user' ? "items-end" : "items-start"
+        side === 'right' ? "items-end" : "items-start"
       )}>
         {/* Name */}
-        <div className="text-xs text-zinc-500 mb-0.5 sm:mb-1 px-1">
-          {msg.role === 'user' ? playerName : characterName}
+        <div className={clsx("text-xs mb-0.5 sm:mb-1 px-1", getNameColor(msg.role === 'user' ? undefined : msg.segmentType))}>
+          {msg.role === 'user' ? playerName : displayName}
+          {msg.segmentType === 'player_thought' && <span className="ml-1 opacity-60">💭</span>}
+          {msg.segmentType === 'npc_dialogue' && <span className="ml-1 opacity-60">NPC</span>}
         </div>
 
         {/* Bubble */}
         <div className={clsx(
-          "rounded-2xl overflow-hidden shadow-sm relative w-fit", // w-fit makes it wrap content
-          msg.role === 'user' ? "bg-emerald-600 text-white rounded-tr-sm" : "bg-zinc-900 border border-zinc-800 rounded-tl-sm"
+          "rounded-2xl overflow-hidden shadow-sm relative w-fit",
+          getBubbleClasses(msg.role, msg.role === 'user' ? undefined : msg.segmentType)
         )}>
           {/* Debug Delete Button */}
           {ENABLE_DEBUG_UI && onDelete && (
@@ -158,8 +228,12 @@ export const ChatMessageItem = React.memo(({ msg, characterName, playerName = '�
           )}
           
           {/* Text Content */}
-          <div className="p-3 sm:p-4 text-sm leading-relaxed markdown-body break-words">
-            {msg.role === 'model' ? (
+          <div className={clsx(
+            "p-3 sm:p-4 text-sm leading-relaxed markdown-body break-words",
+            msg.segmentType === 'narration' && "italic",
+            msg.segmentType === 'player_thought' && "italic"
+          )}>
+            {isModelAnim ? (
               <TypewriterMessage
                 text={msg.text}
                 animate={animate}
@@ -176,14 +250,17 @@ export const ChatMessageItem = React.memo(({ msg, characterName, playerName = '�
       </div>
       )}
 
-      {/* User Avatar */}
-      {msg.role === 'user' && (
+      {/* Right-side Avatar */}
+      {showRightAvatar && (
         <div 
-          className={`w-10 h-10 sm:w-20 sm:h-20 rounded-xl bg-zinc-800 shrink-0 overflow-hidden border border-zinc-700 flex items-center justify-center mt-1 sm:mt-5 ${playerPortraitUrl ? 'cursor-pointer hover:ring-2 hover:ring-zinc-500 transition-all' : ''}`}
-          onClick={() => { if (playerPortraitUrl) setIsPlayerAvatarFullscreen(true); }}
+          className={clsx(
+            "w-10 h-10 sm:w-20 sm:h-20 rounded-xl bg-zinc-800 shrink-0 overflow-hidden border border-zinc-700 flex items-center justify-center mt-1 sm:mt-5",
+            rightPortrait ? 'cursor-pointer hover:ring-2 hover:ring-zinc-500 transition-all' : ''
+          )}
+          onClick={() => { if (rightPortrait) setIsPlayerAvatarFullscreen(true); }}
         >
-          {playerPortraitUrl ? (
-            <img src={playerPortraitUrl} alt={playerName} className="w-full h-full object-cover" />
+          {rightPortrait ? (
+            <img src={rightPortrait} alt={playerName} className="w-full h-full object-cover" />
           ) : (
             <span className="text-zinc-500 text-xs">{playerName[0]}</span>
           )}

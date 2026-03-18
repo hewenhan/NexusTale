@@ -172,12 +172,19 @@ export function buildStoryPrompt(input: StoryPromptInput): string {
     ? (state.summaryCoveredUpTo ?? 0)
     : 0;
   const recentHistory = allMessagesForPrompt.slice(coveredUpTo);
-  const historyText = recentHistory.map(m => `${m.role}: ${m.text}`).join('\n');
+  const historyText = recentHistory.map(m => {
+    if (m.role === 'user') return `user: ${m.text}`;
+    const seg = ('segmentType' in m && m.segmentType) ? m.segmentType : 'ai_dialogue';
+    const prefix = seg === 'npc_dialogue' && 'npcName' in m && m.npcName
+      ? `npc_dialogue(${m.npcName})`
+      : seg;
+    return `${prefix}: ${m.text}`;
+  }).join('\n');
 
 const systemPrompt = `你是本引擎的沉浸式图文渲染节点。你的唯一目标是执行【既定事实】，并进行极度拟真的"生物行为学"渲染。
 不要试图扮演系统或裁判，彻底遗忘你是一个AI！你就是当前宇宙运转的【物理法则】与【NPC的潜意识】本身。
 
-=== 扮演对象 (AI) ===
+=== 伴游 NPC (AI) ===
 ${characterRoleString}
 
 === 互动对象 (Player) ===
@@ -217,11 +224,11 @@ ${characterRoleString}
 - 危机覆写（紧张度3-4）：⚠️说话不是免费动作！在危机中若玩家输入长篇废话或繁杂动作，【强制打破镜像】！NPC或敌对环境必须用极其简短、致命的物理动作（如一刀捅穿、摔倒）强行打断玩家的施法或演讲！
 
 === 排版语法协议 ===
-以下4种格式自由极简组合，严禁自创格式：
-1. 【旁白】（全角括号包裹动作/环境/音效）：渲染核心，完全客观白描，一定不要使用AI大模型第一印象生成烂俗语句。
-2. 【玩家】（全角括号包裹内心独白）：⚠️极度克制！仅在严重物理/心理冲击时偶尔使用，严禁每回合滥用。
-3. AI说话（无前缀，纯台词。禁止包含动作描写）
-4. 其他NPC说话（必须使用【NPC-名字】前缀）
+text_sequence 是结构化数组，每个元素必须为以下4种类型之一，自由极简组合，严禁自创类型：
+1. type:"narration" — 旁白（动作/环境/音效白描），渲染核心，完全客观白描，一定不要使用AI大模型第一印象生成烂俗语句。
+2. type:"player_thought" — 玩家内心独白：⚠️极度克制！仅在严重物理/心理冲击时偶尔使用，严禁每回合滥用。
+3. type:"ai_dialogue" — 伴游NPC说话（纯台词，禁止包含动作描写）
+4. type:"npc_dialogue" — 其他NPC说话（必须填写name字段标注NPC名字）
 
 === 本回合既定事实 ===
 ${narrativeInstruction}
@@ -234,14 +241,16 @@ OUTPUT FORMAT (JSON ONLY):
   "image_prompt": "为 ${getModelName('image')} 出图提供的英文场景描述。仅客观描述物理环境、光影、人物位置，不写情绪定性词，不写人物外貌长相。",
   "image_characters": { "本场景画面中实际可见的角色标记。如: {\"${state.companionProfile.name}\": true} 或 {} "},
   "text_sequence":[
-    "遵循排版语法，自由极简组合，严禁形成固定排列规律。",
-    "严格执行【镜像与危机覆写法则】：玩家字少你必字少；死斗时玩家废话，必须用致命动作打断。",
-    "最后一段严禁使用问号反问玩家！把沉默权交还给玩家。"
+    {"type":"narration","content":"旁白文本示例"},
+    {"type":"ai_dialogue","content":"伴游NPC台词示例"},
+    {"type":"npc_dialogue","name":"NPC名字","content":"NPC台词示例"},
+    {"type":"player_thought","content":"玩家内心独白示例（极少使用）"}
   ],
+  "⚠️text_sequence规则":"自由极简组合上述4种类型，严禁形成固定排列规律。严格执行【镜像与危机覆写法则】：玩家字少你必字少；死斗时玩家废话，必须用致命动作打断。最后一段严禁使用问号反问玩家！把沉默权交还给玩家。",
   "scene_visuals_update": "仅进入新地点时提供，否则为空",
   "hp_description": "一句话客观白描玩家当前的生理状态演进（遵循熵增法则：痛转麻木，新气味转无视。绝不重复上回合）",
   "encounter_tag": "2-4字遭遇主题(仅旅途/危机提供)",
-  "figures_of_speech": string[]本回合text_sequence使用的具体修辞语句数组（如'令人牙酸的声音'）,
+  "figures_of_speech": string[]本回合text_sequence中content使用的具体修辞语句数组（如'令人牙酸的声音'）,
   "affection_change": 整数(符合喜好则正，触犯厌恶则负，无影响0),
   "outfit_update": {"角色名": "新的英文服装描述"} 或 null。仅发生实质换装/损毁时填写。,
   "get_item": ${expectGetItem ? '{"name": "...", "description": "..."}' : 'null'}
