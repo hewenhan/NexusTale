@@ -23,6 +23,8 @@ import { useRetryDialog } from '../components/RetryDialog';
 import { FloatingObjective } from '../components/FloatingObjective';
 import { InventoryPanel } from '../components/InventoryPanel';
 import { DiscardPanel } from '../components/DiscardPanel';
+import { IntentConfirmModal } from '../components/IntentConfirmModal';
+import { PendingIntentBanner } from '../components/PendingIntentBanner';
 import { uploadImageToDrive, getImageUrlByName } from '../lib/drive';
 import { initializeWorld, fetchCustomLoadingMessages, generateMapImage, generateCharacterPortrait, generateEquipmentPresets } from '../services/aiService';
 
@@ -76,7 +78,7 @@ export default function Chat() {
   // 已播放过打字动画的消息 ID 集合（防止 Virtuoso 卸载/重挂时重新打字）
   const animatedIdsRef = useRef<Set<string>>(new Set(state.history.map(m => m.id)));
 
-  const { isProcessing, handleTurn, flushPendingNotifications, pendingBagItem, resolveBagDiscard, rejectBagItem } = useChatLogic();
+  const { isProcessing, handleTurn, flushPendingNotifications, pendingBagItem, resolveBagDiscard, rejectBagItem, pendingConfuse, isConfuseModalVisible, resolveConfuse, minimizeConfuse, restoreConfuse } = useChatLogic();
 
   // ── Deferred display snapshot ──
   // Progress bar & objective only update after the last typewriter message completes
@@ -810,12 +812,46 @@ export default function Chat() {
         />
       </div>
 
+      <AnimatePresence>
+        {pendingConfuse && !isConfuseModalVisible && (
+          <div className="px-4 pt-2 bg-zinc-900/50 backdrop-blur-md">
+            <div className="max-w-3xl mx-auto">
+              <PendingIntentBanner
+                reason={pendingConfuse.confuse.reason}
+                onRestore={restoreConfuse}
+              />
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <ChatInput
         isProcessing={isProcessing}
         onSend={handleTurn}
         onBackpackClick={() => setShowInventory(true)}
         inventoryCount={state.inventory.length}
       />
+
+      <AnimatePresence>
+        {pendingConfuse && isConfuseModalVisible && (
+          <IntentConfirmModal
+            confuse={pendingConfuse.confuse}
+            defaultIntent={pendingConfuse.defaultIntent}
+            connectedNodes={(() => {
+              if (!state.worldData || !state.currentNodeId) return [];
+              const currentNode = state.worldData.nodes.find(n => n.id === state.currentNodeId);
+              if (!currentNode) return [];
+              return currentNode.connections
+                .map(id => state.worldData!.nodes.find(n => n.id === id))
+                .filter((n): n is NonNullable<typeof n> => !!n);
+            })()}
+            inventory={state.inventory}
+            isInTransit={!!state.transitState}
+            onConfirm={resolveConfuse}
+            onMinimize={minimizeConfuse}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showStatus && (

@@ -157,12 +157,49 @@ export interface TextSegment {
 // --- Intent Types ---
 export type IntentType = 'idle' | 'explore' | 'combat' | 'suicidal_idle' | 'move' | 'seek_quest' | 'use_item';
 
+/** 对玩家可见的意图类型（隐藏 suicidal_idle） */
+export type VisibleIntentType = Exclude<IntentType, 'suicidal_idle'>;
+
 export interface IntentResult {
   intent: IntentType;
   targetId: string | null;
   direction?: 'forward' | 'back';
-  itemId?: string; // use_item 意图时，玩家试图使用的道具 ID
+  itemId?: string;
 }
+
+export interface ConfuseCandidate {
+  intent: IntentType;
+  confidence: number;
+  targetId: string | null;
+  direction?: 'forward' | 'back' | null;
+  itemId?: string | null;
+}
+
+export interface ConfuseData {
+  sure: boolean;
+  reason: string | null;
+  type: ConfuseCandidate[];
+}
+
+export interface IntentExtractionResult {
+  intent: IntentResult;
+  confuse: ConfuseData | null;
+}
+
+// --- Intent Display Labels ---
+export const INTENT_LABELS: Record<VisibleIntentType, string> = {
+  idle: '原地待命',
+  explore: '探索周围',
+  combat: '战斗',
+  move: '移动',
+  seek_quest: '寻找任务',
+  use_item: '使用道具',
+};
+
+export const DIRECTION_LABELS: Record<'forward' | 'back', string> = {
+  forward: '向前',
+  back: '返回',
+};
 
 // --- Debug & Profile ---
 export interface DebugState {

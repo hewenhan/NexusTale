@@ -1,5 +1,5 @@
 import * as modelService from './modelService';
-import type { IntentResult, WorldData, CharacterProfile, NodeData, GameState, InventoryItem, Rarity, SafetyLevel } from '../types/game';
+import type { IntentResult, IntentExtractionResult, ConfuseData, ConfuseCandidate, WorldData, CharacterProfile, NodeData, GameState, InventoryItem, Rarity, SafetyLevel } from '../types/game';
 import { normalizeConnections, EQUIPMENT_BUFF_TABLE } from '../types/game';
 import { fmtConnectedNodes, fmtVisibleHouses, fmtRecentConversation, getLastIntent, fmtTransitRules, fmtSurvivalInstinct, fmtInventory, fmtCombatInstinct } from './intentHelpers';
 
@@ -556,7 +556,7 @@ Return ONLY the narrator text, no JSON, no markdown.`;
 export async function extractIntent(
   userInput: string,
   state: GameState,
-): Promise<IntentResult> {
+): Promise<IntentExtractionResult> {
   const lastIntent = getLastIntent(state);
 
   const prompt = `你是一个严格的文本冒险游戏引擎的核心逻辑路由器。你唯一的工作是基于当前状态、空间上下文和对话历史，对玩家的真实意图进行分类
@@ -601,7 +601,7 @@ ${fmtCombatInstinct(state)}
 - **targetId**: "current_objective"（后端引擎会处理寻路）
 
 **step 4.5: 物品使用 ("使用物品"规则)**
-- **条件**: 玩家明确表示使用某个物品，并且该物品在当前可用物品列表中
+- **条件**: 玩家表示使用某个物品，并且该物品在当前可用物品列表中
 - **intent**: "use_item"
 - **targetId**: null
 - **itemId**: <物品 ID>
@@ -624,11 +624,22 @@ ${fmtCombatInstinct(state)}
   "intent": "<上述类别之一>",
   "targetId": "<确切的 ID>",
   "direction": "<'forward', 'back', 或 null>",
-  "itemId": "<确切的 ID，如果意图不是 use_item 则填 null>"
+  "itemId": "<确切的 ID，如果意图不是 use_item 则填 null>",
+  "confuse": {
+    "sure": <是否无法确定意图，如果是，请尽量猜测但标记为 true，否则 false>,
+    "reason": "<如果 confuse 是 true，这里说明为什么不确定；否则填 null>",
+    "type": [{
+      "confidence": <0-1 之间的数字，表示对该意图的置信度>,
+      "intent": "<如果 confuse 是 true，这里列出可能的意图类别>",
+      "targetId": "<确切的 ID>",
+      "direction": "<'forward', 'back', 或 null>",
+      "itemId": "<确切的 ID，如果意图不是 use_item 则填 null>"
+    }]
+  }
 }`;
 
   const text = await modelService.generateText('lite', prompt, { jsonMode: true });
-  if (!text) return { intent: 'idle', targetId: null };
+  if (!text) return { intent: { intent: 'idle', targetId: null }, confuse: null };
 
   // 多级 JSON 解析：完整清洗 → 正则提取首个 {} → 放弃
   let parsed: any = null;
@@ -645,16 +656,39 @@ ${fmtCombatInstinct(state)}
 
   if (parsed && validIntents.includes(parsed.intent)) {
     const direction = parsed.direction === 'back' ? 'back' as const : parsed.direction === 'forward' ? 'forward' as const : undefined;
-    return { intent: parsed.intent, targetId: parsed.targetId || null, direction, itemId: parsed.itemId || undefined };
+    const intent: IntentResult = { intent: parsed.intent, targetId: parsed.targetId || null, direction, itemId: parsed.itemId || undefined };
+
+    // Parse confuse data if present
+    let confuse: ConfuseData | null = null;
+    if (parsed.confuse?.sure === true && Array.isArray(parsed.confuse.type)) {
+      const candidates: ConfuseCandidate[] = parsed.confuse.type
+        .filter((c: any) => c && validIntents.includes(c.intent))
+        .map((c: any) => ({
+          intent: c.intent,
+          confidence: typeof c.confidence === 'number' ? Math.max(0, Math.min(1, c.confidence)) : 0,
+          targetId: c.targetId || null,
+          direction: c.direction === 'forward' ? 'forward' as const : c.direction === 'back' ? 'back' as const : null,
+          itemId: c.itemId || null,
+        }));
+      if (candidates.length > 0) {
+        confuse = {
+          sure: true,
+          reason: typeof parsed.confuse.reason === 'string' ? parsed.confuse.reason : null,
+          type: candidates.sort((a, b) => b.confidence - a.confidence),
+        };
+      }
+    }
+
+    return { intent, confuse };
   }
 
   // 解析全败，用上轮意图兜底
   if (lastIntent && validIntents.includes(lastIntent)) {
     console.warn("Intent parse failed, using lastIntent fallback:", lastIntent);
-    return { intent: lastIntent as IntentResult['intent'], targetId: null };
+    return { intent: { intent: lastIntent as IntentResult['intent'], targetId: null }, confuse: null };
   }
 
-  return { intent: 'idle', targetId: null };
+  return { intent: { intent: 'idle', targetId: null }, confuse: null };
 }
 
 /**

@@ -6,7 +6,7 @@ import { generateSummary, generateTurn, extractIntent, resolveObjectivePathfindi
 import { runPipeline, buildVisionContext, assembleNarrative, revealHouseInWorld } from '../lib/pipeline';
 import { useGrandNotification, type GrandNotificationData } from '../components/GrandNotification';
 import { SUMMARY_THRESHOLD, KEEP_RECENT_TURNS, INVENTORY_CAPACITY, BGM_LIST, bossTensionFromSafety, rollEscapeRarity, pickEscapeIcon } from '../types/game';
-import type { QuestStage, InventoryItem, Rarity, TextSegment } from '../types/game';
+import type { QuestStage, InventoryItem, Rarity, TextSegment, IntentResult, ConfuseData } from '../types/game';
 
 import {
   maybeEscalateToSeekQuest, runDirector, advanceQuestChain,
@@ -76,6 +76,43 @@ export function useChatLogic() {
 
   const setPendingNotificationsRef = useCallback((notifications: Omit<GrandNotificationData, 'id'>[]) => {
     pendingNotificationsRef.current = notifications;
+  }, []);
+
+  // ── Intent confuse: blocking disambiguation state ──
+  const [pendingConfuse, setPendingConfuse] = useState<{
+    confuse: ConfuseData;
+    defaultIntent: IntentResult;
+  } | null>(null);
+  const [isConfuseModalVisible, setIsConfuseModalVisible] = useState(false);
+  const confuseResolveRef = useRef<((chosen: IntentResult) => void) | null>(null);
+
+  /** Block until user resolves a confuse intent via the modal */
+  const waitForConfuseResolution = useCallback((confuse: ConfuseData, defaultIntent: IntentResult): Promise<IntentResult> => {
+    setPendingConfuse({ confuse, defaultIntent });
+    setIsConfuseModalVisible(true);
+    return new Promise<IntentResult>(resolve => {
+      confuseResolveRef.current = resolve;
+    });
+  }, []);
+
+  /** User confirmed an intent from the modal */
+  const resolveConfuse = useCallback((chosenIntent: IntentResult) => {
+    setPendingConfuse(null);
+    setIsConfuseModalVisible(false);
+    if (confuseResolveRef.current) {
+      confuseResolveRef.current(chosenIntent);
+      confuseResolveRef.current = null;
+    }
+  }, []);
+
+  /** Minimize modal (still pending) */
+  const minimizeConfuse = useCallback(() => {
+    setIsConfuseModalVisible(false);
+  }, []);
+
+  /** Restore modal */
+  const restoreConfuse = useCallback(() => {
+    setIsConfuseModalVisible(true);
   }, []);
 
   // ── Typewriter completion synchronization ──
@@ -172,7 +209,14 @@ export function useChatLogic() {
 
       // ── Step 1: Intent Extraction ──
       const visionContext = buildVisionContext(state);
-      const intent = await extractIntent(userInput, state);
+      const extraction = await extractIntent(userInput, state);
+      let intent = extraction.intent;
+
+      // ── Step 1.1: Confuse interception — pause for user disambiguation ──
+      if (extraction.confuse?.sure) {
+        intent = await waitForConfuseResolution(extraction.confuse, extraction.intent);
+        console.log("Intent (user-resolved confuse):", intent);
+      }
 
       if (intent.targetId === 'current_objective' && state.currentObjective && state.worldData) {
         const pathResult = resolveObjectivePathfinding(
@@ -717,5 +761,11 @@ export function useChatLogic() {
     pendingBagItem,
     resolveBagDiscard,
     rejectBagItem,
+    // Intent confuse disambiguation
+    pendingConfuse,
+    isConfuseModalVisible,
+    resolveConfuse,
+    minimizeConfuse,
+    restoreConfuse,
   };
 }
