@@ -29,48 +29,50 @@ export function useChatLogic() {
 
   // ── Bag entry: blocking discard panel state ──
   const [pendingBagItem, setPendingBagItem] = useState<InventoryItem | null>(null);
-  const bagResolveRef = useRef<(() => void) | null>(null);
+  const bagResolveRef = useRef<((newInv: InventoryItem[]) => void) | null>(null);
 
   /** Try to add item to bag. If full, show DiscardPanel and wait for user to discard one. */
-  const addItemToBag = useCallback(async (item: InventoryItem): Promise<void> => {
-    // Check current inventory size (read from state ref)
-    const currentState = state;
-    if (currentState.inventory.length < INVENTORY_CAPACITY) {
-      updateState(prev => ({ inventory: [...prev.inventory, item] }));
+  const addItemToBag = useCallback(async (item: InventoryItem, rollingInvRef: { current: InventoryItem[] }): Promise<void> => {
+    if (rollingInvRef.current.length < INVENTORY_CAPACITY) {
+      const appended = [...rollingInvRef.current, item];
+      rollingInvRef.current = appended;
+      updateState({ inventory: appended });
       showNotification({ type: 'discovery', title: '获得道具！', description: `${item.icon} ${item.name}（${item.rarity}）` });
       return;
     }
     // Bag full → show discard panel and block until resolved
     setPendingBagItem(item);
     return new Promise<void>(resolve => {
-      bagResolveRef.current = resolve;
+      bagResolveRef.current = (resolvedInv: InventoryItem[]) => {
+        rollingInvRef.current = resolvedInv;
+        resolve();
+      };
     });
-  }, [state, updateState, showNotification]);
+  }, [updateState, showNotification]);
 
   /** Called from DiscardPanel: discard selected item, add pending item, dismiss panel */
   const resolveBagDiscard = useCallback((discardItemId: string) => {
     const item = pendingBagItem;
     if (!item) return;
-    updateState(prev => ({
-      inventory: [...prev.inventory.filter(i => i.id !== discardItemId), item],
-    }));
+    const newInv = [...state.inventory.filter(i => i.id !== discardItemId), item];
+    updateState({ inventory: newInv });
     showNotification({ type: 'discovery', title: '获得道具！', description: `${item.icon} ${item.name}（${item.rarity}）` });
     setPendingBagItem(null);
     if (bagResolveRef.current) {
-      bagResolveRef.current();
+      bagResolveRef.current(newInv);
       bagResolveRef.current = null;
     }
-  }, [pendingBagItem, updateState, showNotification]);
+  }, [pendingBagItem, state.inventory, updateState, showNotification]);
 
   /** Called from DiscardPanel: reject the incoming item (discard it without adding) */
   const rejectBagItem = useCallback(() => {
     if (!pendingBagItem) return;
     setPendingBagItem(null);
     if (bagResolveRef.current) {
-      bagResolveRef.current();
+      bagResolveRef.current(state.inventory);
       bagResolveRef.current = null;
     }
-  }, [pendingBagItem]);
+  }, [pendingBagItem, state.inventory]);
 
   const setPendingNotificationsRef = useCallback((notifications: Omit<GrandNotificationData, 'id'>[]) => {
     pendingNotificationsRef.current = notifications;
@@ -678,8 +680,9 @@ export function useChatLogic() {
       });
 
       // ── Step 9.5: Unified bag entry — after all messages displayed ──
+      const rollingInvRef = { current: resolution.newInventory };
       for (const item of pendingBagItems) {
-        await addItemToBag(item);
+        await addItemToBag(item, rollingInvRef);
       }
 
       // ── Step 9.6: Quest completion narrator message ──
