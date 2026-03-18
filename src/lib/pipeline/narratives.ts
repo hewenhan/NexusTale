@@ -10,9 +10,9 @@ export function buildT0Narrative(action: string, tier: number, roll: number, hpA
     return '【系统强制】：玩家选择离开安全区，踏入外部世界。当前紧张度强制升至1级（探索态）。请描写出发时的场景。';
   }
   if (tier === 2) {
-    return `【系统大成功】：Roll=${roll}！极佳的休整！玩家获得了心理慰藉或找到了小甜头，HP大幅恢复！请发糖或描写极其温馨/幸运的互动。`;
+    return `【系统大成功】：Roll=${roll}！极佳的休整！玩家获得了心理慰藉或找到了小甜头，HP大幅恢复！请发糖或描写极其温馨/幸运的互动。如果 HP 恢复了，可以描写 HP 大幅恢复的合理化理由`;
   }
-  return '【系统强制】：安全区内纯剧情休整，维持现状，略微恢复体力。请描写平静的互动与氛围。';
+  return '【系统强制】：安全区内纯剧情休整，维持现状，略微恢复体力。请描写平静的互动与氛围。如果 HP 有恢复，可以描写一些简单的医疗或休息细节，但不要过于夸张。';
 }
 
 // ─── T1 探索叙事 ───
@@ -156,11 +156,11 @@ export function buildGameOverNarrative(): string {
 
 // ─── 里程碑叙事 ───
 export function buildHouseMilestoneNarrative(): string {
-  return '\n【系统强制 - 里程碑】：该建筑威胁已被彻底肃清，变为安全屋，主角可安心休整。';
+  return '【系统强制 - 里程碑】：该建筑威胁已被彻底肃清，变为安全屋，主角可安心休整。';
 }
 
 export function buildNodeBossMilestoneNarrative(): string {
-  return '\n【系统强制 - 里程碑】：区域探索度满！惊动了统治该区域的核心危机，进入死斗！';
+  return '【系统强制 - 里程碑】：区域探索度满！惊动了统治该区域的核心危机，进入死斗！';
 }
 
 // ─── 抵达目的地叙事 ───

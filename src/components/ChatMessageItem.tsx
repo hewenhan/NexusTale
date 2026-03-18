@@ -30,6 +30,7 @@ export const ChatMessageItem = React.memo(({ msg, characterName, playerName = 'ä
   const [isLoadingImage, setIsLoadingImage] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isAvatarFullscreen, setIsAvatarFullscreen] = useState(false);
+  const [isPlayerAvatarFullscreen, setIsPlayerAvatarFullscreen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -177,11 +178,14 @@ export const ChatMessageItem = React.memo(({ msg, characterName, playerName = 'ä
 
       {/* User Avatar */}
       {msg.role === 'user' && (
-        <div className="w-10 h-10 rounded-full bg-zinc-700 shrink-0 overflow-hidden border border-zinc-600 flex items-center justify-center mt-1 sm:mt-5">
+        <div 
+          className={`w-10 h-10 sm:w-20 sm:h-20 rounded-xl bg-zinc-800 shrink-0 overflow-hidden border border-zinc-700 flex items-center justify-center mt-1 sm:mt-5 ${playerPortraitUrl ? 'cursor-pointer hover:ring-2 hover:ring-zinc-500 transition-all' : ''}`}
+          onClick={() => { if (playerPortraitUrl) setIsPlayerAvatarFullscreen(true); }}
+        >
           {playerPortraitUrl ? (
             <img src={playerPortraitUrl} alt={playerName} className="w-full h-full object-cover" />
           ) : (
-            <span className="text-zinc-400 text-xs">{playerName[0]}</span>
+            <span className="text-zinc-500 text-xs">{playerName[0]}</span>
           )}
         </div>
       )}
@@ -194,6 +198,9 @@ export const ChatMessageItem = React.memo(({ msg, characterName, playerName = 'ä
       {/* Fullscreen Avatar Overlay */}
       {portraitUrl && (
         <ZoomableImage src={portraitUrl} alt="Avatar Fullscreen" isOpen={isAvatarFullscreen} onClose={() => setIsAvatarFullscreen(false)} />
+      )}
+      {playerPortraitUrl && (
+        <ZoomableImage src={playerPortraitUrl} alt="Player Avatar Fullscreen" isOpen={isPlayerAvatarFullscreen} onClose={() => setIsPlayerAvatarFullscreen(false)} />
       )}
     </motion.div>
   );

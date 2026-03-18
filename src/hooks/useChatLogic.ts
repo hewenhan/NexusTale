@@ -372,9 +372,9 @@ export function useChatLogic() {
       if (isExploreSuccess) {
         if (Math.random() < 0.25) {
           escapeItemRarity = rollEscapeRarity();
-          itemDropInstruction = `\n【搜刮结果 - 有收获】：发现了一件${escapeItemRarity}品质的道具！（根据世界观和当前场景合理创名），并在 get_item 字段中返回道具名称和简短说明。`;
+          itemDropInstruction = `【搜刮结果 - 有收获】：发现了一件${escapeItemRarity}品质的道具！（根据世界观和当前场景合理创名，不要和已有物品重复！根据对话合理化描述获得过程），并在 get_item 字段中返回道具名称和简短说明。`;
         } else {
-          itemDropInstruction = `\n【搜刮结果 - 无收获】：结合世界观上下文描写没找到东西，但还有找的线索`;
+          itemDropInstruction = `【搜刮结果 - 无收获】：结合世界观上下文描写没找到东西，但还有找的线索`;
         }
       }
 
@@ -394,7 +394,7 @@ export function useChatLogic() {
           });
           // Build equipment drop instruction for AI
           const equipType = prerolledEquipDrop.type === 'weapon' ? '武器' : '防具';
-          const equipInstruction = `\n【装备掉落】：探索中发现了一件${prerolledEquipDrop.rarity}品质的${equipType}【${prerolledEquipDrop.name}】（${prerolledEquipDrop.description}）！请在叙事中自然地描写发现这件装备的过程。`;
+          const equipInstruction = `【装备掉落】：探索中发现了一件${prerolledEquipDrop.rarity}品质的${equipType}【${prerolledEquipDrop.name}】（${prerolledEquipDrop.description}）！请在叙事中自然地描写发现这件装备的过程。`;
           itemDropInstruction = (itemDropInstruction || '') + equipInstruction;
         }
       }

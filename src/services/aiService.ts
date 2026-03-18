@@ -100,7 +100,7 @@ ${langInstruction}
 }
 
 export async function generateTurn(fullPrompt: string): Promise<any> {
-  const responseText = await modelService.generateText('text', fullPrompt, { jsonMode: true, novelty: true, thinkLevel: 'minimal' });
+  const responseText = await modelService.generateText('text', fullPrompt, { jsonMode: true, novelty: true, thinkLevel: 'low' });
   if (!responseText) throw new Error("No text response");
   
   let responseJson;
@@ -133,6 +133,10 @@ export async function generateTurn(fullPrompt: string): Promise<any> {
     } else {
       throw new Error("Invalid JSON format from model.");
     }
+  }
+  // Unwrap if model returned a single-element array instead of an object
+  if (Array.isArray(responseJson) && responseJson.length > 0) {
+    responseJson = responseJson[0];
   }
   return responseJson;
 }
@@ -190,6 +194,15 @@ export async function initializeWorld(
 
 Worldview: "${worldview}"${userInputSection}
 
+=== STRICT ENUM DICTIONARIES (output MUST be one of these exact values) ===
+- gender: "Male" | "Female" | "Non-binary" | "Other"
+- orientation: "Heterosexual" | "Homosexual" | "Bisexual" | "Pansexual" | "Asexual" | "Other"
+- age: "14-16岁" | "17-19岁" | "20-25岁" | "26-30岁" | "31-40岁" | "41-55岁" | "56岁以上"
+- skinColor: "白皙" | "象牙白" | "自然肤色" | "小麦色" | "蜜糖色" | "古铜色" | "棕褐色" | "深棕色" | "黝黑"
+- height: "150cm以下" | "150-160cm" | "160-170cm" | "170-175cm" | "175-180cm" | "180-185cm" | "185-190cm" | "190cm以上"
+- weight: "纤瘦" | "偏瘦" | "匀称" | "健壮" | "微胖" | "丰满" | "魁梧"
+ALL 6 fields above MUST use EXACTLY one of the listed values for BOTH characters, whether user-specified or AI-generated. No synonyms, no rephrasing.
+
 === CHARACTERS ===
 ${formatCharInfo('Player Character', playerProfile)}
 ${formatCharInfo('AI Companion Character', companionProfile)}
@@ -206,13 +219,13 @@ Rules:
 Generate a concise English art style prompt describing the ideal illustration style for this world (color palette, rendering technique, lighting, influences). This will be prepended to ALL image generation.
 
 **Task 3: Flesh Out Player Character**
-Fill in all "Not specified" fields with creative values fitting the worldview. Keep user-provided values. Generate: name, age, gender, orientation, skinColor, height, weight, hairStyle, hairColor, personalityDesc, specialties, hobbies, dislikes, description, personality, background.
+Fill in all "Not specified" fields with creative values fitting the worldview. Keep user-provided values EXACTLY as given — do NOT rephrase or translate them. For the 6 constrained fields (gender, orientation, age, skinColor, height, weight), you MUST pick EXACTLY one value from the STRICT ENUM DICTIONARIES section above — no synonyms allowed, even when generating for an empty field. Generate: name, age, gender, orientation, skinColor, height, weight, hairStyle, hairColor, personalityDesc, specialties, hobbies, dislikes, description, personality, background.
 ALSO generate for the player:
 - bodyPrompt: PERMANENT physical traits ONLY for image generation consistency (hair color/style, eye color, skin tone, facial features, body type/build, distinguishing marks). NO clothing, NO accessories. This NEVER changes.
 - outfitPrompt: Current clothing/accessories/outfit description for image generation (garment types, colors, materials, accessories, footwear). This CAN change as the story progresses.
 
 **Task 4: Flesh Out AI Companion Character**
-Same as Task 3, PLUS generate:
+Same rules as Task 3 (keep user-provided values exactly, constrained fields MUST match STRICT ENUM DICTIONARIES), PLUS generate:
 - bodyPrompt: PERMANENT physical traits ONLY for image generation consistency (hair color/style, eye color, skin tone, facial features, body type/build, distinguishing marks). NO clothing, NO accessories. This NEVER changes.
 - outfitPrompt: Current clothing/accessories/outfit description for image generation (garment types, colors, materials, accessories, footwear). This CAN change as the story progresses.
 - initialAffection: number 0-100 (how warmly they'd feel toward a stranger. Cold/hostile: 10-30. Neutral/cautious: 35-55. Friendly/warm: 55-75. Rarely above 75.)
