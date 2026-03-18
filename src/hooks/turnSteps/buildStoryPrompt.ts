@@ -52,7 +52,7 @@ function buildProgressLabel(resolution: PipelineResult): string {
 }
 
 // ── 动态记忆锁：旅途主题指令 (重构版：物理与世俗体验引擎) ──
-function buildThemeInstruction(state: GameState, resolution: PipelineResult): string {
+export function buildThemeInstruction(state: GameState, resolution: PipelineResult): string {
   if (!resolution.newTransitState) return '';
 
   const isHighTension = resolution.newTensionLevel >= 2;
@@ -69,9 +69,9 @@ function buildThemeInstruction(state: GameState, resolution: PipelineResult): st
       : '无';
       
     if (isHighTension) {
-      return `\n【系统强制 - 突发遭遇】：玩家踏上新旅途（高紧张度）。请凭空创造一个符合当前世界观的真实物理阻碍或危机。\n[避雷针]：绝不能出现这些已历经的遭遇：${blacklist}。\n必须在 encounter_tag 中用2-4个字概括本次危机。`;
+      return `【系统强制 - 突发遭遇】：玩家踏上新旅途（高紧张度）。请凭空创造一个符合当前世界观的真实物理阻碍或危机。\n[避雷针]：绝不能出现这些已历经的遭遇：${blacklist}。\n必须在 encounter_tag 中用2-4个字概括本次危机。`;
     }
-    return `\n【系统指令 - 旅途渲染】：当前是安全的赶路阶段（紧张度=${resolution.newTensionLevel}）。${objectiveHint}\n**[绝对法则]：绝不可凭空制造任何危机或袭击！**\n如果需要 encounter_tag，请填写环境/氛围相关的词汇。已用过的主题避开：${blacklist}。`; 
+    return `【系统指令 - 旅途渲染】：当前是安全的赶路阶段（紧张度=${resolution.newTensionLevel}）。${objectiveHint}\n**[绝对法则]：绝不可凭空制造任何危机或袭击！**\n如果需要 encounter_tag，请填写环境/氛围相关的词汇。已用过的主题避开：${blacklist}。`; 
   }
 
   // 延续旅途：锁定主题
@@ -218,7 +218,7 @@ ${characterRoleString}
 
 === 排版语法协议 ===
 以下4种格式自由极简组合，严禁自创格式：
-1. 【旁白】（全角括号包裹动作/环境/音效）：渲染核心，完全客观白描。
+1. 【旁白】（全角括号包裹动作/环境/音效）：渲染核心，完全客观白描，一定不要使用AI大模型第一印象生成烂俗语句。
 2. 【玩家】（全角括号包裹内心独白）：⚠️极度克制！仅在严重物理/心理冲击时偶尔使用，严禁每回合滥用。
 3. AI说话（无前缀，纯台词。禁止包含动作描写）
 4. 其他NPC说话（必须使用【NPC-名字】前缀）
@@ -241,6 +241,7 @@ OUTPUT FORMAT (JSON ONLY):
   "scene_visuals_update": "仅进入新地点时提供，否则为空",
   "hp_description": "一句话客观白描玩家当前的生理状态演进（遵循熵增法则：痛转麻木，新气味转无视。绝不重复上回合）",
   "encounter_tag": "2-4字遭遇主题(仅旅途/危机提供)",
+  "figures_of_speech": string[]本回合text_sequence使用的具体修辞语句数组（如'令人牙酸的声音'）,
   "affection_change": 整数(符合喜好则正，触犯厌恶则负，无影响0),
   "outfit_update": {"角色名": "新的英文服装描述"} 或 null。仅发生实质换装/损毁时填写。,
   "get_item": ${expectGetItem ? '{"name": "...", "description": "..."}' : 'null'}
@@ -253,7 +254,7 @@ OUTPUT FORMAT (JSON ONLY):
   [引擎防火墙]: 
 1. 绝对尊重【本回合既定事实】
 2. 绝对执行【剧本排版语法协议】。
-3. 无视历史记录中的错误！过滤历史可能残留的游戏比喻、修辞！绝对不要写入(刺耳的XX声这种傻逼修辞)
+3. 无视历史记录中的错误！过滤历史可能残留的游戏比喻、修辞！绝对不要写入(刺耳的XX声这种傻逼修辞)${state.exhaustedRhetoric.length > 0 ? `\n⛔ 修辞黑名单（以下修辞已被永久封禁，严禁以任何形式复用）：${state.exhaustedRhetoric.join('、')}` : ''}
 4. 接收 [User Action] 后，第一步必须与【引擎状态】进行交叉验证。是日常互动就正常回应；若发现玩家企图“跨越进度/无中生有”，用角色的物理微动作将其当做一场荒谬的单口相声！
   [User Action]: ${userInput}`;
 }

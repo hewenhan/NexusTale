@@ -139,7 +139,10 @@ export function StatusSidebar({ state, onClose, onRegenerateCompanionPortrait, o
                   <div><span className="text-zinc-500">区域：</span>{currentNode.name} ({currentNode.type})</div>
                   <div><span className="text-zinc-500">危险度：</span>{currentNode.safetyLevel}</div>
                   {currentHouse && (
-                    <div><span className="text-zinc-500">建筑：</span>{currentHouse.name} ({currentHouse.type})</div>
+                    <>
+                      <div><span className="text-zinc-500">建筑：</span>{currentHouse.name} ({currentHouse.type})</div>
+                      <div><span className="text-zinc-500">危险度：</span>{currentHouse.safetyLevel}</div>
+                    </>
                   )}
                   {!currentHouse && (
                     <div className="text-zinc-500 italic">户外街区</div>
@@ -168,29 +171,31 @@ export function StatusSidebar({ state, onClose, onRegenerateCompanionPortrait, o
           </div>
 
           {/* Inventory */}
-          <div>
-            <h3 className="text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider">背包 ({state.inventory.length}/10)</h3>
-            {state.inventory.length === 0 ? (
-              <div className="text-zinc-600 italic text-sm">空</div>
-            ) : (
-              <ul className="space-y-2">
-                {state.inventory.map((item) => (
-                  <li key={item.id} className="bg-zinc-950 border p-2 rounded-lg text-sm" style={{ borderColor: RARITY_COLORS[item.rarity] }}>
-                    <div className="flex items-center gap-2">
-                      <span>{item.icon}</span>
-                      <span className="font-medium" style={{ color: RARITY_COLORS[item.rarity] }}>{item.name}</span>
-                      {item.quantity > 1 && <span className="text-zinc-500">x{item.quantity}</span>}
-                      {item.buff != null && <span className="text-xs text-amber-400 ml-auto">+{item.buff}%</span>}
-                    </div>
-                    <div className="text-xs text-zinc-500 mt-1">{item.description}</div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          {false && (
+            <div>
+              <h3 className="text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider">背包 ({state.inventory.length}/10)</h3>
+              {state.inventory.length === 0 ? (
+                <div className="text-zinc-600 italic text-sm">空</div>
+              ) : (
+                <ul className="space-y-2">
+                  {state.inventory.map((item) => (
+                    <li key={item.id} className="bg-zinc-950 border p-2 rounded-lg text-sm" style={{ borderColor: RARITY_COLORS[item.rarity] }}>
+                      <div className="flex items-center gap-2">
+                        <span>{item.icon}</span>
+                        <span className="font-medium" style={{ color: RARITY_COLORS[item.rarity] }}>{item.name}</span>
+                        {item.quantity > 1 && <span className="text-zinc-500">x{item.quantity}</span>}
+                        {item.buff != null && <span className="text-xs text-amber-400 ml-auto">+{item.buff}%</span>}
+                      </div>
+                      <div className="text-xs text-zinc-500 mt-1">{item.description}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {/* Exploration Progress */}
-          {Object.keys(progressMap).length > 0 && (
+          {false && Object.keys(progressMap).length > 0 && (
             <div>
               <h3 className="text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider">探索进度</h3>
               <div className="space-y-2">

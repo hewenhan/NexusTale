@@ -76,7 +76,7 @@ export default function Chat() {
   // 已播放过打字动画的消息 ID 集合（防止 Virtuoso 卸载/重挂时重新打字）
   const animatedIdsRef = useRef<Set<string>>(new Set(state.history.map(m => m.id)));
 
-  const { isProcessing, handleTurn, flushPendingNotifications, pendingBagItem, resolveBagDiscard } = useChatLogic();
+  const { isProcessing, handleTurn, flushPendingNotifications, pendingBagItem, resolveBagDiscard, rejectBagItem } = useChatLogic();
 
   // ── Deferred display snapshot ──
   // Progress bar & objective only update after the last typewriter message completes
@@ -864,6 +864,7 @@ export default function Chat() {
         incomingItem={pendingBagItem}
         inventory={state.inventory}
         onDiscard={resolveBagDiscard}
+        onRejectIncoming={rejectBagItem}
       />
 
       <AnimatePresence>

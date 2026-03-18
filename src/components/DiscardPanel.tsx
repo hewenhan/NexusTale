@@ -10,9 +10,11 @@ interface DiscardPanelProps {
   inventory: InventoryItem[];
   /** Called with the ID of the item to discard (frees slot for incomingItem) */
   onDiscard: (itemId: string) => void;
+  /** Called when user chooses to discard the incoming item itself (only for non-quest) */
+  onRejectIncoming?: () => void;
 }
 
-export function DiscardPanel({ incomingItem, inventory, onDiscard }: DiscardPanelProps) {
+export function DiscardPanel({ incomingItem, inventory, onDiscard, onRejectIncoming }: DiscardPanelProps) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
   if (!incomingItem) return null;
@@ -40,7 +42,9 @@ export function DiscardPanel({ incomingItem, inventory, onDiscard }: DiscardPane
           >
             {/* Header: incoming item */}
             <div className="p-4 border-b border-zinc-800">
-              <p className="text-xs text-amber-400 mb-2 font-medium">背包已满！选择一件道具丢弃：</p>
+              <p className="text-xs text-amber-400 mb-2 font-medium">
+                {incomingItem.type === 'quest' ? '背包已满！任务道具必须入袋，请选择一件道具丢弃：' : '背包已满！选择一件道具丢弃，或放弃新物品：'}
+              </p>
               <div
                 className="flex items-center gap-3 bg-zinc-950 rounded-lg p-3 border"
                 style={{ borderColor: RARITY_COLORS[incomingItem.rarity] }}
@@ -53,8 +57,20 @@ export function DiscardPanel({ incomingItem, inventory, onDiscard }: DiscardPane
                   <div className="text-xs text-zinc-400 truncate">{incomingItem.description}</div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Package className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="text-xs text-amber-400">待入袋</span>
+                  {incomingItem.type !== 'quest' && onRejectIncoming ? (
+                    <button
+                      onClick={onRejectIncoming}
+                      className="flex items-center gap-1 px-2.5 py-1 text-xs bg-zinc-700 hover:bg-red-900 text-zinc-300 hover:text-red-300 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      不要了
+                    </button>
+                  ) : (
+                    <>
+                      <Package className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="text-xs text-amber-400">待入袋</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

@@ -12,7 +12,7 @@ import {
   maybeEscalateToSeekQuest, runDirector, advanceQuestChain,
   applyDebugOverrides, applyNarrativeOverrides, buildStateUpdate, applyDebugDirectWrites,
   buildNotifications,
-  buildStoryPrompt,
+  buildStoryPrompt, buildThemeInstruction,
   launchImageGen,
   runDisplaySequence,
   getStartIndexForRecentTurns, getLastSceneVisuals,
@@ -61,6 +61,16 @@ export function useChatLogic() {
       bagResolveRef.current = null;
     }
   }, [pendingBagItem, updateState, showNotification]);
+
+  /** Called from DiscardPanel: reject the incoming item (discard it without adding) */
+  const rejectBagItem = useCallback(() => {
+    if (!pendingBagItem) return;
+    setPendingBagItem(null);
+    if (bagResolveRef.current) {
+      bagResolveRef.current();
+      bagResolveRef.current = null;
+    }
+  }, [pendingBagItem]);
 
   const setPendingNotificationsRef = useCallback((notifications: Omit<GrandNotificationData, 'id'>[]) => {
     pendingNotificationsRef.current = notifications;
@@ -434,6 +444,7 @@ export function useChatLogic() {
       const pendingNotifications = buildNotifications(state, resolution, directorResult);
 
       // ── Step 6: Build LLM prompt & call ──
+      const themeInstruction = buildThemeInstruction(state, resolution);
       const fullPrompt = buildStoryPrompt({
         state, resolution, currentSummary, userInput, visionContext,
         itemDropInstruction,
@@ -442,7 +453,17 @@ export function useChatLogic() {
       });
 
       const responseJson = await generateTurn(fullPrompt);
-      const { image_prompt, image_characters, text_sequence, scene_visuals_update, hp_description, encounter_tag, affection_change, outfit_update, get_item } = responseJson;
+      const { image_prompt, image_characters, text_sequence, scene_visuals_update, hp_description, encounter_tag, affection_change, outfit_update, get_item, figures_of_speech } = responseJson;
+
+      // Persist rhetoric blacklist (FIFO, max 20)
+      if (Array.isArray(figures_of_speech) && figures_of_speech.length > 0) {
+        updateState(prev => {
+          const updated = [...prev.exhaustedRhetoric, ...figures_of_speech.filter((s: unknown) => typeof s === 'string')];
+          return { exhaustedRhetoric: updated.length > 20 ? updated.slice(-20) : updated };
+        });
+      }
+
+      console.log('preExhaustedRhetoric', state.exhaustedRhetoric, 'newly exhausted:', figures_of_speech);
 
       // ── Step 7: Post-LLM state updates ──
       if (typeof affection_change === 'number' && affection_change !== 0) {
@@ -609,6 +630,8 @@ export function useChatLogic() {
         lastTensionLevel: resolution.snapPost.tensionLevel,
         lastIntent: resolution.snapPost.intent,
         lastNarrativeInstruction: narrativeInstruction,
+        lastThemeInstruction: themeInstruction,
+        lastItemDropInstruction: itemDropInstruction || undefined,
         lastFormula: resolution.formulaBreakdown,
         lastImagePrompt: image_prompt,
         lastImageError: undefined as string | undefined
@@ -678,5 +701,6 @@ export function useChatLogic() {
     flushPendingNotifications,
     pendingBagItem,
     resolveBagDiscard,
+    rejectBagItem,
   };
 }

@@ -210,6 +210,20 @@ export const DebugOverlay: React.FC<DebugOverlayProps> = ({ state, onUpdateState
                   </div>
                 )}
 
+                {debugState.lastThemeInstruction && (
+                  <div className="border-t border-gray-700 pt-2 mt-2">
+                    <div className="text-gray-300 font-bold mb-1">THEME</div>
+                    <div className="text-orange-200 text-[10px] max-h-16 overflow-y-auto">{debugState.lastThemeInstruction}</div>
+                  </div>
+                )}
+
+                {debugState.lastItemDropInstruction && (
+                  <div className="border-t border-gray-700 pt-2 mt-2">
+                    <div className="text-gray-300 font-bold mb-1">ITEM DROP</div>
+                    <div className="text-emerald-200 text-[10px] max-h-16 overflow-y-auto">{debugState.lastItemDropInstruction}</div>
+                  </div>
+                )}
+
                 <div className="border-t border-gray-700 pt-2 mt-2">
                   <div className="text-gray-300 font-bold mb-1">IMAGE</div>
                   <div className="break-all">

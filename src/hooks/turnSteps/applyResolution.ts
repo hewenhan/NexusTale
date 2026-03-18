@@ -63,9 +63,9 @@ export function applyNarrativeOverrides(
 
   // 好感度检定叙事注入
   if (resolution.affectionTriggered === 'aid') {
-    result += `\n【好感度援助】：同伴因与玩家关系亲密（好感度${state.affection}），在关键时刻出手相助！请结合同伴的【特长: ${state.companionProfile.specialties}】描写一段精彩的援助行动，使局面好转。`;
+    result += `【好感度援助】：同伴因与玩家关系亲密（好感度${state.affection}），在关键时刻出手相助！请结合同伴的【特长: ${state.companionProfile.specialties}】描写一段精彩的援助行动，使局面好转。`;
   } else if (resolution.affectionTriggered === 'sabotage') {
-    result += `\n【好感度冷淡】：同伴因与玩家关系冷淡（好感度${state.affection}），在危急关头袖手旁观甚至落井下石！请结合同伴的性格描写冷漠、嘲讽或使绊子的反应，使局面雪上加霜。`;
+    result += `【好感度冷淡】：同伴因与玩家关系冷淡（好感度${state.affection}），在危急关头袖手旁观甚至落井下石！请结合同伴的性格描写冷漠、嘲讽或使绊子的反应，使局面雪上加霜。`;
   }
 
   return result;

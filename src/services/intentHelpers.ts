@@ -60,7 +60,7 @@ export function fmtSurvivalInstinct(state: GameState): string {
   const tensionLevel = state.pacingState.tensionLevel;
   if (tensionLevel < 2) return '';
   const lastIntent = getLastIntent(state);
-  return `\n\n【求生本能 (Survival Instinct) - 绝对强制法则】：
+  return `【求生本能 (Survival Instinct) - 绝对强制法则】：
 当前紧张度 = ${tensionLevel}（${tensionLevel >= 3 ? '极度危险' : '危险'}状态）！上一次意图：${lastIntent || '无'}
 在紧张度 >= 2 的危险状态下，玩家任何带有情绪宣泄、恐慌、反抗、惊叫、咒骂、呐喊的文本（如"卧槽！"、"你这怪物别碰我！"、"啊啊啊"、"救命"、"滚开"等），哪怕没有明确的动作动词，都必须被归类为 "combat"（挣扎求生）
 只有当玩家极其明确地表示放弃抵抗（如"我放弃了"、"我坐下等死"、"我不动了"、"随便吧"）时，才能判定为 "idle"

@@ -163,6 +163,8 @@ export interface DebugState {
   lastTensionLevel: number;
   lastIntent?: IntentType;
   lastNarrativeInstruction?: string;
+  lastThemeInstruction?: string;
+  lastItemDropInstruction?: string;
   lastFormula?: string;
   lastImagePrompt?: string;
   lastImageError?: string;
@@ -273,6 +275,8 @@ export interface GameState {
 
   // 动态记忆黑名单：已经历过的遭遇主题，不再重复
   exhaustedThemes: string[];
+  // 修辞黑名单：AI 曾使用过的垃圾修辞，禁止重复
+  exhaustedRhetoric: string[];
 
   // 4. Pacing state machine
   pacingState: {
@@ -424,6 +428,7 @@ export const INITIAL_STATE: GameState = {
   currentHouseId: null,
   transitState: null,
   exhaustedThemes: [],
+  exhaustedRhetoric: [],
 
   // Pacing – start at tension 0 (absolute safety)
   pacingState: {
