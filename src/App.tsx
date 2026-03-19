@@ -11,6 +11,7 @@ import { GrandNotificationProvider } from './components/GrandNotification';
 import Home from './pages/Home';
 import Setup from './pages/Setup';
 import Chat from './pages/Chat';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { APP_TITLE } from './lib/appMeta';
 
 export default function App() {
@@ -26,7 +27,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/setup" element={<Setup />} />
-              <Route path="/chat" element={<Chat />} />
+              <Route path="/chat" element={<ErrorBoundary><Chat /></ErrorBoundary>} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </GrandNotificationProvider>

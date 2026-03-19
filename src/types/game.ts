@@ -94,7 +94,9 @@ export const RARITY_COLORS: Record<Rarity, string> = {
 };
 
 /** 背包容量上限 */
-export const INVENTORY_CAPACITY = 10;
+export { GAME_CONFIG } from '../lib/gameConfig';
+import { GAME_CONFIG as _GC } from '../lib/gameConfig';
+export const INVENTORY_CAPACITY = _GC.inventory.capacity;
 
 /** 退敌道具稀有度概率表: common 50%, uncommon 30%, rare 15%, epic 4%, legendary 1% */
 export function rollEscapeRarity(): Rarity {
@@ -153,17 +155,8 @@ export interface QuestCompletionCeremony {
 }
 
 // --- Equipment Presets ---
-/**
- * 装备 buff 分布表（每稀有度 5 件）
- * 可在此处统一调整数值
- */
-export const EQUIPMENT_BUFF_TABLE: Record<Rarity, number[]> = {
-  common:    [20, 22, 24, 26, 28],
-  uncommon:  [32, 34, 36, 38, 40],
-  rare:      [44, 48, 52, 56, 60],
-  epic:      [62, 66, 70, 74, 78],
-  legendary: [72, 74, 76, 78, 80],
-};
+/** 装备 buff 分布表 — 数据源已迁入 GAME_CONFIG.combat.buffTable */
+export const EQUIPMENT_BUFF_TABLE: Record<Rarity, number[]> = _GC.combat.buffTable as unknown as Record<Rarity, number[]>;
 
 // --- Text Segment Types ---
 export type SegmentType = 'narration' | 'player_thought' | 'npc_dialogue' | 'ai_dialogue';
@@ -385,6 +378,7 @@ export interface ChatMessage {
   segmentType?: SegmentType;
   npcName?: string;
   imageFileName?: string;
+  imageProhibited?: boolean;
   timestamp: number;
   // Snapshot of game state AFTER this message was processed
   pacingState?: {

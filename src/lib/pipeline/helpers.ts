@@ -4,6 +4,7 @@
  */
 
 import type { GameState, NodeData, HouseData, WorldData, SafetyLevel, ActiveBoss } from '../../types/game';
+import { GAME_CONFIG } from '../gameConfig';
 
 /** 根据 nodeId 查找节点数据 */
 export function findNode(state: GameState, nodeId: string | null): NodeData | undefined {
@@ -26,7 +27,7 @@ export function getVisibleHouses(node: NodeData): HouseData[] {
 }
 
 /** 直接持久化揭盲指定建筑（任务派发/推进时用） */
-export function revealHouseInWorld(worldData: WorldData, houseId: string): WorldData {
+export function withHouseRevealed(worldData: WorldData, houseId: string): WorldData {
   if (!houseId) return worldData;
   return {
     ...worldData,
@@ -91,7 +92,7 @@ export function applyProgressAndReveals(
         activeBoss: nodeActiveBoss,
         houses: n.houses.map((h, index) => {
           const houseProgress = newProgressMap[`house_${h.id}`] ?? h.progress;
-          const revealedByProgress = nodeProgress >= (index + 1) * 30;
+          const revealedByProgress = nodeProgress >= (index + 1) * GAME_CONFIG.progress.houseRevealInterval;
           const revealedByExtra = additionalRevealHouseIds?.includes(h.id);
 
           // House BOSS 变更
@@ -137,15 +138,16 @@ export function buildVisionContext(state: GameState): string {
   return `${locationStr}. 已揭盲可互动的微观建筑: ${houseStr}`;
 }
 
-/** 紧张度钳位到 0-4 */
+/** 紧张度钳位到 0-maxLevel */
 export function clampTension(val: number): 0 | 1 | 2 | 3 | 4 {
-  return Math.max(0, Math.min(4, Math.round(val))) as 0 | 1 | 2 | 3 | 4;
+  return Math.max(0, Math.min(GAME_CONFIG.tension.maxLevel, Math.round(val))) as 0 | 1 | 2 | 3 | 4;
 }
 
 /** HP 描述文本 */
 export function getHpDescription(hp: number): string {
-  if (hp >= 80) return 'Healthy, no injuries';
-  if (hp >= 50) return 'Minor scratches';
-  if (hp >= 30) return 'Wounded, bleeding';
+  const t = GAME_CONFIG.hpDescription;
+  if (hp >= t.healthy) return 'Healthy, no injuries';
+  if (hp >= t.minor) return 'Minor scratches';
+  if (hp >= t.wounded) return 'Wounded, bleeding';
   return 'Critically wounded, on the verge of collapse';
 }

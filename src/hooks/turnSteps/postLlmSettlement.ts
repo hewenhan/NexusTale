@@ -12,6 +12,7 @@
 
 import type { GameState, InventoryItem, Rarity } from '../../types/game';
 import { pickEscapeIcon } from '../../types/game';
+import { GAME_CONFIG } from '../../lib/gameConfig';
 import type { PipelineResult } from '../../lib/pipeline';
 
 export interface LlmResponseFields {
@@ -44,7 +45,7 @@ export function applyPostLlmSettlement(
   if (Array.isArray(figures_of_speech) && figures_of_speech.length > 0) {
     updateState(prev => {
       const updated = [...prev.exhaustedRhetoric, ...figures_of_speech.filter((s: unknown) => typeof s === 'string')];
-      return { exhaustedRhetoric: updated.length > 20 ? updated.slice(-20) : updated };
+      return { exhaustedRhetoric: updated.length > GAME_CONFIG.inventory.maxExhaustedRhetoric ? updated.slice(-GAME_CONFIG.inventory.maxExhaustedRhetoric) : updated };
     });
   }
 
@@ -52,9 +53,9 @@ export function applyPostLlmSettlement(
 
   // ── 好感度变更 ──
   if (typeof affection_change === 'number' && affection_change !== 0) {
-    const clampedChange = Math.max(-30, Math.min(10, affection_change));
+    const clampedChange = Math.max(GAME_CONFIG.affection.changeClamp.min, Math.min(GAME_CONFIG.affection.changeClamp.max, affection_change));
     updateState(prev => ({
-      affection: Math.max(0, Math.min(100, prev.affection + clampedChange))
+      affection: Math.max(GAME_CONFIG.affection.min, Math.min(GAME_CONFIG.affection.max, prev.affection + clampedChange))
     }));
   }
 

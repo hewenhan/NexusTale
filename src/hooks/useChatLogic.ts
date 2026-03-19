@@ -3,6 +3,7 @@ import { useGame } from '../contexts/GameContext';
 import { useAuth } from '../contexts/AuthContext';
 import { v4 as uuidv4 } from 'uuid';
 import { useGrandNotification, type GrandNotificationData } from '../components/GrandNotification';
+import { handleError } from '../lib/errorPolicy';
 import { INVENTORY_CAPACITY } from '../types/game';
 import type { QuestCompletionCeremony, InventoryItem, IntentResult, ConfuseData } from '../types/game';
 
@@ -193,7 +194,7 @@ export function useChatLogic() {
       await runTurn(deps, userInput);
 
     } catch (error) {
-      console.error("Failed to process turn", error);
+      handleError('critical', 'Turn processing failed', error);
       addMessage({
         id: uuidv4(),
         role: 'model',

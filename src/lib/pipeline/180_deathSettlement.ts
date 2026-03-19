@@ -12,6 +12,7 @@
 import type { PipelineContext } from './types';
 import type { SafetyLevel } from '../../types/game';
 import { findNode, getVisibleHouses } from './helpers';
+import { GAME_CONFIG } from '../gameConfig';
 
 type EvacCandidate = {
   type: 'node' | 'house';
@@ -79,8 +80,8 @@ export function stepDeathSettlement(ctx: PipelineContext): void {
 
   if (ctx.state.lives > 0) {
     ctx.newLives = ctx.state.lives - 1;
-    ctx.newHp = 20;
-    ctx.newTensionLevel = 1;
+    ctx.newHp = GAME_CONFIG.hp.revivalHp;
+    ctx.newTensionLevel = GAME_CONFIG.tension.revivalLevel;
 
     const currentNodeId = ctx.newNodeId || ctx.state.currentNodeId;
 

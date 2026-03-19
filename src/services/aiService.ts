@@ -1,7 +1,8 @@
 import * as modelService from './modelService';
-import type { IntentResult, IntentExtractionResult, ConfuseData, ConfuseCandidate, WorldData, CharacterProfile, NodeData, GameState, InventoryItem, Rarity, SafetyLevel, QuestStage, QuestCompletionCeremony, ChatMessage, WorldviewUpdate } from '../types/game';
-import { normalizeConnections, EQUIPMENT_BUFF_TABLE } from '../types/game';
-import { fmtConnectedNodes, fmtVisibleHouses, fmtRecentConversation, getLastIntent, fmtTransitRules, fmtSurvivalInstinct, fmtInventory, fmtCombatInstinct } from './intentHelpers';
+import type { IntentResult, IntentExtractionResult, ConfuseData, ConfuseCandidate, NodeData, GameState } from '../types/game';
+import { getLastIntent } from './intentHelpers';
+import { buildIntentPrompt } from './intentPromptTemplate';
+import { handleError } from '../lib/errorPolicy';
 
 /**
  * 宏观寻路：BFS 找到从当前位置到目标的下一步微操。
@@ -94,7 +95,7 @@ ${langInstruction}
   try {
     return await modelService.generateText('text', summaryPrompt);
   } catch (e) {
-    console.error("Summary generation failed", e);
+    handleError('silent', 'Summary generation failed', e);
     return undefined;
   }
 }
@@ -108,7 +109,7 @@ export async function generateTurn(fullPrompt: string): Promise<any> {
     const cleanedText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
     responseJson = JSON.parse(cleanedText);
   } catch (e) {
-    console.error("JSON Parse Error:", e);
+    handleError('silent', 'JSON Parse Error', e);
     // Try to extract the first valid JSON object by matching balanced braces
     const start = responseText.indexOf('{');
     if (start !== -1) {
@@ -125,13 +126,20 @@ export async function generateTurn(fullPrompt: string): Promise<any> {
         try {
           responseJson = JSON.parse(responseText.slice(start, end + 1));
         } catch (e2) {
-          throw new Error("Failed to parse JSON response from model.");
+          // Fall through to plain text degradation
         }
-      } else {
-        throw new Error("Failed to parse JSON response from model.");
       }
-    } else {
-      throw new Error("Invalid JSON format from model.");
+    }
+    // Plain text degradation: wrap raw text as narration
+    if (!responseJson) {
+      handleError('degraded', 'JSON recovery failed, falling back to plain text', e);
+      responseJson = {
+        text_sequence: [{ type: 'narration', content: responseText.slice(0, 2000) }],
+        image_prompt: '',
+        scene_visuals_update: '',
+        hp_description: '',
+        affection_change: 0,
+      };
     }
   }
   // Unwrap if model returned a single-element array instead of an object
@@ -141,488 +149,16 @@ export async function generateTurn(fullPrompt: string): Promise<any> {
   return responseJson;
 }
 
-export const IMAGE_PROHIBITED_SENTINEL = '__PROHIBITED_CONTENT__';
+export type ImageResult =
+  | { ok: true; base64: string }
+  | { ok: false; reason: 'prohibited' | 'error'; error?: unknown };
 
-export async function generateImage(finalPrompt: string): Promise<string | undefined> {
+export async function generateImage(finalPrompt: string): Promise<ImageResult> {
   try {
-    const result = await modelService.generateImage('image', finalPrompt, { aspectRatio: '9:16', size: '512px' });
-    if (result.prohibited) return IMAGE_PROHIBITED_SENTINEL;
-    if (result.base64) return result.base64;
+    return await modelService.generateImage('image', finalPrompt, { aspectRatio: '9:16', size: '512px' });
   } catch (e) {
-    console.error("Image generation failed", e);
-  }
-  return undefined;
-}
-
-export interface InitializeWorldResult {
-  worldData: WorldData;
-  artStylePrompt: string;
-  companionProfile: CharacterProfile & { initialAffection?: number };
-  playerProfile: CharacterProfile;
-}
-
-/**
- * Unified world initialization: generates world topology, art style, and fleshes out
- * both player and companion profiles in a single PRO_MODEL request.
- */
-export async function initializeWorld(
-  worldview: string,
-  playerProfile: CharacterProfile,
-  companionProfile: CharacterProfile,
-  language: 'zh' | 'en' = 'zh',
-  userInput?: string
-): Promise<InitializeWorldResult> {
-  const langInstruction = language === 'zh' ? 'All names, descriptions, and character fields MUST be in Chinese.' : 'All content MUST be in English.';
-  const userInputSection = userInput ? `\nOriginal User Input (additional context): "${userInput}"` : '';
-  const or = (v: string, fallback = 'Not specified (you decide)') => v || fallback;
-
-  const formatCharInfo = (label: string, p: CharacterProfile) => `
-  ${label}:
-    - Name: ${or(p.name, 'Not specified (invent a fitting one for the worldview)')}
-    - Age: ${or(p.age)}
-    - Gender: ${or(p.gender)}
-    - Orientation: ${or(p.orientation)}
-    - Skin Color: ${or(p.skinColor)}
-    - Height: ${or(p.height)}
-    - Weight/Build: ${or(p.weight)}
-    - Personality Description: ${or(p.personalityDesc)}
-    - Specialties/Skills: ${or(p.specialties)}
-    - Hobbies/Interests: ${or(p.hobbies)}
-    - Dislikes: ${or(p.dislikes)}`;
-
-  const prompt = `You are an expert world builder AND character designer for a text adventure RPG.
-
-Worldview: "${worldview}"${userInputSection}
-
-=== STRICT ENUM DICTIONARIES (output MUST be one of these exact values) ===
-- gender: "Male" | "Female" | "Non-binary" | "Other"
-- orientation: "Heterosexual" | "Homosexual" | "Bisexual" | "Pansexual" | "Asexual" | "Other"
-- age: "14-16岁" | "17-19岁" | "20-25岁" | "26-30岁" | "31-40岁" | "41-55岁" | "56岁以上"
-- skinColor: "白皙" | "象牙白" | "自然肤色" | "小麦色" | "蜜糖色" | "古铜色" | "棕褐色" | "深棕色" | "黝黑"
-- height: "150cm以下" | "150-160cm" | "160-170cm" | "170-175cm" | "175-180cm" | "180-185cm" | "185-190cm" | "190cm以上"
-- weight: "纤瘦" | "偏瘦" | "匀称" | "健壮" | "微胖" | "丰满" | "魁梧"
-ALL 6 fields above MUST use EXACTLY one of the listed values for BOTH characters, whether user-specified or AI-generated. No synonyms, no rephrasing.
-
-=== CHARACTERS ===
-${formatCharInfo('Player Character', playerProfile)}
-${formatCharInfo('AI Companion Character', companionProfile)}
-
-=== TASKS (complete ALL in one response) ===
-
-**Task 1: World Topology**
-Generate a complete world map with EXACTLY 10 nodes (locations) and multiple houses (buildings) within each node.
-Rules:
-- Each node: 1-3 houses. Connected graph (every node reachable). Types: "city"/"town"/"village"/"wilderness". House types: "housing"/"shop"/"inn"/"facility". Safety: "safe"/"low"/"medium"/"high"/"deadly".
-- Node n1 MUST be a safe starting village/camp. Last few nodes should be increasingly dangerous. Connections should form branching paths, not a straight line.
-
-**Task 2: Art Style Prompt**
-Generate a concise English art style prompt describing the ideal illustration style for this world (color palette, rendering technique, lighting, influences). This will be prepended to ALL image generation.
-
-**Task 3: Flesh Out Player Character**
-Fill in all "Not specified" fields with creative values fitting the worldview. Keep user-provided values EXACTLY as given — do NOT rephrase or translate them. For the 6 constrained fields (gender, orientation, age, skinColor, height, weight), you MUST pick EXACTLY one value from the STRICT ENUM DICTIONARIES section above — no synonyms allowed, even when generating for an empty field. Generate: name, age, gender, orientation, skinColor, height, weight, hairStyle, hairColor, personalityDesc, specialties, hobbies, dislikes, description, personality, background.
-ALSO generate for the player:
-- bodyPrompt: PERMANENT physical traits ONLY for image generation consistency (hair color/style, eye color, skin tone, facial features, body type/build, distinguishing marks). NO clothing, NO accessories. This NEVER changes.
-- outfitPrompt: Current clothing/accessories/outfit description for image generation (garment types, colors, materials, accessories, footwear). This CAN change as the story progresses.
-
-**Task 4: Flesh Out AI Companion Character**
-Same rules as Task 3 (keep user-provided values exactly, constrained fields MUST match STRICT ENUM DICTIONARIES), PLUS generate:
-- bodyPrompt: PERMANENT physical traits ONLY for image generation consistency (hair color/style, eye color, skin tone, facial features, body type/build, distinguishing marks). NO clothing, NO accessories. This NEVER changes.
-- outfitPrompt: Current clothing/accessories/outfit description for image generation (garment types, colors, materials, accessories, footwear). This CAN change as the story progresses.
-- initialAffection: number 0-100 (how warmly they'd feel toward a stranger. Cold/hostile: 10-30. Neutral/cautious: 35-55. Friendly/warm: 55-75. Rarely above 75.)
-
-IMPORTANT: The two characters should feel like they BELONG in this world. Their names, appearances, backgrounds should be consistent with the worldview and with each other's existence in the same universe.
-
-${langInstruction}
-
-Return ONLY a JSON object with this EXACT structure (no markdown):
-{
-  "worldData": {
-    "id": "w1",
-    "name": "WorldName",
-    "nodes": [
-      {
-        "id": "n1",
-        "name": "Name",
-        "type": "village",
-        "safetyLevel": "safe",
-        "connections": ["n2"],
-        "houses": [
-          { "id": "h1_1", "name": "HouseName", "type": "facility", "safetyLevel": "safe" }
-        ]
-      }
-    ]
-  },
-  "artStylePrompt": "A concise English art style description...",
-  "playerProfile": {
-    "name": "string", "age": "string", "gender": "string", "orientation": "string",
-    "skinColor": "string", "height": "string", "weight": "string",
-    "hairStyle": "string", "hairColor": "string",
-    "personalityDesc": "string", "specialties": "string", "hobbies": "string", "dislikes": "string",
-    "description": "string", "personality": "string", "background": "string",
-    "bodyPrompt": "string",
-    "outfitPrompt": "string"
-  },
-  "companionProfile": {
-    "name": "string", "age": "string", "gender": "string", "orientation": "string",
-    "skinColor": "string", "height": "string", "weight": "string",
-    "hairStyle": "string", "hairColor": "string",
-    "personalityDesc": "string", "specialties": "string", "hobbies": "string", "dislikes": "string",
-    "description": "string", "personality": "string", "background": "string",
-    "bodyPrompt": "string",
-    "outfitPrompt": "string",
-    "initialAffection": 50
-  }
-}`;
-
-  const text = await modelService.generateText('pro', prompt, { jsonMode: true });
-  if (!text) throw new Error("Failed to initialize world");
-
-  const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
-  const parsed = JSON.parse(cleaned);
-
-  // Validate world data
-  if (!parsed.worldData?.nodes || !Array.isArray(parsed.worldData.nodes) || parsed.worldData.nodes.length === 0) {
-    throw new Error("Invalid world data structure");
-  }
-
-  const normalizedWorld = normalizeConnections(parsed.worldData as WorldData);
-
-  // Ensure progress/revealed defaults for newly generated worldData
-  for (const node of normalizedWorld.nodes) {
-    node.progress = node.progress ?? 0;
-    for (const house of node.houses) {
-      house.progress = house.progress ?? 0;
-      house.revealed = house.revealed ?? false;
-    }
-  }
-
-  return {
-    worldData: normalizedWorld,
-    artStylePrompt: parsed.artStylePrompt || '',
-    playerProfile: {
-      ...playerProfile,
-      ...parsed.playerProfile,
-      isFleshedOut: true,
-    },
-    companionProfile: {
-      ...companionProfile,
-      ...parsed.companionProfile,
-      isFleshedOut: true,
-    },
-  };
-}
-
-export async function fetchCustomLoadingMessages(worldview: string, language: 'zh' | 'en' = 'zh'): Promise<string[]> {
-  const langInstruction = language === 'zh' ? 'Translate to Chinese.' : 'Translate to English.';
-  const prompt = `
-    Current Worldview: "${worldview}"
-    
-    Task: Generate 50 short, humorous, immersive "loading screen" messages related to this world theme. 
-    Examples: "Connecting to neural net...", "Polishing slime...", "Calibrating gravity...". 
-    Make them creative and relevant to the specific world theme.
-    
-    Return ONLY a JSON array of strings. No markdown formatting.
-    ${langInstruction}
-  `;
-  
-  const text = await modelService.generateText('text', prompt, { jsonMode: true, novelty: true });
-  if (text) {
-    const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    const messages = JSON.parse(jsonStr);
-    if (Array.isArray(messages) && messages.length > 0) {
-      return messages;
-    }
-  }
-  throw new Error("Failed to generate loading messages");
-}
-
-/**
- * 生成装备预设池：25 武器 + 25 防具（每稀有度各 5 件）
- * buff 值来自 EQUIPMENT_BUFF_TABLE
- */
-export async function generateEquipmentPresets(
-  worldview: string,
-  language: 'zh' | 'en' = 'zh'
-): Promise<InventoryItem[]> {
-  const langInstruction = language === 'zh' ? 'All names and descriptions MUST be in Chinese.' : 'All content MUST be in English.';
-  const rarities: Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
-
-  const prompt = `You are an expert RPG item designer.
-
-Worldview: "${worldview}"
-
-Generate equipment items for this world. You need to create:
-- 25 WEAPONS (5 per rarity tier)
-- 25 ARMOR pieces (5 per rarity tier)
-
-Rarity tiers: common, uncommon, rare, epic, legendary
-
-For each item, provide:
-- name: A creative, worldview-fitting name
-- description: A short 1-sentence description of the item's lore/appearance
-- icon: A single emoji that represents the weapon or armor piece
-
-IMPORTANT: Items must feel like they belong in this specific world. A cyberpunk world should have plasma rifles and nano-armor, not medieval swords.
-
-${langInstruction}
-
-Return ONLY a JSON object with this structure (no markdown):
-{
-  "weapons": {
-    "common": [{ "name": "...", "description": "...", "icon": "..." }, ...5 items],
-    "uncommon": [{ "name": "...", "description": "...", "icon": "..." }, ...5 items],
-    "rare": [{ "name": "...", "description": "...", "icon": "..." }, ...5 items],
-    "epic": [{ "name": "...", "description": "...", "icon": "..." }, ...5 items],
-    "legendary": [{ "name": "...", "description": "...", "icon": "..." }, ...5 items]
-  },
-  "armors": {
-    "common": [{ "name": "...", "description": "...", "icon": "..." }, ...5 items],
-    "uncommon": [{ "name": "...", "description": "...", "icon": "..." }, ...5 items],
-    "rare": [{ "name": "...", "description": "...", "icon": "..." }, ...5 items],
-    "epic": [{ "name": "...", "description": "...", "icon": "..." }, ...5 items],
-    "legendary": [{ "name": "...", "description": "...", "icon": "..." }, ...5 items]
-  }
-}`;
-
-  const text = await modelService.generateText('text', prompt, { jsonMode: true, novelty: true });
-  if (!text) throw new Error('Failed to generate equipment presets');
-
-  const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
-  const parsed = JSON.parse(cleaned);
-
-  const items: InventoryItem[] = [];
-  let idCounter = 0;
-
-  for (const equipType of ['weapons', 'armors'] as const) {
-    const itemType: 'weapon' | 'armor' = equipType === 'weapons' ? 'weapon' : 'armor';
-    for (const rarity of rarities) {
-      const buffValues = EQUIPMENT_BUFF_TABLE[rarity];
-      const rawItems = parsed[equipType]?.[rarity] || [];
-      for (let i = 0; i < Math.min(5, rawItems.length); i++) {
-        const raw = rawItems[i];
-        items.push({
-          id: `eq_${itemType}_${rarity}_${idCounter++}`,
-          name: raw.name || `Unknown ${itemType}`,
-          type: itemType,
-          description: raw.description || '',
-          rarity,
-          icon: raw.icon || (itemType === 'weapon' ? '⚔️' : '🛡️'),
-          quantity: 1,
-          buff: buffValues[i] ?? buffValues[0],
-        });
-      }
-    }
-  }
-
-  return items;
-}
-
-/**
- * 生成任务链（3-5 环）+ 每环所需道具
- */
-export async function generateQuestChain(
-  worldview: string,
-  worldData: WorldData,
-  currentNodeId: string,
-  language: 'zh' | 'en' = 'zh'
-): Promise<{ stages: Array<{ description: string; requiredItems: { name: string; id: string }[] }>, targetLocations: { nodeId: string; houseId: string; locationName: string }[] }> {
-  const langInstruction = language === 'zh' ? 'All text MUST be in Chinese.' : 'All content MUST be in English.';
-
-  // Pick 3-5 target locations (TS side, no adjacent repeats)
-  // Include both node-level (outdoors) and house-level targets
-  const stageCount = 3 + Math.floor(Math.random() * 3); // 3-5
-
-  const allTargets: { nodeId: string; houseId: string; locationName: string; nodeName: string; locationType: string; safety: SafetyLevel }[] = [];
-
-  for (const n of worldData.nodes) {
-    if (n.id === currentNodeId) continue;
-    // Node-level target (outdoors)
-    allTargets.push({
-      nodeId: n.id, houseId: '', locationName: n.name,
-      nodeName: n.name, locationType: n.type, safety: n.safetyLevel,
-    });
-    // House-level targets
-    for (const h of n.houses) {
-      allTargets.push({
-        nodeId: n.id, houseId: h.id, locationName: `${n.name} · ${h.name}`,
-        nodeName: n.name, locationType: h.type, safety: n.safetyLevel,
-      });
-    }
-  }
-
-  const targetLocations: typeof allTargets = [];
-  for (let i = 0; i < stageCount && allTargets.length > 0; i++) {
-    const candidates = allTargets.filter(t =>
-      targetLocations.length === 0 || t.nodeId !== targetLocations[targetLocations.length - 1].nodeId
-    );
-    const pool = candidates.length > 0 ? candidates : allTargets;
-    const pick = pool[Math.floor(Math.random() * pool.length)];
-    targetLocations.push(pick);
-  }
-
-  const locationDesc = targetLocations.map((t, i) =>
-    `Stage ${i + 1}: ${t.locationName} (${t.locationType}, danger: ${t.safety})`
-  ).join('\n');
-
-  const prompt = `You are a quest designer for an RPG text adventure.
-
-Worldview: "${worldview}"
-
-The player needs a quest chain with ${targetLocations.length} stages. For each stage, the player must travel to a specific location and use the correct quest item there.
-
-Target Locations (pre-assigned):
-${locationDesc}
-
-For each stage, generate:
-1. description: A vivid, specific quest objective description (2-3 sentences explaining WHY the player needs to go there and WHAT they need to accomplish)
-2. requiredItem: EXACTLY ONE quest item needed for this stage. The item has a name and a brief description.
-
-IMPORTANT: Each stage must have EXACTLY ONE required item, no more, no less.
-
-Make the quest chain tell a coherent escalating story across all stages.
-
-${langInstruction}
-
-Return ONLY a JSON object (no markdown):
-{
-  "stages": [
-    {
-      "description": "stage objective description...",
-      "requiredItem": { "name": "item name", "description": "item description" }
-    }
-  ]
-}`;
-
-  const text = await modelService.generateText('text', prompt, { jsonMode: true, novelty: true });
-  if (!text) throw new Error('Failed to generate quest chain');
-
-  const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
-  const parsed = JSON.parse(cleaned);
-
-  let itemIdCounter = 0;
-  const stages = (parsed.stages || []).map((s: any, i: number) => {
-    // Support both requiredItem (single) and requiredItems (array) from AI
-    const item = s.requiredItem || (s.requiredItems && s.requiredItems[0]) || { name: `任务道具 ${i + 1}` };
-    return {
-      description: s.description || `前往目标地点 ${i + 1}`,
-      requiredItems: [{
-        name: item.name || `任务道具 ${itemIdCounter}`,
-        id: `quest_item_${itemIdCounter++}`,
-      }],
-    };
-  });
-
-  return {
-    stages,
-    targetLocations: targetLocations.map(t => ({ nodeId: t.nodeId, houseId: t.houseId, locationName: t.locationName })),
-  };
-}
-
-/**
- * 任务完成大典：由 AI 生成结构化的多段式庆典叙述
- */
-export async function generateQuestCompletionNarration(
-  worldview: string,
-  questChain: QuestStage[],
-  playerProfile: CharacterProfile,
-  companionProfile: CharacterProfile,
-  affection: number,
-  recentMessages: ChatMessage[],
-  summary: string,
-  language: 'zh' | 'en' = 'zh'
-): Promise<QuestCompletionCeremony> {
-  const langInstruction = language === 'zh' ? 'All text MUST be in Chinese.' : 'All content MUST be in English.';
-
-  const stagesDesc = questChain.map((s, i) =>
-    `Stage ${i + 1}: [${s.targetLocationName}] ${s.description} (items: ${s.requiredItems.map(r => r.name).join(', ')})`
-  ).join('\n');
-
-  const affectionLabel = affection < 30 ? 'cold/distant' : affection < 60 ? 'neutral/warming' : 'close/trusting';
-
-  const recentLog = recentMessages.slice(-15).map(m => `${m.role}: ${m.text}`).join('\n');
-
-  const prompt = `You are a veteran storyteller recounting a completed quest to an audience that cares about THESE specific characters. Your job is to make them relive it — not through grand words, but through concrete scenes they can picture.
-
-=== WORLD ===
-Worldview: "${worldview}"
-
-=== CHARACTERS ===
-Player: ${playerProfile.name} — ${playerProfile.personality || playerProfile.personalityDesc || 'adventurer'}. Background: ${playerProfile.background || 'unknown'}. Specialties: ${playerProfile.specialties || 'various'}.
-Companion: ${companionProfile.name} — ${companionProfile.personality || companionProfile.personalityDesc || 'companion'}. Background: ${companionProfile.background || 'unknown'}.
-Current Relationship: affection ${affection}/100 (${affectionLabel})
-
-=== QUEST CHAIN (all stages, now ALL completed) ===
-${stagesDesc}
-
-=== STORY SUMMARY (earlier events) ===
-${summary || '(no earlier summary)'}
-
-=== RECENT CONVERSATION (vivid details to reference) ===
-${recentLog || '(no recent logs)'}
-
-=== YOUR TASK ===
-Generate a structured JSON recounting this quest completion. All text is third-person narration (NO dialogue, no quotes).
-
-1. "recap": An array with EXACTLY ${questChain.length} strings. Each string is 2-3 sentences recapping that stage. Name the location, describe what happened there, and why it mattered to the characters. Write like a sharp summary — factual, vivid, no padding.
-
-2. "climax": 5-8 sentences. The final act of this quest. Describe what the player actually DID — the place, the obstacle, how they handled it given who they are. Build tension, then release it. Focus on action and sensory detail, not declarations.
-
-3. "companionReaction": 2-3 sentences. How ${companionProfile.name} reacts, consistent with their personality (${companionProfile.personalityDesc || companionProfile.personality || 'their nature'}) and affection level (${affectionLabel}). Describe what they DO — a gesture, a look, a shift in posture. Not what they "felt deep inside."
-
-4. "reward": { "title": a memorable title for this achievement — sharp and specific, not generic, "description": 3-5 sentences on the concrete consequences: what changed in the world, who gained/lost power, what's different now. Reference specific places, factions, or objects from the worldview. }
-
-5. "epilogue": 3-5 sentences. The characters are STILL at ${questChain[questChain.length - 1].targetLocationName} — the scene MUST stay in this location. Do NOT teleport them elsewhere or mention traveling to new places. Describe what happens RIGHT HERE, RIGHT NOW: an unresolved thread surfacing, a quiet moment between the two characters, or a new problem revealing itself in this very spot.
-
-6. "affectionDelta": a number 5-15 representing how much this shared experience should boost the companion's affection.
-
-7. "worldviewUpdate": { "full": 3-8 sentences on what PERMANENTLY changed in the world — be specific: which faction, which region, which balance of power shifted and how. A reader should learn new facts about this world from reading this. , "brief": A single concise sentence (under 50 chars) summarizing the key change. }
-
-=== WRITING RULE ===
-Write every sentence so that it can ONLY belong to THIS story. If you could copy-paste a sentence into any other fantasy/sci-fi story and it would still fit, that sentence is worthless — delete it and write one that names a specific person, place, or event from this quest. Plain language. Short sentences. No filler. The reader is smart; trust them to feel the weight without you announcing it.
-
-${langInstruction}
-
-Return ONLY a JSON object (no markdown):
-{
-  "recap": ["stage 1 recap...", "stage 2 recap...", ...],
-  "climax": "dramatic final act...",
-  "companionReaction": "companion's reaction...",
-  "reward": { "title": "achievement title", "description": "world impact..." },
-  "epilogue": "forward-looking closing...",
-  "affectionDelta": 10,
-  "worldviewUpdate": { "full": "detailed world change...", "brief": "one-line summary" }
-}`;
-
-  try {
-    const text = await modelService.generateText('text', prompt, { jsonMode: true, novelty: true });
-    if (!text) throw new Error('Empty response');
-    const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    const parsed = JSON.parse(cleaned);
-
-    return {
-      recap: Array.isArray(parsed.recap) ? parsed.recap.map(String) : questChain.map((_, i) => `第 ${i + 1} 环已完成。`),
-      climax: typeof parsed.climax === 'string' ? parsed.climax : '冒险者完成了这段艰辛的旅程。',
-      companionReaction: typeof parsed.companionReaction === 'string' ? parsed.companionReaction : `${companionProfile.name}默默点了点头。`,
-      reward: {
-        title: parsed.reward?.title || '任务完成',
-        description: parsed.reward?.description || '一段传奇就此落幕，新的篇章即将展开。',
-      },
-      epilogue: typeof parsed.epilogue === 'string' ? parsed.epilogue : '这段传奇将永远铭刻于这片土地的记忆之中，而新的篇章正悄然翻开。',
-      affectionDelta: Math.max(5, Math.min(15, Number(parsed.affectionDelta) || 10)),
-      worldviewUpdate: parsed.worldviewUpdate && typeof parsed.worldviewUpdate.full === 'string'
-        ? { full: parsed.worldviewUpdate.full, brief: typeof parsed.worldviewUpdate.brief === 'string' ? parsed.worldviewUpdate.brief : parsed.worldviewUpdate.full.slice(0, 50) }
-        : undefined,
-    };
-  } catch (e) {
-    console.error('Quest completion ceremony generation failed:', e);
-    return {
-      recap: questChain.map((s, i) => `第 ${i + 1} 环：${s.targetLocationName}的挑战已被征服。`),
-      climax: '经历了重重险阻，冒险者终于站在了胜利的终点。',
-      companionReaction: `${companionProfile.name}露出了一丝不易察觉的微笑。`,
-      reward: { title: '任务链完成', description: '这段旅程永远改变了这片土地的命运。新的冒险即将开始。' },
-      epilogue: '这段传奇将永远铭刻于这片土地的记忆之中，而新的篇章正悄然翻开。',
-      affectionDelta: 10,
-    };
+    handleError('silent', 'Image generation failed', e);
+    return { ok: false, reason: 'error', error: e };
   }
 }
 
@@ -637,61 +173,8 @@ export async function extractIntent(
 ): Promise<IntentExtractionResult> {
   const lastIntent = getLastIntent(state);
 
-  const prompt = `你是一个顶级文本冒险游戏的 DM (地下城主)。
-抛弃一切机械式的规则匹配、IF-ELSE判断和关键字绑定！
-你的唯一任务是：基于当前世界的氛围（和平、无聊或生死危机），像真正的人类一样，看破玩家花哨的表层动作，直击其背后的【真实动机】。
 
-**当前世界状态:**
-- 当前位置: 节点 "${state.currentNodeId!}", 室内 "${state.currentHouseId || 'outdoors'}"
-- 相连节点: ${fmtConnectedNodes(state)}, current_objective (任务目标)
-- 可见室内: ${fmtVisibleHouses(state)}
-- 当前目标: ${state.currentObjective?.description || '无'}
-- 可使用物品: ${fmtInventory(state)}
-- 危机级别: ${state.pacingState.tensionLevel}
-
-${fmtTransitRules(state)}
-
-**近期上下文 (用于感知当前氛围是和平、无聊还是生死危机):**
-${true && fmtRecentConversation(state) ? fmtRecentConversation(state) : ''}
-${false && fmtSurvivalInstinct(state) ? fmtSurvivalInstinct(state) : ''}
-${false && fmtCombatInstinct(state) ? fmtCombatInstinct(state) : ''}
-
-**系统支持的 7 种核心意图 (原汁原味的概念定义):**
-- idle: 闲聊/角色扮演（吹牛、装逼、放狠话，只要没有实质的物理动作，全是 idle）
-- explore: 探索/搜刮
-- use_item: 使用背包物品（【绝对红线】：除非玩家原话中真真切切地提到了要使用背包里的某件具体物品，否则绝不允许判定为 use_item！NPC的建议或玩家的吹牛不等于使用了物品！绝不能脑补！）
-- seek_quest: 如果玩家看起来极度无聊/要找点事儿干
-- combat:  对抗危机的行为（危机级别<2时，绝对不会是此意图！）
-- move: 空间移动需求或者战斗时的危机撤退行为，移动的意图疑似和\`相连节点\`|\`可见室内\`|\`当前目标\`有关时提高权重
-- suicidal_idle: 危机级别>=2时的发呆行为，类似危险关头还在说笑，闲聊
-
-**DM 精神:**
-作为高维 DM，你只需要遵循两点哲学：
-1. 【直击本质】：无论玩家的文本多么花里胡哨、无论他吹了什么牛、带了什么情绪，穿透这些表象，直接将他最核心的动作归类到上述 7 种意图之一。只要核心诉求明确且唯一，就必须极度自信地做出裁决。
-2. 【直击本质】：无论玩家的文本多么花里胡哨，穿透表象。如果玩家本回合的系统级动作是唯一的（例如：边走边吹牛，系统动作只有‘走’），请增加（选 move）的自信。
-3. 【拥抱混沌】：人类是复杂的。如果玩家的输入中真真切切地包含了多重互相冲突的系统级诉求，或者表意极其模糊让你无法断定唯一的动机，你必须将 confuse.sure 设为 true，交出裁决权。
-
-=== 玩家输入 ===
-"${userInput}"
-
-请只输出纯 JSON，不要带 markdown 标记：
-{
-  "intent": "<从上述 7 种分类中选择最核心的一个>",
-  "targetId": "<确切的 ID，无则填 null>",
-  "direction": "<'forward', 'back', 或 null>",
-  "itemId": "<确切的 ID，无则填 null>",
-  "confuse": {
-    "sure": <只要核心动机清晰唯一就填 false；若遇到诉求撕裂、严重歧义、表意破碎，填 true>,
-    "reason": "<如果 sure 为 true，用人类大白话解释动机哪里冲突了；否则填 null>",
-    "type":[{
-      "confidence": <0到1之间的置信度>,
-      "intent": "<可能的意图>",
-      "targetId": "<ID 或 null>",
-      "direction": "<方向 或 null>",
-      "itemId": "<ID 或 null>"
-    }]
-  }
-}`;
+  const prompt = buildIntentPrompt(userInput, state);
 
   const text = await modelService.generateText('lite', prompt, { jsonMode: true });
   if (!text) return { intent: { intent: 'idle', targetId: null }, confuse: null };
@@ -746,68 +229,3 @@ ${false && fmtCombatInstinct(state) ? fmtCombatInstinct(state) : ''}
   return { intent: { intent: 'idle', targetId: null }, confuse: null };
 }
 
-/**
- * Generate a world map image based on the topology data.
- * Returns base64-encoded PNG data.
- */
-export async function generateMapImage(worldData: WorldData, worldview: string, artStylePrompt?: string): Promise<string | undefined> {
-  // 只保留有意义的名称和类型信息，去掉 n1, h1 等抽象 ID
-  const nodeDescriptions = worldData.nodes.map(n => {
-    const connNames = n.connections.map(connId => {
-      const connNode = worldData.nodes.find(nn => nn.id === connId);
-      return connNode?.name || '';
-    }).filter(Boolean).join(', ');
-    return `${n.name}(${n.type}, 危险度:${n.safetyLevel}) 连接到: ${connNames}`;
-  }).join('\n');
-
-  const styleBlock = artStylePrompt
-    ? `\n\nMANDATORY ART STYLE (apply this style to the entire illustration):\n${artStylePrompt}`
-    : '';
-
-  const prompt = `Generate a highly detailed, top-down RPG world map illustration perfectly adapted to this specific universe:
-
-World Name: "${worldData.name}"
-Core Worldview & Lore: "${worldview}"
-
-Geographical Nodes & Connections:
-${nodeDescriptions}
-
-Art Style & Rendering Instructions:
-1. STRICT AESTHETIC MATCH: The visual style MUST strictly reflect the "Core Worldview". (e.g., If the lore is Sci-Fi, use holographic/neon blueprint aesthetics; if Post-Apocalyptic, use a gritty, weathered survivalist paper style; if Dark Fantasy, use ancient, worn parchment with gothic ink).
-2. TOPOLOGY & ICONS: Clearly depict the locations as distinct nodes. Use specific architectural markers based on their types (dense buildings for 'city', scattered structures for 'town/village', terrain hazards/nature for 'wilderness'). 
-3. CONNECTIVITY: Draw clear, stylized routes, roads, or paths connecting the connected nodes.
-4. VIEWPOINT & VIBE: Bird's-eye view, atmospheric, immersive. Designed as a functional UI map screen for a sandbox RPG. Include stylized map pins/markers for locations.${styleBlock}`;
-
-  try {
-    const result = await modelService.generateImage('map', prompt, { aspectRatio: '16:9', size: '2K' });
-    if (result.base64) return result.base64;
-  } catch (e) {
-    console.error("Map image generation failed", e);
-  }
-  return undefined;
-}
-
-/**
- * Generate a 1:1 512px portrait photo for the AI character.
- */
-export async function generateCharacterPortrait(appearancePrompt: string, worldview: string, artStylePrompt?: string): Promise<string | undefined> {
-  const styleBlock = artStylePrompt
-    ? `\n\nMANDATORY ART STYLE (apply this style to the portrait):\n${artStylePrompt}`
-    : '';
-
-  const prompt = `Generate a high-quality character portrait ID photo (bust shot, facing forward, neutral background).
-
-Character Visual Description: ${appearancePrompt}
-
-World Setting: ${worldview}
-
-Style: Semi-realistic anime/illustration style. Clean lighting, sharp details. The character should look directly at the camera. Background should be simple and non-distracting.${styleBlock}`;
-
-  try {
-    const result = await modelService.generateImage('portrait', prompt, { aspectRatio: '1:1', size: '512px' });
-    if (result.base64) return result.base64;
-  } catch (e) {
-    console.error("Character portrait generation failed", e);
-  }
-  return undefined;
-}

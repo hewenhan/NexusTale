@@ -5,6 +5,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { ChatMessage, GameState, DebugState, TextSegment } from '../../types/game';
 import type { GrandNotificationData } from '../../components/GrandNotification';
+import type { ImageGenResult } from './handleImageGen';
 
 export interface DisplayDeps {
   messages: TextSegment[];
@@ -12,7 +13,7 @@ export interface DisplayDeps {
   sceneVisuals: string | undefined;
   lastVisuals: string;
   selectedBgmKey: string | undefined;
-  imagePromise: Promise<string | undefined>;
+  imagePromise: Promise<ImageGenResult>;
   pendingNotifications: Omit<GrandNotificationData, 'id'>[];
   addMessage: (msg: ChatMessage) => void;
   updateState: (u: Partial<GameState> | ((prev: GameState) => Partial<GameState>)) => void;
@@ -51,11 +52,11 @@ export async function runDisplaySequence(deps: DisplayDeps): Promise<void> {
   });
 
   if (messages.length === 1) {
-    const fileName = await imagePromise;
-    if (fileName) {
+    const imgResult = await imagePromise;
+    if (imgResult.fileName || imgResult.prohibited) {
       updateState(prev => ({
         history: prev.history.map(m =>
-          m.id === lastMsgId ? { ...m, imageFileName: fileName } : m
+          m.id === lastMsgId ? { ...m, imageFileName: imgResult.fileName, imageProhibited: imgResult.prohibited } : m
         )
       }));
     }
@@ -81,7 +82,7 @@ export async function runDisplaySequence(deps: DisplayDeps): Promise<void> {
     });
   }
 
-  const [fileName] = await Promise.all([
+  const [imgResult] = await Promise.all([
     imagePromise,
     waitForTypewriter().then(() => new Promise(resolve => setTimeout(resolve, 1000)))
   ]);
@@ -95,7 +96,8 @@ export async function runDisplaySequence(deps: DisplayDeps): Promise<void> {
     segmentType: lastSeg.type,
     npcName: lastSeg.name,
     timestamp: Date.now() + messages.length - 1,
-    imageFileName: fileName,
+    imageFileName: imgResult.fileName,
+    imageProhibited: imgResult.prohibited,
     bgmKey: selectedBgmKey
   });
 

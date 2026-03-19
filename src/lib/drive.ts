@@ -2,6 +2,7 @@
 // We use the access token from AuthContext
 
 const FOLDER_NAME = 'AIChat';
+import { handleError } from './errorPolicy';
 
 export async function getOrCreateFolder(accessToken: string): Promise<string> {
   // 1. Search for folder
@@ -67,7 +68,7 @@ export async function uploadImageToDrive(accessToken: string, base64Data: string
     // However, the prompt says "store only filename".
     // So we return the ID but we will primarily rely on the name we generated.
   } catch (e) {
-    console.error("Upload failed", e);
+    handleError('retryable', 'Upload failed', e);
     throw e;
   }
 }
@@ -114,7 +115,7 @@ export async function getImageUrlByName(accessToken: string, fileName: string): 
     );
     
     if (!fileRes.ok) {
-        console.error("Failed to fetch image content", await fileRes.text());
+        handleError('silent', 'Failed to fetch image content', await fileRes.text());
         return null;
     }
 
@@ -125,7 +126,7 @@ export async function getImageUrlByName(accessToken: string, fileName: string): 
 
     return URL.createObjectURL(blob);
   } catch (e) {
-    console.error("Failed to get image", e);
+    handleError('silent', 'Failed to get image', e);
     return null;
   }
 }

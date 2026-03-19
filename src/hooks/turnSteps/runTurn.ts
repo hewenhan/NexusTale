@@ -97,13 +97,23 @@ export async function runTurn(deps: TurnDeps, userInput: string): Promise<void> 
   await stepIntentExtract(ctx); // ② 意图
   await stepDirector(ctx);      // ③ 导演
   stepRetreat(ctx);             // ④ 掉头
-  stepPipeline(ctx);            // ⑤ 管线
+
+  // ⑤ 管线 — 返回值合并
+  const pipelineResult = stepPipeline(ctx);
+  ctx.d20 = pipelineResult.d20;
+  ctx.resolution = pipelineResult.resolution;
+
   stepNarrative(ctx);           // ⑥ 叙事
   await stepQuestResolve(ctx);  // ⑦ 任务
   stepItemDrops(ctx);           // ⑧ 掉落
   stepWriteState(ctx);          // ⑨ 写入
   stepNotifications(ctx);       // ⑩ 通知
-  await stepLlmCall(ctx);       // ⑪ LLM
+
+  // ⑪ LLM — 返回值合并
+  const llmResult = await stepLlmCall(ctx);
+  ctx.facts = llmResult.facts;
+  ctx.responseJson = llmResult.responseJson;
+
   stepPostLlm(ctx);             // ⑫ 结算
   await stepDisplay(ctx);       // ⑬ 显示
   await stepBagAndCeremony(ctx);// ⑭ 入包

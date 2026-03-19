@@ -5,13 +5,13 @@
 
 import { ai, SAFETY_SETTINGS_OFF, NOVELTY_CONFIG } from '../lib/gemini';
 import { MODEL_CONFIG, type ModelRole } from '../types/modelConfig';
+import { handleError } from '../lib/errorPolicy';
 
 // ─── 公共类型 ───
 
-export interface ImageResult {
-  base64?: string;
-  prohibited?: boolean;
-}
+export type ImageResult =
+  | { ok: true; base64: string }
+  | { ok: false; reason: 'prohibited' | 'error'; error?: unknown };
 
 interface TextOptions {
   jsonMode?: boolean;
@@ -55,16 +55,16 @@ async function geminiImage(model: string, prompt: string, opts?: ImageOptions): 
 
   const finishReason = result.candidates?.[0]?.finishReason;
   if (finishReason === 'PROHIBITED_CONTENT') {
-    console.error('Gemini image blocked: PROHIBITED_CONTENT', result.candidates?.[0]?.finishMessage);
-    return { prohibited: true };
+    handleError('silent', 'Gemini image blocked: PROHIBITED_CONTENT', result.candidates?.[0]?.finishMessage);
+    return { ok: false, reason: 'prohibited' };
   }
 
   for (const part of result.candidates?.[0]?.content?.parts || []) {
     if (part.inlineData) {
-      return { base64: part.inlineData.data };
+      return { ok: true, base64: part.inlineData.data };
     }
   }
-  return {};
+  return { ok: false, reason: 'error' };
 }
 
 // ─── Grok 调用 ───
@@ -82,16 +82,16 @@ async function grokImage(model: string, prompt: string, _opts?: ImageOptions): P
       }),
     });
     if (!response.ok) {
-      console.error(`Grok image proxy error (${response.status})`);
-      return {};
+      handleError('silent', `Grok image proxy error (${response.status})`, response.statusText);
+      return { ok: false, reason: 'error' };
     }
     const json = await response.json();
-    if (json.prohibited) return { prohibited: true };
-    if (json.base64) return { base64: json.base64 };
-    return {};
+    if (json.prohibited) return { ok: false, reason: 'prohibited' as const };
+    if (json.base64) return { ok: true, base64: json.base64 };
+    return { ok: false, reason: 'error' as const };
   } catch (e: any) {
-    console.error('Grok image generation failed:', e);
-    return {};
+    handleError('silent', 'Grok image generation failed', e);
+    return { ok: false, reason: 'error', error: e };
   }
 }
 

@@ -12,11 +12,12 @@
 import type { GameState, QuestStage, QuestCompletionCeremony, InventoryItem, IntentResult } from '../../types/game';
 import { bossTensionFromSafety } from '../../types/game';
 import type { PipelineResult } from '../../lib/pipeline';
-import { revealHouseInWorld } from '../../lib/pipeline';
+import { withHouseRevealed } from '../../lib/pipeline';
+import { handleError } from '../../lib/errorPolicy';
 import type { GrandNotificationData } from '../../components/GrandNotification';
 import type { DirectorResult } from './directorSystem';
 import { advanceQuestChain } from './directorSystem';
-import { generateQuestChain, generateQuestCompletionNarration } from '../../services/aiService';
+import { generateQuestChain, generateQuestCompletionNarration } from '../../services/questService';
 import {
   narrativeQuestDispatch, narrativeQuestItemInBossFight,
   narrativeQuestChainComplete, narrativeQuestStageAdvance,
@@ -105,7 +106,7 @@ export async function runQuestChainGeneration(
         questChain: questStages,
         currentQuestStageIndex: 0,
         currentObjective: firstObjective,
-        worldData: prev.worldData ? revealHouseInWorld(prev.worldData, firstObjective.targetHouseId) : prev.worldData,
+        worldData: prev.worldData ? withHouseRevealed(prev.worldData, firstObjective.targetHouseId) : prev.worldData,
       }));
 
       directorResult.questNotification = {
@@ -129,7 +130,7 @@ export async function runQuestChainGeneration(
       console.log('[QuestChain] Generated', questStages.length, 'stages, first item:', pendingQuestItem?.name);
     }
   } catch (e) {
-    console.error('[QuestChain] Generation failed:', e);
+    handleError('degraded', 'QuestChain generation failed', e);
   }
 
   return { pendingQuestItem };
@@ -314,7 +315,7 @@ export function applyQuestDeferredWrites(
       questChain: (prev.questChain || []).map((s, i) => i === stageIdx ? { ...s, completed: true } : s),
       currentQuestStageIndex: stageIdx + 1,
       currentObjective: nextObj,
-      worldData: prev.worldData ? revealHouseInWorld(prev.worldData, nextObj.targetHouseId) : prev.worldData,
+      worldData: prev.worldData ? withHouseRevealed(prev.worldData, nextObj.targetHouseId) : prev.worldData,
     }));
     for (const n of input.deferredQuestNotifications) {
       pendingNotifications.push(n);

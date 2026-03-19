@@ -8,6 +8,7 @@ import { CharacterProfile, Gender, Orientation, DEFAULT_LOADING_MESSAGES, DEFAUL
 import { FakeProgressBar, FakeProgressBarHandle } from '../components/FakeProgressBar';
 import { ArtStylePicker } from '../components/ArtStylePicker';
 import { ArtStyleOption } from '../types/artStyles';
+import { handleError } from '../lib/errorPolicy';
 
 // ── Shared dropdown option constants ──
 const GENDER_OPTIONS: { value: Gender | ''; label: string }[] = [
@@ -159,7 +160,7 @@ export default function Setup() {
       }
 
     } catch (error) {
-      console.error("Failed to generate worldviews", error);
+      handleError('retryable', 'Failed to generate worldviews', error);
       alert("生成世界观失败，请重试。");
     } finally {
       progressBarRef.current?.finish();

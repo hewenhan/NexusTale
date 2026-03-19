@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { GameState, INITIAL_STATE, ChatMessage, DEFAULT_LOADING_MESSAGES, DEFAULT_PROFILE, normalizeConnections, WorldData, KEEP_RECENT_TURNS } from '../types/game';
 import { v4 as uuidv4 } from 'uuid';
+import { handleError } from '../lib/errorPolicy';
 
 interface GameContextType {
   state: GameState;
@@ -71,7 +72,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setState({ ...INITIAL_STATE, ...parsed });
       return true;
     } catch (e) {
-      console.error("Invalid save file", e);
+      handleError('silent', 'Invalid save file', e);
       return false;
     }
   };

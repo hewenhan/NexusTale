@@ -7,7 +7,7 @@ export { maybeEscalateToSeekQuest, runDirector, advanceQuestChain, type Director
 export { applyDebugOverrides, applyNarrativeOverrides, buildStateUpdate, applyDebugDirectWrites } from './applyResolution';
 export { buildNotifications } from './buildNotifications';
 export { buildStoryPrompt, buildThemeInstruction, type StoryPromptInput } from './buildStoryPrompt';
-export { launchImageGen, type ImageGenDeps } from './handleImageGen';
+export { launchImageGen, type ImageGenDeps, type ImageGenResult } from './handleImageGen';
 export { runDisplaySequence, type DisplayDeps } from './displaySequencer';
 export { getStartIndexForRecentTurns, getLastSceneVisuals } from './helpers';
 export { runSummaryMaintenance } from './summaryMaintenance';

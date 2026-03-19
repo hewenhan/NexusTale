@@ -6,6 +6,7 @@
 
 import type { TurnContext } from './types';
 import { buildStateUpdate, applyDebugDirectWrites } from './applyResolution';
+import { GAME_CONFIG } from '../../lib/gameConfig';
 
 export function stepWriteState(ctx: TurnContext): void {
   const { deps: { state, updateState }, directorResult, resolution } = ctx;
@@ -25,7 +26,7 @@ export function stepWriteState(ctx: TurnContext): void {
   if (!resolution!.newTransitState && state.transitState?.lockedTheme) {
     updateState(prev => {
       const updated = [...prev.exhaustedThemes, state.transitState!.lockedTheme!];
-      return { exhaustedThemes: updated.length > 20 ? updated.slice(-20) : updated };
+      return { exhaustedThemes: updated.length > GAME_CONFIG.inventory.maxExhaustedThemes ? updated.slice(-GAME_CONFIG.inventory.maxExhaustedThemes) : updated };
     });
   }
 }

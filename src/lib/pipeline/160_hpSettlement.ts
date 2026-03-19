@@ -15,6 +15,7 @@
 
 import type { PipelineContext } from './types';
 import { TENSION_ROUTE } from '../tensionConfig';
+import { GAME_CONFIG } from '../gameConfig';
 
 function applyArmor(rawDelta: number, armorReduction: number): number {
   if (rawDelta >= 0 || armorReduction <= 0) return rawDelta;
@@ -39,20 +40,21 @@ export function stepHpSettlement(ctx: PipelineContext): void {
   // ── 安全区回血 ──
   if (ctx.isInSafeZone && !state.transitState) {
     const oldHp = state.hp;
-    ctx.newHp = Math.min(100, state.hp + 5);
+    ctx.newHp = Math.min(GAME_CONFIG.hp.max, state.hp + GAME_CONFIG.hp.safeRegen);
     if (ctx.newHp !== oldHp) {
-      ctx.events.push({ type: 'hp_change', from: oldHp, to: ctx.newHp, rawDelta: 5, finalDelta: ctx.newHp - oldHp, armorName: null, armorReduction: 0 });
+      ctx.events.push({ type: 'hp_change', from: oldHp, to: ctx.newHp, rawDelta: GAME_CONFIG.hp.safeRegen, finalDelta: ctx.newHp - oldHp, armorName: null, armorReduction: 0 });
     }
     return;
   }
 
   // ── 赶路 HP ──
   if (state.transitState) {
+    const transitHp = GAME_CONFIG.transit.hpDelta;
     let failHpDelta: number;
-    if (tension >= 4) failHpDelta = -25;
-    else if (tension >= 3) failHpDelta = -15;
-    else if (tension >= 2) failHpDelta = -5;
-    else failHpDelta = 0;
+    if (tension >= 4) failHpDelta = transitHp.t4;
+    else if (tension >= 3) failHpDelta = transitHp.t3;
+    else if (tension >= 2) failHpDelta = transitHp.t2;
+    else failHpDelta = transitHp.t1;
 
     if (ctx.tier === 0 && failHpDelta < 0) {
       const finalDelta = applyArmor(failHpDelta, ctx.armorReduction);

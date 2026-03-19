@@ -7,7 +7,7 @@ import type { GameState } from '../types/game';
 import { findNode, getVisibleHouses } from '../lib/pipeline';
 
 /** 相连节点信息 */
-export function fmtConnectedNodes(state: GameState): string {
+export function formatConnectedNodes(state: GameState): string {
   const currentNode = findNode(state, state.currentNodeId!)!;
   return currentNode.connections.map(connId => {
     const connNode = state.worldData!.nodes.find(n => n.id === connId);
@@ -16,7 +16,7 @@ export function fmtConnectedNodes(state: GameState): string {
 }
 
 /** 可见建筑信息 */
-export function fmtVisibleHouses(state: GameState): string {
+export function formatVisibleHouses(state: GameState): string {
   const currentNode = findNode(state, state.currentNodeId!)!;
   const list = getVisibleHouses(currentNode);
   return list.length > 0
@@ -25,7 +25,7 @@ export function fmtVisibleHouses(state: GameState): string {
 }
 
 /** 最近 2 轮对话 */
-export function fmtRecentConversation(state: GameState): string {
+export function formatRecentConversation(state: GameState): string {
   const turns: string[] = [];
   let turnCount = 0;
   for (let i = state.history.length - 1; i >= 0 && turnCount < 2; i--) {
@@ -42,7 +42,7 @@ export function getLastIntent(state: GameState): string | null {
 }
 
 /** 中转状态规则段 */
-export function fmtTransitRules(state: GameState): string {
+export function formatTransitRules(state: GameState): string {
   if (!state.transitState) {
     return '**中转状态:** 未活跃（忽略方向规则，将 direction 设置为 null）';
   }
@@ -56,7 +56,7 @@ export function fmtTransitRules(state: GameState): string {
 }
 
 /** 求生本能规则段（tension >= 2 时注入） */
-export function fmtSurvivalInstinct(state: GameState): string {
+export function formatSurvivalInstinct(state: GameState): string {
   const tensionLevel = state.pacingState.tensionLevel;
   if (tensionLevel < 2) return '';
   const lastIntent = getLastIntent(state);
@@ -68,12 +68,12 @@ export function fmtSurvivalInstinct(state: GameState): string {
 }
 
 /** 格式化背包物品列表 */
-export function fmtInventory(state: GameState): string {
+export function formatInventory(state: GameState): string {
   if (!state.inventory || state.inventory.length === 0) return '无';
   return state.inventory.map(i => `${i.id} (${i.name})`).join(', ');
 }
 
-export function fmtCombatInstinct(state: GameState): string {
+export function formatCombatInstinct(state: GameState): string {
     const tensionLevel = state.pacingState.tensionLevel;
     if (tensionLevel < 2) return '';
     return `**step 2.75: 对抗**

@@ -18,7 +18,7 @@
  *   ⑨ 死亡结算              → 复活撤离 / gameOver
  */
 
-import type { GameState, IntentResult } from '../../types/game';
+import type { GameState, IntentResult, InventoryItem } from '../../types/game';
 import type { PipelineContext, PipelineResult, PipelineSnapshot } from './types';
 import { extractProgressMap } from './helpers';
 
@@ -33,36 +33,37 @@ import { stepMilestone } from './140_milestone';
 import { stepHpSettlement } from './160_hpSettlement';
 import { stepDeathSettlement } from './180_deathSettlement';
 
-function buildSnapshot(state: GameState, intent: IntentResult): PipelineSnapshot {
-  return {
-    hp: state.hp,
-    tensionLevel: state.pacingState.tensionLevel,
-    nodeId: state.currentNodeId,
-    houseId: state.currentHouseId,
-    inTransit: !!state.transitState,
-    transitProgress: state.transitState?.pathProgress ?? 0,
-    inventory: state.inventory.map(i => ({ ...i })),
-    intent: intent.intent,
-    targetId: intent.targetId,
-    itemId: intent.itemId,
-  };
+interface SnapshotSource {
+  hp: number;
+  tensionLevel: PipelineSnapshot['tensionLevel'];
+  nodeId: string | null;
+  houseId: string | null;
+  inTransit: boolean;
+  transitProgress: number;
+  inventory: readonly InventoryItem[];
+  intent: IntentResult['intent'];
+  targetId: IntentResult['targetId'];
+  itemId?: string;
+  tier?: PipelineSnapshot['tier'];
+  roll?: number;
+  isSuccess?: boolean;
 }
 
-function buildPostSnapshot(ctx: PipelineContext): PipelineSnapshot {
+function buildSnapshot(src: SnapshotSource): PipelineSnapshot {
   return {
-    hp: ctx.newHp,
-    tensionLevel: ctx.newTensionLevel,
-    nodeId: ctx.newNodeId,
-    houseId: ctx.newHouseId,
-    inTransit: !!ctx.newTransitState,
-    transitProgress: ctx.newTransitState?.pathProgress ?? 0,
-    inventory: ctx.newInventory.map(i => ({ ...i })),
-    intent: ctx.intent.intent,
-    targetId: ctx.intent.targetId,
-    itemId: ctx.intent.itemId,
-    tier: ctx.tier as PipelineSnapshot['tier'],
-    roll: ctx.effectiveRoll,
-    isSuccess: ctx.isSuccess,
+    hp: src.hp,
+    tensionLevel: src.tensionLevel,
+    nodeId: src.nodeId,
+    houseId: src.houseId,
+    inTransit: src.inTransit,
+    transitProgress: src.transitProgress,
+    inventory: src.inventory.map(i => ({ ...i })),
+    intent: src.intent,
+    targetId: src.targetId,
+    itemId: src.itemId,
+    tier: src.tier,
+    roll: src.roll,
+    isSuccess: src.isSuccess,
   };
 }
 
@@ -135,12 +136,37 @@ function extractResult(ctx: PipelineContext, snapPre: PipelineSnapshot): Pipelin
     moveTarget: ctx.moveTarget,
     events: ctx.events,
     snapPre,
-    snapPost: buildPostSnapshot(ctx),
+    snapPost: buildSnapshot({
+      hp: ctx.newHp,
+      tensionLevel: ctx.newTensionLevel,
+      nodeId: ctx.newNodeId,
+      houseId: ctx.newHouseId,
+      inTransit: !!ctx.newTransitState,
+      transitProgress: ctx.newTransitState?.pathProgress ?? 0,
+      inventory: ctx.newInventory,
+      intent: ctx.intent.intent,
+      targetId: ctx.intent.targetId,
+      itemId: ctx.intent.itemId,
+      tier: ctx.tier as PipelineSnapshot['tier'],
+      roll: ctx.effectiveRoll,
+      isSuccess: ctx.isSuccess,
+    }),
   };
 }
 
 export function runPipeline(state: GameState, intent: IntentResult, d20Roll: number): PipelineResult {
-  const snapPre = buildSnapshot(state, intent);
+  const snapPre = buildSnapshot({
+    hp: state.hp,
+    tensionLevel: state.pacingState.tensionLevel,
+    nodeId: state.currentNodeId,
+    houseId: state.currentHouseId,
+    inTransit: !!state.transitState,
+    transitProgress: state.transitState?.pathProgress ?? 0,
+    inventory: state.inventory,
+    intent: intent.intent,
+    targetId: intent.targetId,
+    itemId: intent.itemId,
+  });
   const ctx = createContext(state, intent, d20Roll);
 
   // ── 纯计算管线，不含叙事 ──

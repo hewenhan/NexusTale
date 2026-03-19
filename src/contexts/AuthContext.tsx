@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { handleError } from '../lib/errorPolicy';
 
 interface AuthContextType {
   accessToken: string | null;
@@ -48,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return true;
     } catch (error) {
-      console.error("Failed to refresh session:", error);
+      handleError('degraded', 'Failed to refresh session', error);
       setDriveError(true);
       return false;
     }
@@ -87,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Listener is set up once in the component below or globally
     } catch (error) {
-      console.error("Failed to start login:", error);
+      handleError('retryable', 'Failed to start login', error);
       alert("Failed to initialize login. Please check console.");
     }
   };
@@ -113,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(userData);
           localStorage.setItem('google_user', JSON.stringify(userData));
         } catch (e) {
-          console.error("Failed to fetch user info", e);
+          handleError('degraded', 'Failed to fetch user info', e);
         }
 
         // Schedule refresh

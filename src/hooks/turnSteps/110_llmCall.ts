@@ -1,5 +1,7 @@
 /**
  * Step 110: 构建 LLM Prompt & 调用叙事大模型
+ *
+ * 返回结果而非直接写入 ctx，由 orchestrator 负责合并。
  */
 
 import type { TurnContext } from './types';
@@ -7,7 +9,12 @@ import { buildStoryPrompt, buildThemeInstruction } from './buildStoryPrompt';
 import { generateTurn } from '../../services/aiService';
 import type { NarrativeFacts } from '../../lib/narrativeRegistry';
 
-export async function stepLlmCall(ctx: TurnContext): Promise<void> {
+export interface LlmCallStepResult {
+  facts: NarrativeFacts;
+  responseJson: any;
+}
+
+export async function stepLlmCall(ctx: Readonly<TurnContext>): Promise<LlmCallStepResult> {
   const { deps: { state }, resolution, currentSummary, userInput, visionContext } = ctx;
 
   const themeInstruction = buildThemeInstruction(state, resolution!);
@@ -25,6 +32,5 @@ export async function stepLlmCall(ctx: TurnContext): Promise<void> {
 
   const responseJson = await generateTurn(fullPrompt);
 
-  ctx.facts = facts;
-  ctx.responseJson = responseJson;
+  return { facts, responseJson };
 }

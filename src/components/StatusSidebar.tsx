@@ -1,10 +1,9 @@
 import { motion } from 'motion/react';
 import { X, Heart, Shield, MapPin, Target, RefreshCw, User } from 'lucide-react';
 import { GameState, RARITY_COLORS } from '../types/game';
-import { useAuth } from '../contexts/AuthContext';
-import { getImageUrlByName } from '../lib/drive';
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { extractProgressMap } from '../lib/pipeline';
+import { usePortraitLoader } from '../hooks/usePortraitLoader';
 
 interface StatusSidebarProps {
   state: GameState;
@@ -17,9 +16,8 @@ interface StatusSidebarProps {
 export function StatusSidebar({ state, onClose, onRegenerateCompanionPortrait, onRegeneratePlayerPortrait, onViewCeremony }: StatusSidebarProps) {
   const currentNode = state.worldData?.nodes.find(n => n.id === state.currentNodeId);
   const currentHouse = currentNode?.houses.find(h => h.id === state.currentHouseId);
-  const { accessToken } = useAuth();
-  const [portraitUrl, setPortraitUrl] = useState<string | null>(null);
-  const [playerPortraitUrl, setPlayerPortraitUrl] = useState<string | null>(null);
+  const { url: portraitUrl } = usePortraitLoader(state.characterPortraitFileName);
+  const { url: playerPortraitUrl } = usePortraitLoader(state.playerPortraitFileName);
   const [regenCompanion, setRegenCompanion] = useState(false);
   const [regenPlayer, setRegenPlayer] = useState(false);
 
@@ -27,24 +25,6 @@ export function StatusSidebar({ state, onClose, onRegenerateCompanionPortrait, o
     () => state.worldData ? extractProgressMap(state.worldData) : {},
     [state.worldData]
   );
-
-  useEffect(() => {
-    if (!state.characterPortraitFileName || !accessToken) return;
-    let cancelled = false;
-    getImageUrlByName(accessToken, state.characterPortraitFileName).then(url => {
-      if (!cancelled && url) setPortraitUrl(url);
-    });
-    return () => { cancelled = true; };
-  }, [state.characterPortraitFileName, accessToken]);
-
-  useEffect(() => {
-    if (!state.playerPortraitFileName || !accessToken) return;
-    let cancelled = false;
-    getImageUrlByName(accessToken, state.playerPortraitFileName).then(url => {
-      if (!cancelled && url) setPlayerPortraitUrl(url);
-    });
-    return () => { cancelled = true; };
-  }, [state.playerPortraitFileName, accessToken]);
 
   return (
     <>

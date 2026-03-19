@@ -2,13 +2,19 @@
  * Step 050: 内部管线执行 + Debug 覆写
  *
  * 调用 pipeline 纯计算管线，获取 PipelineResult，应用 Debug 覆写。
+ * 返回结果而非直接写入 ctx，由 orchestrator 负责合并。
  */
 
 import type { TurnContext } from './types';
-import { runPipeline } from '../../lib/pipeline';
+import { runPipeline, type PipelineResult } from '../../lib/pipeline';
 import { applyDebugOverrides } from './applyResolution';
 
-export function stepPipeline(ctx: TurnContext): void {
+export interface PipelineStepResult {
+  d20: number;
+  resolution: PipelineResult;
+}
+
+export function stepPipeline(ctx: Readonly<TurnContext>): PipelineStepResult {
   const { deps: { state, updateState }, resolveState, intent } = ctx;
 
   const debugOv = state.debugOverrides;
@@ -20,6 +26,5 @@ export function stepPipeline(ctx: TurnContext): void {
     updateState({ debugOverrides: undefined });
   }
 
-  ctx.d20 = d20;
-  ctx.resolution = resolution;
+  return { d20, resolution };
 }

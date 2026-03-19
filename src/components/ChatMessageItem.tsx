@@ -5,7 +5,7 @@ import clsx from 'clsx';
 import { ChatMessage, ENABLE_DEBUG_UI, SegmentType } from '../types/game';
 import { getImageUrlByName } from '../lib/drive';
 import { useAuth } from '../contexts/AuthContext';
-import { IMAGE_PROHIBITED_SENTINEL } from '../services/aiService';
+
 import { TypewriterMessage, type TextSpeed } from './TypewriterMessage';
 import { ZoomableImage } from './ZoomableImage';
 
@@ -79,7 +79,7 @@ export const ChatMessageItem = React.memo(({ msg, characterName, playerName = '�
     let isMounted = true;
 
     const fetchImage = async () => {
-      if (msg.imageFileName && msg.imageFileName !== IMAGE_PROHIBITED_SENTINEL && !imageUrl && accessToken) {
+      if (msg.imageFileName && !msg.imageProhibited && !imageUrl && accessToken) {
         setIsLoadingImage(true);
         const url = await getImageUrlByName(accessToken, msg.imageFileName);
         if (isMounted && url) {
@@ -195,9 +195,9 @@ export const ChatMessageItem = React.memo(({ msg, characterName, playerName = '�
           )}
 
           {/* Image Display */}
-          {msg.imageFileName && (
+          {(msg.imageFileName || msg.imageProhibited) && (
             <div className="relative w-full min-w-[200px] sm:min-w-[280px] bg-zinc-950 flex justify-center">
-              {msg.imageFileName === IMAGE_PROHIBITED_SENTINEL ? (
+              {msg.imageProhibited ? (
                 <div className="w-full aspect-[9/16] max-h-[70vh] flex flex-col items-center justify-center text-yellow-600 gap-2">
                   <ImageIcon className="w-6 h-6" />
                   <span className="text-xs">图片违规，无法生成</span>
