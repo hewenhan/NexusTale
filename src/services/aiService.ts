@@ -571,7 +571,7 @@ Generate a structured JSON recounting this quest completion. All text is third-p
 
 4. "reward": { "title": a memorable title for this achievement — sharp and specific, not generic, "description": 3-5 sentences on the concrete consequences: what changed in the world, who gained/lost power, what's different now. Reference specific places, factions, or objects from the worldview. }
 
-5. "epilogue": 3-5 sentences. What comes next — not vague "new horizons" but specific unresolved threads, new problems created by this victory, or a quiet human moment between the two characters that hints at how they've changed.
+5. "epilogue": 3-5 sentences. The characters are STILL at ${questChain[questChain.length - 1].targetLocationName} — the scene MUST stay in this location. Do NOT teleport them elsewhere or mention traveling to new places. Describe what happens RIGHT HERE, RIGHT NOW: an unresolved thread surfacing, a quiet moment between the two characters, or a new problem revealing itself in this very spot.
 
 6. "affectionDelta": a number 5-15 representing how much this shared experience should boost the companion's affection.
 

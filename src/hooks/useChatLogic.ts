@@ -774,6 +774,13 @@ export function useChatLogic() {
         // Wait for chat typewriter to finish so sound effects don't overlap
         await waitForTypewriter();
         setPendingCeremony(questCeremony);
+        // Inject epilogue as narrator message so subsequent narrative has continuity
+        addMessage({
+          id: uuidv4(),
+          role: 'narrator',
+          text: questCeremony.epilogue,
+          timestamp: Date.now(),
+        });
       }
 
     } catch (error) {
