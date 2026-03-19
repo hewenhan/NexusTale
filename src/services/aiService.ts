@@ -577,14 +577,14 @@ Generate a structured JSON celebrating this quest completion. All text is third-
 
 7. "worldviewUpdate": { "full": A detailed description (3-8 sentences) of how this quest completion has PERMANENTLY changed the world — new truths revealed, power shifts, secrets unearthed, regions transformed, factions altered. This should read like a historical record of world-altering events. Tie deeply to the worldview's core themes. , "brief": A single concise sentence (under 50 chars) summarizing the key world change, used as a compact log entry. }
 
-=== LANGUAGE QUALITY: THE ANTI-ENTROPY PRINCIPLE ===
-Language has a thermodynamic tendency: the more it is produced, the more it collapses toward its most probable, most generic configurations — the phrases that could appear anywhere, mean anything, and therefore mean nothing. Your task is to RESIST this entropy with every sentence.
+=== LANGUAGE QUALITY: WRITE FOR HUMANS ===
+You serve two masters that must never conflict: PRECISION and READABILITY.
 
-The test for every sentence you write is the Principle of Irreplaceability: if a sentence could be lifted from this text and dropped into any other story, any other world, any other character's arc without losing coherence, then that sentence carries zero information — it is linguistic noise, not narrative signal. Delete it. Replace it with something that could ONLY exist in THIS story, about THESE characters, in THIS world, at THIS moment.
+1. The Irreplaceability Test — Before you commit any sentence, ask: could this sentence appear in a completely different story and still make sense? If yes, it is empty. Rewrite it with details that belong ONLY to this world, these characters, this moment. A good sentence names a specific place, a specific gesture, a specific consequence — not abstract nouns dressed in adjectives.
 
-Concreteness is the only antidote to entropy. Abstract declarations ("this changed everything", "a new era began") are the language of press releases, not chronicles. The chronicler's duty is to name the specific: the particular street where the dust settled differently after the battle, the exact way a character's hands moved, the precise shift in a political balance that only someone who understood this world's power structure could articulate. Every clause must earn its existence by delivering irreplaceable, concrete, sensory or factual content that advances the reader's understanding.
+2. Speak Plain, Strike Deep — Great writing is CLEAR writing. Short sentences are better than long ones. Common words are better than rare ones. If a reader has to re-read a sentence to understand it, you have failed. The goal is not to sound literary — the goal is to make the reader SEE the scene instantly, FEEL the emotion without effort. Write like you are telling a gripping story to a friend at midnight, not performing a recitation at a ceremony.
 
-Beware the Recursive Trap of Grandeur: language that ANNOUNCES its own significance ("this moment would be remembered forever", "history was forever altered") is language that has given up on DEMONSTRATING significance through substance. The greater the event, the more quietly and precisely it should be rendered — let the weight emerge from the facts themselves, never from the narrator's insistence that weight exists.
+3. Show the Weight, Don't Announce It — Never write sentences that TELL the reader something is important ("this would change everything", "history was forever altered", "a new chapter began"). Instead, SHOW the concrete change: who lost power, what broke, what grew, what someone did differently the next morning. If the facts are heavy enough, the reader will feel the weight on their own — they don't need you to label it.
 
 ${langInstruction}
 
