@@ -11,9 +11,10 @@ interface StatusSidebarProps {
   onClose: () => void;
   onRegenerateCompanionPortrait?: () => void;
   onRegeneratePlayerPortrait?: () => void;
+  onViewCeremony?: () => void;
 }
 
-export function StatusSidebar({ state, onClose, onRegenerateCompanionPortrait, onRegeneratePlayerPortrait }: StatusSidebarProps) {
+export function StatusSidebar({ state, onClose, onRegenerateCompanionPortrait, onRegeneratePlayerPortrait, onViewCeremony }: StatusSidebarProps) {
   const currentNode = state.worldData?.nodes.find(n => n.id === state.currentNodeId);
   const currentHouse = currentNode?.houses.find(h => h.id === state.currentHouseId);
   const { accessToken } = useAuth();
@@ -265,6 +266,24 @@ export function StatusSidebar({ state, onClose, onRegenerateCompanionPortrait, o
                   </details>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Last Quest Ceremony */}
+          {state.lastCeremony && onViewCeremony && (
+            <div>
+              <h3 className="text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider">任务结算</h3>
+              <button
+                onClick={onViewCeremony}
+                className="w-full bg-zinc-950 border border-amber-500/30 p-3 rounded-lg text-sm text-left hover:border-amber-500/60 transition-colors group cursor-pointer"
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg">🏆</span>
+                  <span className="text-amber-400 font-medium">{state.lastCeremony.reward.title}</span>
+                </div>
+                <p className="text-zinc-500 text-xs line-clamp-2">{state.lastCeremony.reward.description}</p>
+                <span className="text-xs text-amber-500/60 group-hover:text-amber-400 mt-1 block">点击查看完整结算 →</span>
+              </button>
             </div>
           )}
 

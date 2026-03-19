@@ -163,6 +163,7 @@ export function QuestCeremonyOverlay({ ceremony, companionName, onDismiss }: Que
   const [companionDone, setCompanionDone] = useState(false);
   const [rewardDescDone, setRewardDescDone] = useState(false);
   const [epilogueDone, setEpilogueDone] = useState(false);
+  const [skipConfirm, setSkipConfirm] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const currentPhase = PHASE_ORDER[phaseIndex];
@@ -448,6 +449,37 @@ export function QuestCeremonyOverlay({ ceremony, companionName, onDismiss }: Que
         </AnimatePresence>
         </div>
       </div>
+
+      {/* Skip button (bottom-right), hidden once epilogue dismiss is available */}
+      {!epilogueDone && (
+        <div className="fixed bottom-6 right-6 z-[260] flex items-center gap-2">
+          <AnimatePresence>
+            {skipConfirm && (
+              <motion.span
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                className="text-xs text-zinc-400"
+              >
+                确定跳过？
+              </motion.span>
+            )}
+          </AnimatePresence>
+          <button
+            onClick={() => {
+              if (skipConfirm) { onDismiss(); } else { setSkipConfirm(true); }
+            }}
+            onBlur={() => setSkipConfirm(false)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+              skipConfirm
+                ? 'bg-red-600/30 border border-red-500/50 text-red-300 hover:bg-red-600/50'
+                : 'bg-zinc-800/60 border border-zinc-700/40 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600'
+            }`}
+          >
+            {skipConfirm ? '确认跳过' : '跳过 ⏭'}
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 }

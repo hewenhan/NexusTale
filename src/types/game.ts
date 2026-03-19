@@ -366,6 +366,9 @@ export interface GameState {
   // 6.7 世界观变迁记录（任务链完成时追加）
   worldviewUpdates: WorldviewUpdate[];
 
+  // 6.8 上一次任务链结算典礼（用于侧边栏回看）
+  lastCeremony: QuestCompletionCeremony | null;
+
   // 7. 世界观画风提词（用于统一所有生图风格）
   artStylePrompt: string;
 
@@ -517,6 +520,9 @@ export const INITIAL_STATE: GameState = {
 
   // Worldview updates
   worldviewUpdates: [],
+
+  // Last ceremony
+  lastCeremony: null,
 
   // Art style
   artStylePrompt: '',

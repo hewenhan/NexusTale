@@ -38,6 +38,10 @@ function migrateSave(parsed: any): any {
   if (!Array.isArray(parsed.worldviewUpdates)) {
     parsed.worldviewUpdates = [];
   }
+  // Migration: 旧存档没有 lastCeremony 字段
+  if (parsed.lastCeremony === undefined) {
+    parsed.lastCeremony = null;
+  }
   return parsed;
 }
 

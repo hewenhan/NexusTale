@@ -81,6 +81,9 @@ export function useChatLogic() {
   // ── Quest ceremony overlay state ──
   const [pendingCeremony, setPendingCeremony] = useState<QuestCompletionCeremony | null>(null);
   const dismissCeremony = useCallback(() => setPendingCeremony(null), []);
+  const showLastCeremony = useCallback(() => {
+    if (state.lastCeremony) setPendingCeremony(state.lastCeremony);
+  }, [state.lastCeremony]);
 
   // ── Ceremony generation progress bar state ──
   const [isCeremonyGenerating, setIsCeremonyGenerating] = useState(false);
@@ -766,6 +769,8 @@ export function useChatLogic() {
 
       // ── Step 9.6: Quest completion ceremony overlay ──
       if (questCeremony) {
+        // Persist ceremony for sidebar replay
+        updateState({ lastCeremony: questCeremony });
         // Wait for chat typewriter to finish so sound effects don't overlap
         await waitForTypewriter();
         setPendingCeremony(questCeremony);
@@ -802,6 +807,7 @@ export function useChatLogic() {
     // Quest completion ceremony
     pendingCeremony,
     dismissCeremony,
+    showLastCeremony,
     // Ceremony generation progress bar
     isCeremonyGenerating,
   };
