@@ -32,19 +32,20 @@ function playClickSound(volume = 0.1) {
 
 // ─── Typewriter hook (lightweight, self-contained) ─────────────
 
-function useTypewriter(text: string, active: boolean, charsPerSecond = 8) {
+function useTypewriter(text: string, active: boolean, charsPerSecond = 8, skip = false) {
   const [displayed, setDisplayed] = useState(0);
   const lastSoundRef = useRef(0);
   const done = displayed >= text.length;
 
   useEffect(() => {
+    if (skip) { setDisplayed(text.length); return; }
     if (!active || done) return;
     setDisplayed(0);
     lastSoundRef.current = 0;
-  }, [text, active]);
+  }, [text, active, skip]);
 
   useEffect(() => {
-    if (!active || done) return;
+    if (skip || !active || done) return;
     const baseInterval = 1000 / charsPerSecond;
     let raf: number;
     let last = performance.now();
@@ -68,7 +69,7 @@ function useTypewriter(text: string, active: boolean, charsPerSecond = 8) {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [active, done, text, charsPerSecond]);
+  }, [active, done, text, charsPerSecond, skip]);
 
   return { displayed: text.slice(0, displayed), done };
 }
@@ -118,10 +119,10 @@ function PhaseHeader({ icon, label }: { icon: string; label: string }) {
   );
 }
 
-function TypewriterLine({ text, active, className, onDone }: {
-  text: string; active: boolean; className?: string; onDone?: () => void;
+function TypewriterLine({ text, active, className, onDone, skip }: {
+  text: string; active: boolean; className?: string; onDone?: () => void; skip?: boolean;
 }) {
-  const { displayed, done } = useTypewriter(text, active);
+  const { displayed, done } = useTypewriter(text, active, 8, skip);
   const firedRef = useRef(false);
 
   useEffect(() => {
@@ -164,9 +165,22 @@ export function QuestCeremonyOverlay({ ceremony, companionName, onDismiss }: Que
   const [rewardDescDone, setRewardDescDone] = useState(false);
   const [epilogueDone, setEpilogueDone] = useState(false);
   const [skipConfirm, setSkipConfirm] = useState(false);
+  const [skipped, setSkipped] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const currentPhase = PHASE_ORDER[phaseIndex];
+
+  // Skip all animations: reveal everything instantly
+  const handleSkipAll = useCallback(() => {
+    setSkipped(true);
+    setPhaseIndex(PHASE_ORDER.length - 1);
+    setRecapLine(ceremony.recap.length - 1);
+    setRecapDone(ceremony.recap.length);
+    setClimaxDone(true);
+    setCompanionDone(true);
+    setRewardDescDone(true);
+    setEpilogueDone(true);
+  }, [ceremony.recap.length]);
 
   // Auto-scroll to bottom as content grows
   useEffect(() => {
@@ -284,9 +298,10 @@ export function QuestCeremonyOverlay({ ceremony, companionName, onDismiss }: Que
                   <span className="text-amber-500 font-bold text-sm mt-0.5 shrink-0">{STAGE_ICONS[i] || `${i + 1}`}</span>
                   <TypewriterLine
                     text={line}
-                    active={currentPhase === 'recap' && i <= recapLine}
+                    active={skipped || (currentPhase === 'recap' && i <= recapLine)}
                     className="text-sm text-zinc-300 leading-relaxed"
                     onDone={i <= recapLine ? handleRecapLineDone : undefined}
+                    skip={skipped}
                   />
                 </div>
               ))}
@@ -306,9 +321,10 @@ export function QuestCeremonyOverlay({ ceremony, companionName, onDismiss }: Que
               <PhaseHeader icon={PHASE_HEADERS.climax.icon} label={PHASE_HEADERS.climax.label} />
               <TypewriterLine
                 text={ceremony.climax}
-                active={currentPhase === 'climax'}
+                active={skipped || currentPhase === 'climax'}
                 className="text-base text-amber-100 leading-relaxed text-center font-medium"
                 onDone={() => setClimaxDone(true)}
+                skip={skipped}
               />
             </motion.div>
           )}
@@ -326,9 +342,10 @@ export function QuestCeremonyOverlay({ ceremony, companionName, onDismiss }: Que
               <PhaseHeader icon={PHASE_HEADERS.companion.icon} label={companionName} />
               <TypewriterLine
                 text={ceremony.companionReaction}
-                active={currentPhase === 'companion'}
+                active={skipped || currentPhase === 'companion'}
                 className="text-sm text-zinc-300 leading-relaxed text-center italic"
                 onDone={() => setCompanionDone(true)}
+                skip={skipped}
               />
               {/* Affection fly-in */}
               {companionDone && (
@@ -404,9 +421,10 @@ export function QuestCeremonyOverlay({ ceremony, companionName, onDismiss }: Que
 
                 <TypewriterLine
                   text={ceremony.reward.description}
-                  active={currentPhase === 'reward'}
+                  active={skipped || currentPhase === 'reward'}
                   className="text-sm text-zinc-300 leading-relaxed"
                   onDone={() => setRewardDescDone(true)}
+                  skip={skipped}
                 />
               </div>
 
@@ -428,9 +446,10 @@ export function QuestCeremonyOverlay({ ceremony, companionName, onDismiss }: Que
               <PhaseHeader icon={PHASE_HEADERS.epilogue.icon} label={PHASE_HEADERS.epilogue.label} />
               <TypewriterLine
                 text={ceremony.epilogue}
-                active={currentPhase === 'epilogue'}
+                active={skipped || currentPhase === 'epilogue'}
                 className="text-sm text-zinc-400 leading-relaxed text-center italic"
                 onDone={() => setEpilogueDone(true)}
+                skip={skipped}
               />
               {/* Dismiss button */}
               {epilogueDone && (
@@ -467,7 +486,7 @@ export function QuestCeremonyOverlay({ ceremony, companionName, onDismiss }: Que
           </AnimatePresence>
           <button
             onClick={() => {
-              if (skipConfirm) { onDismiss(); } else { setSkipConfirm(true); }
+              if (skipConfirm) { handleSkipAll(); setSkipConfirm(false); } else { setSkipConfirm(true); }
             }}
             onBlur={() => setSkipConfirm(false)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
