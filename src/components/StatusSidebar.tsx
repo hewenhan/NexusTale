@@ -249,6 +249,25 @@ export function StatusSidebar({ state, onClose, onRegenerateCompanionPortrait, o
             </div>
           </div>
 
+          {/* Worldview Updates */}
+          {state.worldviewUpdates && state.worldviewUpdates.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider">世界变迁</h3>
+              <div className="space-y-2">
+                {state.worldviewUpdates.map((update, i) => (
+                  <details key={i} className="bg-zinc-950 border border-zinc-800 rounded-lg group">
+                    <summary className="p-3 text-sm text-amber-400/80 cursor-pointer select-none hover:text-amber-300 transition-colors">
+                      [{i + 1}] {update.brief}
+                    </summary>
+                    <div className="px-3 pb-3 text-sm text-zinc-400 border-t border-zinc-800/50 pt-2">
+                      {update.full}
+                    </div>
+                  </details>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Character Settings */}
           <div>
             <h3 className="text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider">角色设定</h3>

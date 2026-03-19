@@ -1,5 +1,5 @@
 import * as modelService from './modelService';
-import type { IntentResult, IntentExtractionResult, ConfuseData, ConfuseCandidate, WorldData, CharacterProfile, NodeData, GameState, InventoryItem, Rarity, SafetyLevel, QuestStage, QuestCompletionCeremony, ChatMessage } from '../types/game';
+import type { IntentResult, IntentExtractionResult, ConfuseData, ConfuseCandidate, WorldData, CharacterProfile, NodeData, GameState, InventoryItem, Rarity, SafetyLevel, QuestStage, QuestCompletionCeremony, ChatMessage, WorldviewUpdate } from '../types/game';
 import { normalizeConnections, EQUIPMENT_BUFF_TABLE } from '../types/game';
 import { fmtConnectedNodes, fmtVisibleHouses, fmtRecentConversation, getLastIntent, fmtTransitRules, fmtSurvivalInstinct, fmtInventory, fmtCombatInstinct } from './intentHelpers';
 
@@ -575,6 +575,8 @@ Generate a structured JSON celebrating this quest completion. All text is third-
 
 6. "affectionDelta": a number 5-15 representing how much this shared triumph should boost the companion's affection.
 
+7. "worldviewUpdate": { "full": A detailed description (3-8 sentences) of how this quest completion has PERMANENTLY changed the world — new truths revealed, power shifts, secrets unearthed, regions transformed, factions altered. This should read like a historical record of world-altering events. Tie deeply to the worldview's core themes. , "brief": A single concise sentence (under 50 chars) summarizing the key world change, used as a compact log entry. }
+
 ${langInstruction}
 
 Return ONLY a JSON object (no markdown):
@@ -584,7 +586,8 @@ Return ONLY a JSON object (no markdown):
   "companionReaction": "companion's reaction...",
   "reward": { "title": "achievement title", "description": "world impact..." },
   "epilogue": "forward-looking closing...",
-  "affectionDelta": 10
+  "affectionDelta": 10,
+  "worldviewUpdate": { "full": "detailed world change...", "brief": "one-line summary" }
 }`;
 
   try {
@@ -603,6 +606,9 @@ Return ONLY a JSON object (no markdown):
       },
       epilogue: typeof parsed.epilogue === 'string' ? parsed.epilogue : '这段传奇将永远铭刻于这片土地的记忆之中，而新的篇章正悄然翻开。',
       affectionDelta: Math.max(5, Math.min(15, Number(parsed.affectionDelta) || 10)),
+      worldviewUpdate: parsed.worldviewUpdate && typeof parsed.worldviewUpdate.full === 'string'
+        ? { full: parsed.worldviewUpdate.full, brief: typeof parsed.worldviewUpdate.brief === 'string' ? parsed.worldviewUpdate.brief : parsed.worldviewUpdate.full.slice(0, 50) }
+        : undefined,
     };
   } catch (e) {
     console.error('Quest completion ceremony generation failed:', e);

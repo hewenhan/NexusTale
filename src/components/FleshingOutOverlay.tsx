@@ -7,11 +7,16 @@ import { DEFAULT_LOADING_MESSAGES } from '../types/game';
 interface FleshingOutOverlayProps {
   isWorld?: boolean;
   loadingMessages?: string[];
+  /** 自定义标题（覆盖 isWorld 的默认标题） */
+  label?: string;
+  /** 自定义渐变色 */
+  gradientColors?: string[];
 }
 
-export const FleshingOutOverlay = forwardRef<FakeProgressBarHandle, FleshingOutOverlayProps>(({ isWorld, loadingMessages }, ref) => {
+export const FleshingOutOverlay = forwardRef<FakeProgressBarHandle, FleshingOutOverlayProps>(({ isWorld, loadingMessages, label: customLabel, gradientColors: customGradient }, ref) => {
   const duration = isWorld ? 50000 : 45000;
-  const label = isWorld ? '正在构建世界...' : '正在融入世界观...';
+  const label = customLabel ?? (isWorld ? '正在构建世界...' : '正在融入世界观...');
+  const gradient = customGradient ?? (isWorld ? ['#3b82f6', '#8b5cf6'] : ['#10b981', '#06b6d4']);
 
   const messages = loadingMessages && loadingMessages.length > 0 ? loadingMessages : DEFAULT_LOADING_MESSAGES;
   const [currentMsg, setCurrentMsg] = useState(() => messages[Math.floor(Math.random() * messages.length)]);
@@ -40,7 +45,7 @@ export const FleshingOutOverlay = forwardRef<FakeProgressBarHandle, FleshingOutO
           ref={ref}
           duration={duration}
           direction="ltr"
-          gradientColors={isWorld ? ['#3b82f6', '#8b5cf6'] : ['#10b981', '#06b6d4']}
+          gradientColors={gradient}
           animation="shimmer"
           attach="inborder"
           xPercent={0}

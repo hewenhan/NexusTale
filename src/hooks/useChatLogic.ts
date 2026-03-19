@@ -82,6 +82,9 @@ export function useChatLogic() {
   const [pendingCeremony, setPendingCeremony] = useState<QuestCompletionCeremony | null>(null);
   const dismissCeremony = useCallback(() => setPendingCeremony(null), []);
 
+  // ── Ceremony generation progress bar state ──
+  const [isCeremonyGenerating, setIsCeremonyGenerating] = useState(false);
+
   // ── Intent confuse: blocking disambiguation state ──
   const [pendingConfuse, setPendingConfuse] = useState<{
     confuse: ConfuseData;
@@ -352,6 +355,15 @@ export function useChatLogic() {
       // ── Step 3.5: Quest chain post-pipeline logic ──
       // Quest item usage: use_item with quest item matching current stage requiredItems
       // Boss 战中禁止使用任务道具：视为自杀发呆，不消耗道具
+      // ── 前置计算：判断任务环节 / 全链完成，生成 ceremony（在 AI 叙事之前） ──
+      let questCeremony: QuestCompletionCeremony | null = null;
+      let questStageCompleted = false; // 当前环节是否完成（用于后续 UI 写入）
+      let questChainCompleted = false; // 全链是否完成
+      let questNextObjective: { targetNodeId: string; targetHouseId: string; targetLocationName: string; description: string } | null = null;
+      let questNextItem: InventoryItem | null = null;
+      const deferredQuestBagItems: InventoryItem[] = [];
+      const deferredQuestNotifications: Omit<GrandNotificationData, 'id'>[] = [];
+
       if (intent.intent === 'use_item' && intent.itemId && state.questChain) {
         const currentStage = state.questChain[state.currentQuestStageIndex];
         if (currentStage && !currentStage.completed) {
@@ -371,7 +383,62 @@ export function useChatLogic() {
                 ri => ri.id !== matchedItem.id && resolution.newInventory.some(inv => inv.id === ri.id)
               );
               if (remainingRequired.length === 0) {
-                narrativeInstruction = `【系统强制 - 任务道具使用】：玩家成功使用了【${matchedItem.name}】，完成了当前任务环节并且消耗掉！如果有下一环目标，请结合世界观和上下文任务描述来触发接下来的任务，两个任务要有逻辑因果关系\n` + narrativeInstruction;
+                // ── 环节完成：前置判断全链 / 下一环 ──
+                questStageCompleted = true;
+                const { nextObjective, questCompleted } = advanceQuestChain(state);
+
+                if (questCompleted) {
+                  // ── 全链完成：生成结算典礼（跑条开始） ──
+                  questChainCompleted = true;
+                  setIsCeremonyGenerating(true);
+                  try {
+                    questCeremony = await generateQuestCompletionNarration(
+                      state.worldview,
+                      state.questChain,
+                      state.playerProfile,
+                      state.companionProfile,
+                      state.affection,
+                      state.history,
+                      state.summary,
+                      state.language
+                    );
+                  } catch {
+                    questCeremony = {
+                      recap: state.questChain.map((s, i) => `第 ${i + 1} 环：${s.targetLocationName}的挑战已被征服。`),
+                      climax: '经历了重重险阻，冒险者终于站在了胜利的终点。',
+                      companionReaction: `${state.companionProfile.name}露出了一丝不易察觉的微笑。`,
+                      reward: { title: '任务链完成', description: '这段旅程永远改变了这片土地的命运。新的冒险即将开始。' },
+                      epilogue: '这段传奇将永远铭刻于这片土地的记忆之中，而新的篇章正悄然翻开。',
+                      affectionDelta: 10,
+                    };
+                  }
+                  // 注入结算关键信息到叙事指令，让伴游AI知道发生了什么
+                  const ceremonySummary = questCeremony.reward.title + '——' + questCeremony.reward.description.slice(0, 100);
+                  narrativeInstruction = `【系统强制 - 任务链完成】：玩家使用了【${matchedItem.name}】，完成了整个任务链的最终环节！道具已消耗。这段漫长的旅程终于落幕——${ceremonySummary}。请以充满终结感和成就感的方式描写这一刻，让玩家感受到一段传奇的结束。\n` + narrativeInstruction;
+                } else if (nextObjective) {
+                  // ── 中间环节完成 → 准备下一环数据 ──
+                  questNextObjective = nextObjective;
+                  const nextStageData = state.questChain[state.currentQuestStageIndex + 1];
+                  if (nextStageData?.requiredItems?.[0]) {
+                    questNextItem = {
+                      id: nextStageData.requiredItems[0].id,
+                      name: nextStageData.requiredItems[0].name,
+                      type: 'quest' as const,
+                      description: `任务道具 - ${nextStageData.description}`,
+                      rarity: 'common' as const,
+                      icon: '📜',
+                      quantity: 1,
+                      buff: null,
+                    };
+                    deferredQuestBagItems.push(questNextItem);
+                  }
+                  deferredQuestNotifications.push({
+                    type: 'quest',
+                    title: `任务环节${state.currentQuestStageIndex + 2}！`,
+                    description: nextObjective.description,
+                  });
+                  narrativeInstruction = `【系统强制 - 任务道具使用】：玩家成功使用了【${matchedItem.name}】，完成了当前任务环节并且消耗掉！请结合世界观和上下文任务描述来触发接下来的任务，揭示两个任务的逻辑因果关系\n` + narrativeInstruction;
+                }
               } else {
                 narrativeInstruction = `【系统强制 - 任务道具使用】：玩家使用了【${matchedItem.name}】。请描写道具消耗掉的效果。\n` + narrativeInstruction;
               }
@@ -382,6 +449,9 @@ export function useChatLogic() {
           }
         }
       }
+
+      // 结算跑条结束（questChainCompleted 在本轮 Step 3.5 设置）
+      if (questChainCompleted) setIsCeremonyGenerating(false);
 
       // Quest crisis anchoring: arriving at quest target location triggers elevated tension
       if (state.questChain && !resolution.newTransitState) {
@@ -575,81 +645,32 @@ export function useChatLogic() {
         });
       }
 
-      // ── Step 7.5: Quest stage completion check ──
-      let questCeremony: QuestCompletionCeremony | null = null;
-      if (intent.intent === 'use_item' && intent.itemId && state.questChain) {
+      // ── Step 7.5: Quest stage completion — deferred UI writes ──
+      // (Computation already done in Step 3.5, here we only apply state + UI effects)
+      if (questStageCompleted && state.questChain) {
         const stageIdx = state.currentQuestStageIndex;
-        const currentStage = state.questChain[stageIdx];
-        if (currentStage && !currentStage.completed) {
-          // Check if all requiredItems for current stage have been consumed (no longer in inventory)
-          const inventorySnapshot = resolution.newInventory;
-          const allItemsUsed = currentStage.requiredItems.every(
-            ri => !inventorySnapshot.some(inv => inv.id === ri.id)
-          );
-          if (allItemsUsed && resolution.newNodeId === currentStage.targetNodeId) {
-            // Stage completed!
-            const { nextObjective, questCompleted } = advanceQuestChain(state);
-
-            if (questCompleted) {
-              // All stages done → generate structured ceremony
-              try {
-                questCeremony = await generateQuestCompletionNarration(
-                  state.worldview,
-                  state.questChain,
-                  state.playerProfile,
-                  state.companionProfile,
-                  state.affection,
-                  state.history,
-                  state.summary,
-                  state.language
-                );
-              } catch {
-                questCeremony = {
-                  recap: state.questChain.map((s, i) => `第 ${i + 1} 环：${s.targetLocationName}的挑战已被征服。`),
-                  climax: '经历了重重险阻，冒险者终于站在了胜利的终点。',
-                  companionReaction: `${state.companionProfile.name}露出了一丝不易察觉的微笑。`,
-                  reward: { title: '任务链完成', description: '这段旅程永远改变了这片土地的命运。新的冒险即将开始。' },
-                  epilogue: '这段传奇将永远铭刻于这片土地的记忆之中，而新的篇章正悄然翻开。',
-                  affectionDelta: 10,
-                };
-              }
-              updateState(prev => ({
-                questChain: (prev.questChain || []).map((s, i) => i === stageIdx ? { ...s, completed: true } : s),
-                currentObjective: null,
-                affection: Math.min(100, prev.affection + (questCeremony?.affectionDelta ?? 10)),
-              }));
-            } else if (nextObjective) {
-              // Advance to next stage
-              const nextStageData = state.questChain[stageIdx + 1];
-              const nextQuestItem: InventoryItem | null = nextStageData?.requiredItems?.[0]
-                ? {
-                    id: nextStageData.requiredItems[0].id,
-                    name: nextStageData.requiredItems[0].name,
-                    type: 'quest' as const,
-                    description: `任务道具 - ${nextStageData.description}`,
-                    rarity: 'common' as const,
-                    icon: '📜',
-                    quantity: 1,
-                    buff: null,
-                  }
-                : null;
-
-              updateState(prev => ({
-                questChain: (prev.questChain || []).map((s, i) => i === stageIdx ? { ...s, completed: true } : s),
-                currentQuestStageIndex: stageIdx + 1,
-                currentObjective: nextObjective,
-                worldData: prev.worldData ? revealHouseInWorld(prev.worldData, nextObjective.targetHouseId) : prev.worldData,
-              }));
-              pendingNotifications.push({
-                type: 'quest',
-                title: `任务环节${stageIdx + 2}！`,
-                description: nextObjective.description,
-              });
-              // Next quest item will be added via unified bag flow after display sequence
-              if (nextQuestItem) {
-                pendingBagItems.push(nextQuestItem);
-              }
-            }
+        if (questChainCompleted && questCeremony) {
+          updateState(prev => ({
+            questChain: (prev.questChain || []).map((s, i) => i === stageIdx ? { ...s, completed: true } : s),
+            currentObjective: null,
+            affection: Math.min(100, prev.affection + (questCeremony?.affectionDelta ?? 10)),
+            // 世界观变迁记录
+            worldviewUpdates: questCeremony?.worldviewUpdate
+              ? [...prev.worldviewUpdates, questCeremony.worldviewUpdate]
+              : prev.worldviewUpdates,
+          }));
+        } else if (questNextObjective) {
+          updateState(prev => ({
+            questChain: (prev.questChain || []).map((s, i) => i === stageIdx ? { ...s, completed: true } : s),
+            currentQuestStageIndex: stageIdx + 1,
+            currentObjective: questNextObjective,
+            worldData: prev.worldData ? revealHouseInWorld(prev.worldData, questNextObjective!.targetHouseId) : prev.worldData,
+          }));
+          for (const n of deferredQuestNotifications) {
+            pendingNotifications.push(n);
+          }
+          for (const item of deferredQuestBagItems) {
+            pendingBagItems.push(item);
           }
         }
       }
@@ -781,5 +802,7 @@ export function useChatLogic() {
     // Quest completion ceremony
     pendingCeremony,
     dismissCeremony,
+    // Ceremony generation progress bar
+    isCeremonyGenerating,
   };
 }

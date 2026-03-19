@@ -194,8 +194,7 @@ ${characterRoleString}
 特长: ${state.playerProfile.specialties} | 厌恶: ${state.playerProfile.dislikes}
 
 === 当前宇宙与状态 ===
-世界观: ${state.worldview} （⚠️最高基准：本宇宙的“物理上限”、“战力体系”与“基调”完全由此决定！龙珠可碎星，废土即血肉，恋爱即日常，哆啦A梦即童话怪诞。一切判定以此为绝对锚点！）
-绝对位置: ${locationContext}
+世界观: ${state.worldview} （⚠️最高基准：本宇宙的“物理上限”、“战力体系”与“基调”完全由此决定！龙珠可碎星，废土即血肉，恋爱即日常，哆啦A梦即童话怪诞。一切判定以此为绝对锚点！）${state.worldviewUpdates.length > 0 ? `世界变迁记录:\n${state.worldviewUpdates.map((u, i) => `[${i + 1}] ${u.brief}`).join('\n')}` : ''}绝对位置: ${locationContext}
 自身健康: ${getHpDescription(resolution.newHp)}（HP: ${resolution.newHp}/100）
 紧张等级: ${resolution.newTensionLevel}（0平和: 环境渲染与闲散；1-2探索/冲突: 聚焦与警惕；3-4危机/死斗: 绝对摒弃废话，进入动物求生/搏杀本能）
 对玩家好感: ${state.affection}/100

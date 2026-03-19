@@ -34,6 +34,10 @@ function migrateSave(parsed: any): any {
     }
     if (parsed.summaryCoveredUpTo === undefined) parsed.summaryCoveredUpTo = 0;
   }
+  // Migration: 旧存档没有 worldviewUpdates 字段
+  if (!Array.isArray(parsed.worldviewUpdates)) {
+    parsed.worldviewUpdates = [];
+  }
   return parsed;
 }
 

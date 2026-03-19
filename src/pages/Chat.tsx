@@ -79,7 +79,7 @@ export default function Chat() {
   // 已播放过打字动画的消息 ID 集合（防止 Virtuoso 卸载/重挂时重新打字）
   const animatedIdsRef = useRef<Set<string>>(new Set(state.history.map(m => m.id)));
 
-  const { isProcessing, handleTurn, flushPendingNotifications, pendingBagItem, resolveBagDiscard, rejectBagItem, pendingConfuse, isConfuseModalVisible, resolveConfuse, minimizeConfuse, restoreConfuse, pendingCeremony, dismissCeremony } = useChatLogic();
+  const { isProcessing, handleTurn, flushPendingNotifications, pendingBagItem, resolveBagDiscard, rejectBagItem, pendingConfuse, isConfuseModalVisible, resolveConfuse, minimizeConfuse, restoreConfuse, pendingCeremony, dismissCeremony, isCeremonyGenerating } = useChatLogic();
 
   // ── Deferred display snapshot ──
   // Progress bar & objective only update after the last typewriter message completes
@@ -933,6 +933,9 @@ export default function Chat() {
       </AnimatePresence>
       <AnimatePresence>
         {isGeneratingWorld && <FleshingOutOverlay ref={worldProgressRef} isWorld loadingMessages={state.loadingMessages} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {isCeremonyGenerating && <FleshingOutOverlay label="任务链已完成，正在记录你的传奇..." gradientColors={['#f59e0b', '#ef4444']} loadingMessages={state.loadingMessages} />}
       </AnimatePresence>
 
       <DebugOverlay state={state} onUpdateState={updateState} />

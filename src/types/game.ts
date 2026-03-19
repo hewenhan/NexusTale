@@ -132,6 +132,12 @@ export interface QuestStage {
   arrivedAtTarget: boolean;
 }
 
+// --- Worldview Update ---
+export interface WorldviewUpdate {
+  full: string;   // 完整的世界观变迁描述（存档 + 侧边栏展示给玩家看）
+  brief: string;  // 一句话摘要（塞进 prompt 给 AI 用）
+}
+
 // --- Quest Completion Ceremony ---
 export interface QuestCompletionCeremony {
   recap: string[];           // 2-3 sentences per stage recap
@@ -143,6 +149,7 @@ export interface QuestCompletionCeremony {
   };
   epilogue: string;          // 3-5 sentences, lasting impact on world & destiny
   affectionDelta: number;    // suggested +5 to +15
+  worldviewUpdate?: WorldviewUpdate; // 世界观变迁（任务链完成时生成）
 }
 
 // --- Equipment Presets ---
@@ -356,6 +363,9 @@ export interface GameState {
   // 6.6 装备预设池（世界观生成时创建，获取后从池中移除）
   equipmentPresets: InventoryItem[];
 
+  // 6.7 世界观变迁记录（任务链完成时追加）
+  worldviewUpdates: WorldviewUpdate[];
+
   // 7. 世界观画风提词（用于统一所有生图风格）
   artStylePrompt: string;
 
@@ -504,6 +514,9 @@ export const INITIAL_STATE: GameState = {
 
   // Equipment presets
   equipmentPresets: [],
+
+  // Worldview updates
+  worldviewUpdates: [],
 
   // Art style
   artStylePrompt: '',
