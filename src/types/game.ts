@@ -318,7 +318,6 @@ export interface GameState {
   lives: number;          // Revival tokens, 0 = permanent death
   isGameOver: boolean;
   inventory: InventoryItem[];    // 背包（上限 INVENTORY_CAPACITY 格）
-  status: Record<string, any>; // Soft statuses only (e.g. wet, bleeding)
 
   // 3. Global map & spatial pointers
   worldData: WorldData | null;
@@ -394,8 +393,6 @@ export interface ChatMessage {
   };
   hp?: number;
   hpDescription?: string;
-  inventory?: InventoryItem[];
-  status?: Record<string, any>;
   currentSceneVisuals?: string;
   currentNodeId?: string;
   currentHouseId?: string | null;
@@ -488,7 +485,6 @@ export const INITIAL_STATE: GameState = {
   lives: 3,
   isGameOver: false,
   inventory: [],
-  status: {},
 
   // Spatial pointers
   worldData: null,

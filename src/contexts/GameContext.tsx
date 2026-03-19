@@ -92,8 +92,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         // Snapshot current game state into the message for rollback/undo support
         pacingState: prev.pacingState,
         hp: prev.hp,
-        inventory: prev.inventory.map(item => ({ ...item })),
-        status: prev.status,
         currentNodeId: prev.currentNodeId ?? undefined,
         currentHouseId: prev.currentHouseId
       }]

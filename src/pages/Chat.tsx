@@ -395,16 +395,14 @@ export default function Chat() {
       }
 
       const newHp = lastMessage?.hp ?? (newHistory.length === 0 ? INITIAL_STATE.hp : state.hp);
-      const newStatus = lastMessage?.status ?? (newHistory.length === 0 ? INITIAL_STATE.status : state.status);
 
       updateState({ 
         history: newHistory,
         pacingState: newPacingState,
         hp: newHp,
-        status: newStatus
       });
     }
-  }, [state.history, state.pacingState, state.hp, state.status, updateState]);
+  }, [state.history, state.pacingState, state.hp, updateState]);
 
   const handleDiscardItem = useCallback((itemId: string) => {
     updateState(prev => ({

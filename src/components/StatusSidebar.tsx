@@ -232,15 +232,7 @@ export function StatusSidebar({ state, onClose, onRegenerateCompanionPortrait, o
             </div>
           )}
 
-          {/* Soft Status */}
-          {Object.keys(state.status).length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider">状态效果</h3>
-              <pre className="bg-zinc-950 border border-zinc-800 p-3 rounded-lg text-xs overflow-x-auto">
-                {JSON.stringify(state.status, null, 2)}
-              </pre>
-            </div>
-          )}
+
 
           {/* World */}
           <div>
