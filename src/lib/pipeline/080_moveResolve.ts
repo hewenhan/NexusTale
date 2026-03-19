@@ -80,6 +80,8 @@ export function stepMoveResolve(ctx: PipelineContext): void {
       ctx.newNodeId = transit.toNodeId;
       ctx.newHouseId = null;
       ctx.moveSucceeded = true;
+      const toNode = ctx.state.worldData?.nodes.find(n => n.id === transit.toNodeId);
+      ctx.events.push({ type: 'transit_arrive', toName: toNode?.name || transit.toNodeId, roll: ctx.effectiveRoll });
     } else {
       // 仍在路上
       ctx.newTransitState = {

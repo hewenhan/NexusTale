@@ -128,9 +128,9 @@ function buildInventoryAndQuestContext(state: GameState): string {
       const neededItems = currentStage.requiredItems.map(ri => ri.name).join(', ');
       if (neededItems) parts.push(`所需道具: ${neededItems}`);
       if (nextStage) {
-        parts.push(`下一环目标: ${nextStage.description}`);
+        parts.push(`下一任务: ${nextStage.description}`);
         const nextNeededItems = nextStage.requiredItems.map(ri => ri.name).join(', ');
-        if (nextNeededItems) parts.push(`下一环所需道具: ${nextNeededItems}`);
+        if (nextNeededItems) parts.push(`下一任务所需道具: ${nextNeededItems}`);
       }
     }
   }

@@ -154,17 +154,18 @@ function buildMainNarrative(
 
   // ── 赶路场景 ──
   if (state.transitState) {
-    if (!result.newTransitState && result.newNodeId !== state.currentNodeId) {
-      // 抵达目的地
-      const toNode = findNode(state, result.newNodeId);
-      const toName = toNode?.name || result.newNodeId || '未知地点';
+    if (!result.newTransitState) {
+      // 抵达目的地（transit 存在 → newTransitState=null 即为到达）
+      const destId = result.newNodeId ?? state.transitState.toNodeId;
+      const toNode = findNode(state, destId);
+      const toName = toNode?.name || destId || '未知地点';
       return buildArrivalNarrative(toName, roll);
     }
     // 赶路中
     const transit = state.transitState;
     const fromNode = findNode(state, transit.fromNodeId);
     const toNode = findNode(state, transit.toNodeId);
-    const pathProgress = result.newTransitState?.pathProgress ?? 0;
+    const pathProgress = result.newTransitState.pathProgress;
     return buildTransitNarrative(
       tier, roll, pathProgress,
       fromNode?.name || transit.fromNodeId,

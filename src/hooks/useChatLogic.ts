@@ -434,10 +434,10 @@ export function useChatLogic() {
                   }
                   deferredQuestNotifications.push({
                     type: 'quest',
-                    title: `任务环节${state.currentQuestStageIndex + 2}！`,
+                    title: `下一任务${state.currentQuestStageIndex + 2}！`,
                     description: nextObjective.description,
                   });
-                  narrativeInstruction = `【系统强制 - 任务道具使用】：玩家成功使用了【${matchedItem.name}】，完成了当前任务环节并且消耗掉！请结合世界观和上下文任务描述来触发接下来的任务，揭示两个任务的逻辑因果关系\n` + narrativeInstruction;
+                  narrativeInstruction = `【系统强制 - 任务道具使用】：玩家成功使用了【${matchedItem.name}】，完成了当前任务环节并且消耗掉！请结合世界观和上下文任务描述获得任务道具【${questNextItem.name}】，并触发下一任务，揭示两个任务任务道具和新任务的逻辑因果关系\n` + narrativeInstruction;
                 }
               } else {
                 narrativeInstruction = `【系统强制 - 任务道具使用】：玩家使用了【${matchedItem.name}】。请描写道具消耗掉的效果。\n` + narrativeInstruction;
@@ -478,13 +478,13 @@ export function useChatLogic() {
             // 完全替换叙事指令：pipeline 生成的叙事基于旧紧张度，不适用于任务抵达的危机场景
             const finalTension = crisisTension ?? resolution.newTensionLevel;
             if (finalTension >= 4) {
-              narrativeInstruction = `【系统强制 - 任务目标抵达 / 绝境危机触发】：玩家抵达了任务目标所在地【${targetNode.name}】！这里极度危险，强大的危机扑面而来——绝境 级威胁已经出现！紧张度直接拉满至 ${finalTension} 级（死斗）。请描写抵达后立即遭遇 绝境 级威胁的震撼场面，气氛必须极度紧张、压迫感十足。`;
+              narrativeInstruction = `【系统强制 - 任务目标抵达 / 绝境危机触发】：玩家抵达了任务目标所在地【${targetNode.name} ${targetHouse ? `- ${targetHouse.name}` : ''}】！这里极度危险，强大的危机扑面而来——绝境 级威胁已经出现！紧张度直接拉满至 ${finalTension} 级（死斗）。请描写抵达后立即遭遇 绝境 级威胁的震撼场面，气氛必须极度紧张、压迫感十足。`;
             } else if (finalTension >= 3) {
-              narrativeInstruction = `【系统强制 - 任务目标抵达 / 中度威胁】：玩家抵达了任务目标所在地【${targetNode.name}】！周围弥漫着强烈的危险气息，中度威胁潜伏于此。紧张度升至 ${finalTension} 级。请描写抵达后感知到强大威胁逼近的紧张场面，NPC 应表现出警觉与不安。`;
+              narrativeInstruction = `【系统强制 - 任务目标抵达 / 中度威胁】：玩家抵达了任务目标所在地【${targetNode.name} ${targetHouse ? `- ${targetHouse.name}` : ''}】！周围弥漫着强烈的危险气息，中度威胁潜伏于此。紧张度升至 ${finalTension} 级。请描写抵达后感知到强大威胁逼近的紧张场面，NPC 应表现出警觉与不安。`;
             } else if (finalTension >= 2) {
-              narrativeInstruction = `【系统强制 - 任务目标抵达 / 危机潜伏】：玩家抵达了任务目标所在地【${targetNode.name}】！这里并不太平，危险的征兆随处可见。紧张度升至 ${finalTension} 级。请描写抵达时察觉到异常与潜在危机的场面。`;
+              narrativeInstruction = `【系统强制 - 任务目标抵达 / 危机潜伏】：玩家抵达了任务目标所在地【${targetNode.name} ${targetHouse ? `- ${targetHouse.name}` : ''}】！这里并不太平，危险的征兆随处可见。紧张度升至 ${finalTension} 级。请描写抵达时察觉到异常与潜在危机的场面。`;
             } else {
-              narrativeInstruction = `【系统强制 - 任务目标抵达】：玩家抵达了任务目标所在地【${targetNode.name}】！请描写抵达目的地的场面。`;
+              narrativeInstruction = `【系统强制 - 任务目标抵达】：玩家抵达了任务目标所在地【${targetNode.name} ${targetHouse ? `- ${targetHouse.name}` : ''}】！请描写抵达目的地的场面。`;
             }
           }
         }
