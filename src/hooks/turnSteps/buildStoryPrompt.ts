@@ -16,6 +16,9 @@ function buildLocationContext(state: GameState, resolution: PipelineResult, visi
     return `【当前位置】：正在从【${fromNode?.name || resolution.newTransitState.fromNodeId}】赶往【${toNode?.name || resolution.newTransitState.toNodeId}】。(当前路程进度：${resolution.newTransitState.pathProgress}%)。${resolution.newTensionLevel >= 2 ? '请侧重描写沿途遭遇的危险和冲突。' : '请结合上下文世界观和角色性格或经历发表互动和思考，不要凭空制造危险。'}`;
   }
 
+  // 检测刚到达（上一轮在赶路，本轮 transit 已清除）
+  const justArrived = !!state.transitState && !resolution.newTransitState;
+
   // 用 applyProgressAndReveals 模拟更新后的 worldData 以获取最新的 revealed 状态
   const updatedWorldData = state.worldData
     ? applyProgressAndReveals(state.worldData, resolution.newProgressMap, resolution.houseSafetyUpdate)
@@ -30,6 +33,11 @@ function buildLocationContext(state: GameState, resolution: PipelineResult, visi
     if (updatedHouse) {
       return `【当前位置】：室内搜刮。当前正位于【${updatedNode.name}】的微观建筑【${updatedHouse.name}】内部。已揭盲可互动的微观建筑: ${hStr}。请侧重描写室内的空间感、物资或幽闭的环境。`;
     }
+    if (justArrived) {
+      const fromNode = findNode(state, state.transitState!.fromNodeId);
+      const fromName = fromNode?.name || state.transitState!.fromNodeId || '远方';
+      return `【当前位置】：刚刚抵达！经过从【${fromName}】出发的长途跋涉，终于踏入了【${updatedNode.name}】。已揭盲可互动的微观建筑: ${hStr}。这是一片全新的区域，一切尚待探索。`;
+    }
     return `【当前位置】：街区/野外。正处于【${updatedNode.name}】的宏观区域。已揭盲可互动的微观建筑: ${hStr}。可看到周围的建筑。`;
   }
 
@@ -37,7 +45,7 @@ function buildLocationContext(state: GameState, resolution: PipelineResult, visi
 }
 
 // ── 构建进度标签 ──
-function buildProgressLabel(resolution: PipelineResult): string {
+function buildProgressLabel(state: GameState, resolution: PipelineResult): string {
   const activeProgressKey = resolution.newHouseId
     ? `house_${resolution.newHouseId}`
     : (resolution.newTransitState ? 'transit' : `node_${resolution.newNodeId}`);
@@ -48,6 +56,9 @@ function buildProgressLabel(resolution: PipelineResult): string {
 
   if (resolution.newTransitState) return `当前徒步赶路进度: ${currentProgress}%`;
   if (resolution.newHouseId) return `当前室内搜刮进度: ${currentProgress}%`;
+  // 刚到达新区域时，0% 是正常的，补充说明
+  const justArrived = !!state.transitState && !resolution.newTransitState;
+  if (justArrived && currentProgress === 0) return `刚抵达新区域，尚未探索 (0%)`;
   return `当前区域建筑发现进度: ${currentProgress}%`;
 }
 
@@ -158,7 +169,7 @@ export function buildStoryPrompt(input: StoryPromptInput): string {
   const { state, resolution, currentSummary, userInput, visionContext, itemDropInstruction, expectGetItem, narrativeInstruction } = input;
 
   const locationContext = buildLocationContext(state, resolution, visionContext);
-  const progressLabel = buildProgressLabel(resolution);
+  const progressLabel = buildProgressLabel(state, resolution);
   const themeInstruction = buildThemeInstruction(state, resolution);
   const characterRoleString = buildCharacterRoleString(state);
   const inventoryAndQuestContext = buildInventoryAndQuestContext(state);
