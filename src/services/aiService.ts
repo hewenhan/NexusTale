@@ -541,7 +541,7 @@ export async function generateQuestCompletionNarration(
 
   const recentLog = recentMessages.slice(-15).map(m => `${m.role}: ${m.text}`).join('\n');
 
-  const prompt = `You are a legendary chronicler penning the definitive account of an epic quest. The player and companion have just completed a MAJOR multi-stage quest chain. Write in the style of epic chronicle narration — grand, sweeping, with the gravitas of myth being forged. Every word should carry weight.
+  const prompt = `You are a veteran storyteller recounting a completed quest to an audience that cares about THESE specific characters. Your job is to make them relive it — not through grand words, but through concrete scenes they can picture.
 
 === WORLD ===
 Worldview: "${worldview}"
@@ -561,30 +561,24 @@ ${summary || '(no earlier summary)'}
 ${recentLog || '(no recent logs)'}
 
 === YOUR TASK ===
-Generate a structured JSON celebrating this quest completion. All text is third-person narration (NO dialogue, no quotes). Write with the grandeur of an epic saga — every section should feel monumental.
+Generate a structured JSON recounting this quest completion. All text is third-person narration (NO dialogue, no quotes).
 
-1. "recap": An array with EXACTLY ${questChain.length} strings. Each string is 2-3 RICH sentences recapping that stage — paint the scene, reference the specific location name, the challenge overcome, and the emotional stakes. Each should read like a chapter summary from a legendary tale.
+1. "recap": An array with EXACTLY ${questChain.length} strings. Each string is 2-3 sentences recapping that stage. Name the location, describe what happened there, and why it mattered to the characters. Write like a sharp summary — factual, vivid, no padding.
 
-2. "climax": 5-8 sentences. A dramatic, poetic, EXPANSIVE depiction of the FINAL act. Describe the environment, the tension, the player's defining moment. Reference their personality, abilities, and the specific challenge. Build to an emotional crescendo. This is the heart of the chronicle — do NOT rush it.
+2. "climax": 5-8 sentences. The final act of this quest. Describe what the player actually DID — the place, the obstacle, how they handled it given who they are. Build tension, then release it. Focus on action and sensory detail, not declarations.
 
-3. "companionReaction": 2-3 sentences. How ${companionProfile.name} reacts to this achievement, consistent with their personality (${companionProfile.personalityDesc || companionProfile.personality || 'their nature'}) and current affection level (${affectionLabel}). A cold companion might show grudging, hard-won respect; a close one might reveal vulnerability or unguarded warmth. Describe their body language and inner shift. Pure narration.
+3. "companionReaction": 2-3 sentences. How ${companionProfile.name} reacts, consistent with their personality (${companionProfile.personalityDesc || companionProfile.personality || 'their nature'}) and affection level (${affectionLabel}). Describe what they DO — a gesture, a look, a shift in posture. Not what they "felt deep inside."
 
-4. "reward": { "title": an epic, resonant title for the achievement (like a legendary milestone engraved in history), "description": 3-5 sentences describing how completing this quest chain has fundamentally transformed the world, the characters, and the balance of power — tie it deeply to the worldview's core themes and the quest's original purpose }
+4. "reward": { "title": a memorable title for this achievement — sharp and specific, not generic, "description": 3-5 sentences on the concrete consequences: what changed in the world, who gained/lost power, what's different now. Reference specific places, factions, or objects from the worldview. }
 
-5. "epilogue": 3-5 sentences. A forward-looking closing passage. How will this achievement echo through the ages? What new horizon opens? How has the bond between ${playerProfile.name} and ${companionProfile.name} been irrevocably changed? End with a line that feels like the final sentence of a great chapter.
+5. "epilogue": 3-5 sentences. What comes next — not vague "new horizons" but specific unresolved threads, new problems created by this victory, or a quiet human moment between the two characters that hints at how they've changed.
 
-6. "affectionDelta": a number 5-15 representing how much this shared triumph should boost the companion's affection.
+6. "affectionDelta": a number 5-15 representing how much this shared experience should boost the companion's affection.
 
-7. "worldviewUpdate": { "full": A detailed description (3-8 sentences) of how this quest completion has PERMANENTLY changed the world — new truths revealed, power shifts, secrets unearthed, regions transformed, factions altered. This should read like a historical record of world-altering events. Tie deeply to the worldview's core themes. , "brief": A single concise sentence (under 50 chars) summarizing the key world change, used as a compact log entry. }
+7. "worldviewUpdate": { "full": 3-8 sentences on what PERMANENTLY changed in the world — be specific: which faction, which region, which balance of power shifted and how. A reader should learn new facts about this world from reading this. , "brief": A single concise sentence (under 50 chars) summarizing the key change. }
 
-=== LANGUAGE QUALITY: WRITE FOR HUMANS ===
-You serve two masters that must never conflict: PRECISION and READABILITY.
-
-1. The Irreplaceability Test — Before you commit any sentence, ask: could this sentence appear in a completely different story and still make sense? If yes, it is empty. Rewrite it with details that belong ONLY to this world, these characters, this moment. A good sentence names a specific place, a specific gesture, a specific consequence — not abstract nouns dressed in adjectives.
-
-2. Speak Plain, Strike Deep — Great writing is CLEAR writing. Short sentences are better than long ones. Common words are better than rare ones. If a reader has to re-read a sentence to understand it, you have failed. The goal is not to sound literary — the goal is to make the reader SEE the scene instantly, FEEL the emotion without effort. Write like you are telling a gripping story to a friend at midnight, not performing a recitation at a ceremony.
-
-3. Show the Weight, Don't Announce It — Never write sentences that TELL the reader something is important ("this would change everything", "history was forever altered", "a new chapter began"). Instead, SHOW the concrete change: who lost power, what broke, what grew, what someone did differently the next morning. If the facts are heavy enough, the reader will feel the weight on their own — they don't need you to label it.
+=== WRITING RULE ===
+Write every sentence so that it can ONLY belong to THIS story. If you could copy-paste a sentence into any other fantasy/sci-fi story and it would still fit, that sentence is worthless — delete it and write one that names a specific person, place, or event from this quest. Plain language. Short sentences. No filler. The reader is smart; trust them to feel the weight without you announcing it.
 
 ${langInstruction}
 
