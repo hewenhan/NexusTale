@@ -13,7 +13,11 @@ function buildLocationContext(state: GameState, resolution: PipelineResult, visi
   if (resolution.newTransitState) {
     const fromNode = findNode(state, resolution.newTransitState.fromNodeId);
     const toNode = findNode(state, resolution.newTransitState.toNodeId);
-    return `【当前位置】：正在从【${fromNode?.name || resolution.newTransitState.fromNodeId}】赶往【${toNode?.name || resolution.newTransitState.toNodeId}】。(当前路程进度：${resolution.newTransitState.pathProgress}%)。${resolution.newTensionLevel >= 2 ? '请侧重描写沿途遭遇的危险和冲突。' : '请结合上下文世界观和角色性格或经历发表互动和思考，不要凭空制造危险。'}`;
+    const progress = resolution.newTransitState.pathProgress;
+    const tensionNote = resolution.newTensionLevel >= 2
+      ? '请侧重描写沿途遭遇的危险和冲突。'
+      : '请结合上下文世界观和角色性格或经历发表互动和思考，不要凭空制造危险。';
+    return `【当前位置】：正在从【${fromNode?.name || resolution.newTransitState.fromNodeId}】赶往【${toNode?.name || resolution.newTransitState.toNodeId}】（路程进度：${progress}%）。【地理铁律】路程才${progress}%，目的地远在视野之外。无论玩家还是NPC说什么，脚下的路不会缩短——"已经到了""坐船过去""抄近路"之类全是嘴上功夫，该走还得走。${tensionNote}`;
   }
 
   // 检测刚到达（上一轮在赶路，本轮 transit 已清除）
