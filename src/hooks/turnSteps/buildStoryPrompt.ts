@@ -7,6 +7,7 @@ import { INVENTORY_CAPACITY, type GameState } from '../../types/game';
 import { getModelName } from '../../types/modelConfig';
 import type { PipelineResult } from '../../lib/pipeline';
 import { getLastSceneVisuals } from './helpers';
+import { type NarrativeFacts, renderFactsForPrompt } from '../../lib/narrativeRegistry';
 
 // ── 构建位置上下文 ──
 function buildLocationContext(state: GameState, resolution: PipelineResult, visionContext: string): string {
@@ -161,22 +162,33 @@ export interface StoryPromptInput {
   currentSummary: string;
   userInput: string;
   visionContext: string;
-  /** 搜刮结果叙事指令（命中/未命中均有文案），由调用方预生成 */
-  itemDropInstruction?: string | null;
   /** 是否期望 AI 在 get_item 字段返回道具信息 */
   expectGetItem?: boolean;
-  /** 由 narrativeAssembler + 调用方覆盖后得到的最终叙事指令 */
-  narrativeInstruction: string;
+  /** 结构化既定事实（推荐使用） */
+  facts?: NarrativeFacts;
+  /** @deprecated 使用 facts.itemDropInstruction 替代 */
+  itemDropInstruction?: string | null;
+  /** @deprecated 使用 facts.narrativeInstruction 替代 */
+  narrativeInstruction?: string;
 }
 
 export function buildStoryPrompt(input: StoryPromptInput): string {
-  const { state, resolution, currentSummary, userInput, visionContext, itemDropInstruction, expectGetItem, narrativeInstruction } = input;
+  const { state, resolution, currentSummary, userInput, visionContext, expectGetItem } = input;
+
+  // 兼容旧接口：优先使用 facts，否则回退到散装参数
+  const facts: NarrativeFacts = input.facts ?? {
+    narrativeInstruction: input.narrativeInstruction ?? '',
+    themeInstruction: buildThemeInstruction(state, resolution),
+    itemDropInstruction: input.itemDropInstruction ?? null,
+  };
 
   const locationContext = buildLocationContext(state, resolution, visionContext);
   const progressLabel = buildProgressLabel(state, resolution);
-  const themeInstruction = buildThemeInstruction(state, resolution);
+  const themeInstruction = facts.themeInstruction;
   const characterRoleString = buildCharacterRoleString(state);
   const inventoryAndQuestContext = buildInventoryAndQuestContext(state);
+  const narrativeInstruction = facts.narrativeInstruction;
+  const itemDropInstruction = facts.itemDropInstruction;
 
   const lastVisuals = getLastSceneVisuals(state);
 

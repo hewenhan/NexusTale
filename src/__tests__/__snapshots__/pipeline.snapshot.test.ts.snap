@@ -1,0 +1,502 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`管线快照 - 核心场景 > T0 安全区探索 - 普通 1`] = `
+{
+  "affectionTriggered": null,
+  "armorReduction": 0,
+  "events": [
+    "hp_change",
+  ],
+  "isSuccess": true,
+  "newHouseId": null,
+  "newHp": 85,
+  "newIsGameOver": false,
+  "newLives": 3,
+  "newNodeId": "node_safe",
+  "newTensionLevel": 0,
+  "progressCapped": false,
+  "roll": 10,
+  "snapPost": {
+    "hp": 85,
+    "intent": "explore",
+    "tensionLevel": 0,
+    "tier": 1,
+  },
+  "snapPre": {
+    "hp": 80,
+    "intent": "explore",
+    "tensionLevel": 0,
+  },
+  "tensionChanged": false,
+  "weaponRollBonus": 0,
+}
+`;
+
+exports[`管线快照 - 核心场景 > T0 安全区探索 - 暴击 1`] = `
+{
+  "affectionTriggered": null,
+  "armorReduction": 0,
+  "events": [
+    "hp_change",
+  ],
+  "isSuccess": true,
+  "newHouseId": null,
+  "newHp": 85,
+  "newIsGameOver": false,
+  "newLives": 3,
+  "newNodeId": "node_safe",
+  "newTensionLevel": 0,
+  "progressCapped": false,
+  "roll": 20,
+  "snapPost": {
+    "hp": 85,
+    "intent": "explore",
+    "tensionLevel": 0,
+    "tier": 2,
+  },
+  "snapPre": {
+    "hp": 80,
+    "intent": "explore",
+    "tensionLevel": 0,
+  },
+  "tensionChanged": false,
+  "weaponRollBonus": 0,
+}
+`;
+
+exports[`管线快照 - 核心场景 > T1 探索 - 大失败 1`] = `
+{
+  "affectionTriggered": null,
+  "armorReduction": 0,
+  "events": [],
+  "isSuccess": false,
+  "newHouseId": null,
+  "newHp": 80,
+  "newIsGameOver": false,
+  "newLives": 3,
+  "newNodeId": "node_a",
+  "newTensionLevel": 2,
+  "progressCapped": false,
+  "roll": 1,
+  "snapPost": {
+    "hp": 80,
+    "intent": "explore",
+    "tensionLevel": 2,
+    "tier": 0,
+  },
+  "snapPre": {
+    "hp": 80,
+    "intent": "explore",
+    "tensionLevel": 1,
+  },
+  "tensionChanged": true,
+  "weaponRollBonus": 0,
+}
+`;
+
+exports[`管线快照 - 核心场景 > T1 探索 - 成功 1`] = `
+{
+  "affectionTriggered": null,
+  "armorReduction": 0,
+  "events": [],
+  "isSuccess": true,
+  "newHouseId": null,
+  "newHp": 80,
+  "newIsGameOver": false,
+  "newLives": 3,
+  "newNodeId": "node_a",
+  "newTensionLevel": 1,
+  "progressCapped": false,
+  "roll": 15,
+  "snapPost": {
+    "hp": 80,
+    "intent": "explore",
+    "tensionLevel": 1,
+    "tier": 1,
+  },
+  "snapPre": {
+    "hp": 80,
+    "intent": "explore",
+    "tensionLevel": 1,
+  },
+  "tensionChanged": false,
+  "weaponRollBonus": 0,
+}
+`;
+
+exports[`管线快照 - 核心场景 > T2 战斗 - 大失败 1`] = `
+{
+  "affectionTriggered": null,
+  "armorReduction": 0,
+  "events": [
+    "hp_change",
+  ],
+  "isSuccess": false,
+  "newHouseId": null,
+  "newHp": 70,
+  "newIsGameOver": false,
+  "newLives": 3,
+  "newNodeId": "node_a",
+  "newTensionLevel": 3,
+  "progressCapped": false,
+  "roll": 1,
+  "snapPost": {
+    "hp": 70,
+    "intent": "combat",
+    "tensionLevel": 3,
+    "tier": 0,
+  },
+  "snapPre": {
+    "hp": 80,
+    "intent": "combat",
+    "tensionLevel": 2,
+  },
+  "tensionChanged": true,
+  "weaponRollBonus": 0,
+}
+`;
+
+exports[`管线快照 - 核心场景 > T2 战斗 - 秒杀 1`] = `
+{
+  "affectionTriggered": null,
+  "armorReduction": 0,
+  "events": [],
+  "isSuccess": true,
+  "newHouseId": null,
+  "newHp": 80,
+  "newIsGameOver": false,
+  "newLives": 3,
+  "newNodeId": "node_a",
+  "newTensionLevel": 1,
+  "progressCapped": false,
+  "roll": 20,
+  "snapPost": {
+    "hp": 80,
+    "intent": "combat",
+    "tensionLevel": 1,
+    "tier": 2,
+  },
+  "snapPre": {
+    "hp": 80,
+    "intent": "combat",
+    "tensionLevel": 2,
+  },
+  "tensionChanged": true,
+  "weaponRollBonus": 0,
+}
+`;
+
+exports[`管线快照 - 核心场景 > T2 移动撤退 1`] = `
+{
+  "affectionTriggered": null,
+  "armorReduction": 0,
+  "events": [],
+  "isSuccess": true,
+  "newHouseId": null,
+  "newHp": 80,
+  "newIsGameOver": false,
+  "newLives": 3,
+  "newNodeId": "node_a",
+  "newTensionLevel": 1,
+  "progressCapped": false,
+  "roll": 10,
+  "snapPost": {
+    "hp": 80,
+    "intent": "move",
+    "tensionLevel": 1,
+    "tier": 1,
+  },
+  "snapPre": {
+    "hp": 80,
+    "intent": "move",
+    "tensionLevel": 2,
+  },
+  "tensionChanged": true,
+  "weaponRollBonus": 0,
+}
+`;
+
+exports[`管线快照 - 核心场景 > T3 战斗 - 绝地反杀 1`] = `
+{
+  "affectionTriggered": null,
+  "armorReduction": 0,
+  "events": [],
+  "isSuccess": true,
+  "newHouseId": null,
+  "newHp": 30,
+  "newIsGameOver": false,
+  "newLives": 3,
+  "newNodeId": "node_a",
+  "newTensionLevel": 1,
+  "progressCapped": false,
+  "roll": 20,
+  "snapPost": {
+    "hp": 30,
+    "intent": "combat",
+    "tensionLevel": 1,
+    "tier": 2,
+  },
+  "snapPre": {
+    "hp": 30,
+    "intent": "combat",
+    "tensionLevel": 3,
+  },
+  "tensionChanged": true,
+  "weaponRollBonus": 0,
+}
+`;
+
+exports[`管线快照 - 核心场景 > 武器 buff 生效 (T2 战斗) 1`] = `
+{
+  "affectionTriggered": null,
+  "armorReduction": 0,
+  "events": [],
+  "isSuccess": true,
+  "newHouseId": null,
+  "newHp": 80,
+  "newIsGameOver": false,
+  "newLives": 3,
+  "newNodeId": "node_a",
+  "newTensionLevel": 1,
+  "progressCapped": false,
+  "roll": 10,
+  "snapPost": {
+    "hp": 80,
+    "intent": "combat",
+    "tensionLevel": 1,
+    "tier": 1,
+  },
+  "snapPre": {
+    "hp": 80,
+    "intent": "combat",
+    "tensionLevel": 2,
+  },
+  "tensionChanged": true,
+  "weaponRollBonus": 2,
+}
+`;
+
+exports[`管线快照 - 核心场景 > 死亡 - 无复活币 Game Over 1`] = `
+{
+  "affectionTriggered": null,
+  "armorReduction": 0,
+  "events": [
+    "hp_change",
+    "game_over",
+  ],
+  "isSuccess": false,
+  "newHouseId": null,
+  "newHp": 0,
+  "newIsGameOver": true,
+  "newLives": 0,
+  "newNodeId": "node_a",
+  "newTensionLevel": 4,
+  "progressCapped": false,
+  "roll": 1,
+  "snapPost": {
+    "hp": 0,
+    "intent": "combat",
+    "tensionLevel": 4,
+    "tier": 0,
+  },
+  "snapPre": {
+    "hp": 5,
+    "intent": "combat",
+    "tensionLevel": 4,
+  },
+  "tensionChanged": false,
+  "weaponRollBonus": 0,
+}
+`;
+
+exports[`管线快照 - 核心场景 > 死亡 - 有复活币 1`] = `
+{
+  "affectionTriggered": null,
+  "armorReduction": 0,
+  "events": [
+    "hp_change",
+    "death_revive",
+  ],
+  "isSuccess": false,
+  "newHouseId": "house_a1",
+  "newHp": 20,
+  "newIsGameOver": false,
+  "newLives": 1,
+  "newNodeId": "node_a",
+  "newTensionLevel": 1,
+  "progressCapped": false,
+  "roll": 1,
+  "snapPost": {
+    "hp": 20,
+    "intent": "combat",
+    "tensionLevel": 1,
+    "tier": 0,
+  },
+  "snapPre": {
+    "hp": 5,
+    "intent": "combat",
+    "tensionLevel": 4,
+  },
+  "tensionChanged": true,
+  "weaponRollBonus": 0,
+}
+`;
+
+exports[`管线快照 - 核心场景 > 里程碑 - 探索度满 (node) 1`] = `
+{
+  "affectionTriggered": null,
+  "armorReduction": 0,
+  "events": [
+    "milestone_boss_spawn",
+  ],
+  "isSuccess": true,
+  "newHouseId": null,
+  "newHp": 80,
+  "newIsGameOver": false,
+  "newLives": 3,
+  "newNodeId": "node_a",
+  "newTensionLevel": 2,
+  "progressCapped": false,
+  "roll": 15,
+  "snapPost": {
+    "hp": 80,
+    "intent": "explore",
+    "tensionLevel": 2,
+    "tier": 1,
+  },
+  "snapPre": {
+    "hp": 80,
+    "intent": "explore",
+    "tensionLevel": 1,
+  },
+  "tensionChanged": true,
+  "weaponRollBonus": 0,
+}
+`;
+
+exports[`管线快照 - 核心场景 > 防具 减伤 (T2 战斗失败) 1`] = `
+{
+  "affectionTriggered": null,
+  "armorReduction": 25,
+  "events": [
+    "hp_change",
+  ],
+  "isSuccess": false,
+  "newHouseId": null,
+  "newHp": 73,
+  "newIsGameOver": false,
+  "newLives": 3,
+  "newNodeId": "node_a",
+  "newTensionLevel": 3,
+  "progressCapped": false,
+  "roll": 1,
+  "snapPost": {
+    "hp": 73,
+    "intent": "combat",
+    "tensionLevel": 3,
+    "tier": 0,
+  },
+  "snapPre": {
+    "hp": 80,
+    "intent": "combat",
+    "tensionLevel": 2,
+  },
+  "tensionChanged": true,
+  "weaponRollBonus": 0,
+}
+`;
+
+exports[`管线快照 - 赶路场景 > 赶路中 - 到达目的地 1`] = `
+{
+  "affectionTriggered": null,
+  "armorReduction": 0,
+  "events": [
+    "transit_arrive",
+  ],
+  "isSuccess": true,
+  "newHouseId": null,
+  "newHp": 80,
+  "newIsGameOver": false,
+  "newLives": 3,
+  "newNodeId": "node_b",
+  "newTensionLevel": 1,
+  "progressCapped": false,
+  "roll": 20,
+  "snapPost": {
+    "hp": 80,
+    "intent": "explore",
+    "tensionLevel": 1,
+    "tier": 2,
+  },
+  "snapPre": {
+    "hp": 80,
+    "intent": "explore",
+    "tensionLevel": 1,
+  },
+  "tensionChanged": false,
+  "weaponRollBonus": 0,
+}
+`;
+
+exports[`管线快照 - 赶路场景 > 赶路中 - 普通推进 1`] = `
+{
+  "affectionTriggered": null,
+  "armorReduction": 0,
+  "events": [],
+  "isSuccess": true,
+  "newHouseId": null,
+  "newHp": 80,
+  "newIsGameOver": false,
+  "newLives": 3,
+  "newNodeId": "node_a",
+  "newTensionLevel": 1,
+  "progressCapped": false,
+  "roll": 10,
+  "snapPost": {
+    "hp": 80,
+    "intent": "explore",
+    "tensionLevel": 1,
+    "tier": 1,
+  },
+  "snapPre": {
+    "hp": 80,
+    "intent": "explore",
+    "tensionLevel": 1,
+  },
+  "tensionChanged": false,
+  "weaponRollBonus": 0,
+}
+`;
+
+exports[`管线快照 - 退敌道具 > 退敌道具使用 (T2) 1`] = `
+{
+  "affectionTriggered": null,
+  "armorReduction": 0,
+  "events": [
+    "behavior_override",
+    "escape_item_used",
+  ],
+  "isSuccess": true,
+  "newHouseId": null,
+  "newHp": 80,
+  "newIsGameOver": false,
+  "newLives": 3,
+  "newNodeId": "node_a",
+  "newTensionLevel": 1,
+  "progressCapped": false,
+  "roll": 10,
+  "snapPost": {
+    "hp": 80,
+    "intent": "combat",
+    "tensionLevel": 1,
+    "tier": 1,
+  },
+  "snapPre": {
+    "hp": 80,
+    "intent": "use_item",
+    "tensionLevel": 2,
+  },
+  "tensionChanged": true,
+  "weaponRollBonus": 0,
+}
+`;
