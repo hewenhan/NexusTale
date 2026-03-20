@@ -3,11 +3,12 @@ import { useGame } from '../contexts/GameContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { Upload, Globe, Plus, History, Sparkles, Dice5, ImageIcon, BookOpen, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, BookOpen, Dice5, History, ImageIcon, Plus, Sparkles, Upload, Globe } from 'lucide-react';
 import { APP_DESCRIPTION, APP_SUBTITLE, APP_TITLE } from '../lib/appMeta';
 import { BackgroundImage } from '../components/BackgroundImage';
 import { useBGMControl } from '../contexts/BGMContext';
 import { BGMVolumeControl } from '../components/BGMVolumeControl';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 const TITLE_BGM = 'TITLE_BGM.mp3';
 
@@ -232,40 +233,14 @@ export default function Home() {
         </div>
       </motion.div>
 
-      <AnimatePresence>
-        {showNewGameConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-w-sm w-full shadow-xl text-center space-y-5"
-            >
-              <AlertTriangle className="w-12 h-12 text-amber-400 mx-auto" />
-              <div>
-                <h2 className="text-lg font-bold mb-2">覆盖存档确认</h2>
-                <p className="text-zinc-400 text-sm leading-relaxed">
-                  开始新游戏将覆盖当前存档，此操作不可撤销。确定要继续吗？
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setShowNewGameConfirm(false)}
-                  className="p-3 rounded-xl border border-zinc-700 hover:bg-zinc-800 transition-colors text-sm font-medium"
-                >
-                  取消
-                </button>
-                <button
-                  onClick={confirmStartNewGame}
-                  className="p-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white transition-colors text-sm font-medium"
-                >
-                  确定开始
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <ConfirmModal
+        isOpen={showNewGameConfirm}
+        title="覆盖存档确认"
+        message="开始新游戏将覆盖当前存档，此操作不可撤销。确定要继续吗？"
+        confirmText="确定开始"
+        onConfirm={confirmStartNewGame}
+        onCancel={() => setShowNewGameConfirm(false)}
+      />
 
       <AnimatePresence>
         {showLanguageModal && (

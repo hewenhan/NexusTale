@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { TextSpeed } from './TypewriterMessage';
 import { BGMVolumeControl } from './BGMVolumeControl';
+import { ConfirmModal } from './ConfirmModal';
 
 interface ChatHeaderProps {
   characterName: string;
@@ -48,6 +49,7 @@ export function ChatHeader({
 }: ChatHeaderProps) {
   const navigate = useNavigate();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showReturnConfirm, setShowReturnConfirm] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const VolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
 
@@ -195,9 +197,7 @@ export function ChatHeader({
 
           {/* 破坏性操作：视觉区分 + 确认 */}
           <button
-            onClick={() => {
-              if (window.confirm('确定要返回首页吗？当前游戏进度将中断。')) navigate('/');
-            }}
+            onClick={() => setShowReturnConfirm(true)}
             title="返回首页"
             className="p-2 bg-zinc-900 border border-zinc-700 rounded-full hover:bg-red-500/20 hover:border-red-500/40 transition-colors"
           >
@@ -269,10 +269,8 @@ export function ChatHeader({
                   <div className="border-t border-zinc-800" />
                   <button
                     onClick={() => {
-                      if (window.confirm('确定要返回首页吗？')) {
-                        setShowMoreMenu(false);
-                        navigate('/');
-                      }
+                      setShowMoreMenu(false);
+                      setShowReturnConfirm(true);
                     }}
                     className="flex items-center gap-3 w-full px-4 py-3 hover:bg-red-500/10 transition-colors text-sm text-red-400"
                   >
@@ -285,6 +283,16 @@ export function ChatHeader({
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showReturnConfirm}
+        title="返回首页"
+        message="确定要返回首页吗？未保存的当前游戏进度将中断。"
+        confirmText="确定返回"
+        onConfirm={() => navigate('/')}
+        onCancel={() => setShowReturnConfirm(false)}
+        confirmButtonClass="bg-red-600 hover:bg-red-500 text-white"
+      />
     </div>
   );
 }
