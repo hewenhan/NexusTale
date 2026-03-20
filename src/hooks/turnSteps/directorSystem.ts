@@ -3,7 +3,7 @@
  * Phase 4: 支持 3-5 环任务链系统
  */
 
-import type { GameState, IntentResult, QuestStage } from '../../types/game';
+import type { GameState, IntentResult } from '../../types/game';
 import type { GrandNotificationData } from '../../components/GrandNotification';
 
 export interface DirectorResult {

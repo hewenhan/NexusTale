@@ -2,12 +2,11 @@
  * Module 5: 组装 LLM Story Renderer 的完整 prompt
  */
 
-import { findNode, findHouse, getVisibleHouses, getHpDescription, applyProgressAndReveals } from '../../lib/pipeline';
+import { findNode, findHouse, getVisibleHouses, applyProgressAndReveals } from '../../lib/pipeline';
 import { INVENTORY_CAPACITY, type GameState } from '../../types/game';
-import { getModelName } from '../../types/modelConfig';
 import type { PipelineResult } from '../../lib/pipeline';
 import { getLastSceneVisuals } from './helpers';
-import { type NarrativeFacts, renderFactsForPrompt } from '../../lib/narrativeRegistry';
+import { type NarrativeFacts } from '../../lib/narrativeRegistry';
 import { buildSystemPrompt } from './storySystemPrompt';
 
 // ── 构建位置上下文 ──

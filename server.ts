@@ -1,14 +1,9 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env' });
 dotenv.config({ path: '.env.local', override: true });
 import { createServer } from "http";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 async function startServer() {
   const app = express();
@@ -20,7 +15,7 @@ async function startServer() {
   // --- OAuth Routes ---
 
   // 1. Get Auth URL
-  app.get('/api/auth/url', (req, res) => {
+  app.get('/api/auth/url', (_req, res) => {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const redirectUri = `${process.env.APP_URL}/auth/callback`;
     
@@ -149,7 +144,7 @@ async function startServer() {
   // xAI SDK 是 Node.js 专用，浏览器端直接调用会被 CORS 拦截
   // 通过后端代理，用 SDK 生成图片后返回 base64 给前端
   app.post('/api/grok/image', async (req, res) => {
-    const { prompt, model, aspectRatio, size } = req.body;
+    const { prompt, model, aspectRatio } = req.body;
     if (!prompt || !model) {
       return res.status(400).json({ error: 'Missing prompt or model' });
     }

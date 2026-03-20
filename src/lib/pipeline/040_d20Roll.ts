@@ -115,7 +115,6 @@ export function stepD20Roll(ctx: PipelineContext): void {
   }
 
   // 安全区探索使用特殊概率
-  const isInSafeZone = ctx.isInSafeZone; // 由 step ⑥ 还没跑... 但其实这里需要提前判断
   // 注意：safe zone 的判定在这一步需要提前做一个初步判定
   // 因为 safe zone 的概率和普通区域不同
   const currentNode = state.worldData?.nodes.find(n => n.id === state.currentNodeId);

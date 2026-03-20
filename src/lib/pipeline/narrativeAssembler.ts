@@ -10,7 +10,7 @@
  *   3. 优先使用 events 中的结构化数据而非 snap 差异猜测原因
  */
 
-import type { PipelineResult, PipelineSnapshot, GameEvent, MoveTarget, RollTier } from './types';
+import type { PipelineResult, GameEvent, MoveTarget, RollTier } from './types';
 import type { IntentResult, GameState } from '../../types/game';
 import { findNode } from './helpers';
 import {
@@ -19,7 +19,6 @@ import {
   buildT4Narrative, buildTransitNarrative, buildArrivalNarrative,
   buildSafeExploreNarrative, buildSafeIdleNarrative, buildProgressCapNarrative,
   buildDeathReviveNarrative, buildGameOverNarrative,
-  buildHouseMilestoneNarrative, buildNodeBossMilestoneNarrative,
 } from './narratives';
 
 // ─── 工具函数 ───
@@ -48,8 +47,7 @@ export interface NarrativeAssemblerInput {
  */
 export function assembleNarrative(input: NarrativeAssemblerInput): string {
   const { result, intent, state } = input;
-  const { events, snapPre, snapPost } = result;
-  const action = intent.intent;
+  const { events, snapPre } = result;
   const tension = snapPre.tensionLevel;
   const roll = result.roll;
   const tier = determineTier(result);

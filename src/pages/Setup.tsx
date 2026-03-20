@@ -77,7 +77,7 @@ const WEIGHT_OPTIONS = [
 ];
 
 export default function Setup() {
-  const { state, updateState } = useGame();
+  const { updateState } = useGame();
   const navigate = useNavigate();
   const [step, setStep] = useState<'player' | 'aiCharacter' | 'world' | 'artStyle'>('player');
 

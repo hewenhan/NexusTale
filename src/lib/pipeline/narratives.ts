@@ -5,7 +5,7 @@
  */
 
 // ─── T0 安全区叙事 ───
-export function buildT0Narrative(action: string, tier: number, roll: number, hpAfter: number): string {
+export function buildT0Narrative(action: string, tier: number, roll: number, _hpAfter: number): string {
   if (action === 'move') {
     return '【系统强制】：玩家选择离开安全区，踏入外部世界。当前紧张度强制升至1级（探索态）。请描写出发时的场景。';
   }
@@ -35,7 +35,7 @@ export function buildT1CombatNarrative(tier: number, roll: number): string {
 }
 
 // ─── T2 轻度危机叙事 ───
-export function buildT2Narrative(action: string, tier: number, roll: number, hpAfter: number): string {
+export function buildT2Narrative(action: string, tier: number, roll: number, _hpAfter: number): string {
   if (action === 'move') {
     return '【系统强制 - 战术撤退】：玩家果断放弃探索，有序撤出！无伤脱战，紧张度降回 1 级。请描写安全撤离危机区域的过程。';
   }

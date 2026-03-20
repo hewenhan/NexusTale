@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertTriangle, Check, ChevronDown, ChevronRight, Minimize2, X } from 'lucide-react';
+import { AlertTriangle, Check, ChevronRight, Minimize2 } from 'lucide-react';
 import type { ConfuseData, ConfuseCandidate, IntentResult, IntentType, NodeData, InventoryItem } from '../types/game';
 import { INTENT_LABELS, DIRECTION_LABELS } from '../types/game';
 

@@ -2,7 +2,7 @@
  * ChatHeader — 顶部栏 (PC + 移动端菜单)
  */
 
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import {

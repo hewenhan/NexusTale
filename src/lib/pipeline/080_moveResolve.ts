@@ -10,7 +10,7 @@
  */
 
 import type { PipelineContext, MoveTarget } from './types';
-import type { GameState, NodeData, IntentResult, HouseData } from '../../types/game';
+import type { GameState, NodeData, IntentResult } from '../../types/game';
 import { TENSION_ROUTE } from '../tensionConfig';
 import { findNode, getVisibleHouses } from './helpers';
 

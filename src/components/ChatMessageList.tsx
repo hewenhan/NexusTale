@@ -2,7 +2,7 @@
  * ChatMessageList — Virtuoso 列表 + Footer (loading indicator)
  */
 
-import { forwardRef, useCallback, useMemo } from 'react';
+import { forwardRef, useMemo } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Loader2, Heart } from 'lucide-react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';

@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { GameState, INITIAL_STATE, ChatMessage, DEFAULT_LOADING_MESSAGES, DEFAULT_PROFILE, normalizeConnections, WorldData, KEEP_RECENT_TURNS } from '../types/game';
-import { v4 as uuidv4 } from 'uuid';
+import { GameState, INITIAL_STATE, ChatMessage, KEEP_RECENT_TURNS } from '../types/game';
 import { handleError } from '../lib/errorPolicy';
 
 interface GameContextType {

@@ -4,13 +4,11 @@
  * AI 回复后的状态写入 + 任务延迟写入 + BGM 选择 + 消息段构建 + debug 快照
  */
 
-import { v4 as uuidv4 } from 'uuid';
 import type { TurnContext } from './types';
 import type { TextSegment } from '../../types/game';
 import { applyPostLlmSettlement } from './postLlmSettlement';
 import { applyQuestDeferredWrites } from './questChainLogic';
 import { selectBgm } from './bgmSelection';
-import { getLastSceneVisuals } from './helpers';
 
 export function stepPostLlm(ctx: TurnContext): void {
   const {

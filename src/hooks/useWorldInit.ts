@@ -5,7 +5,7 @@
  * Phase 2: 并行非阻塞 — Promise.allSettled (装备/地图/同伴头像/玩家头像)
  */
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { GameState } from '../types/game';
 import { initializeWorld, generateMapImage, generateCharacterPortrait, fetchCustomLoadingMessages } from '../services/worldService';

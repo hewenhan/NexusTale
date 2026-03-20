@@ -171,8 +171,6 @@ export function MapOverlay({ state, onClose }: MapOverlayProps) {
               const isCurrent = node.id === currentNodeId;
               const isObjectiveNode = state.currentObjective?.targetNodeId === node.id;
               const nodeProgress = node.progress || 0;
-              // Houses visible based on persistent revealed flag
-              const visibleCount = node.houses.filter(h => h.revealed).length;
 
               return (
                 <div
@@ -238,7 +236,7 @@ export function MapOverlay({ state, onClose }: MapOverlayProps) {
 
                   {/* Houses */}
                   <div className="flex flex-wrap gap-2">
-                    {node.houses.map((house, idx) => {
+                    {node.houses.map((house) => {
                       const isObjectiveHouse = state.currentObjective?.targetHouseId === house.id;
                       const isVisible = house.revealed || (isCurrent && house.id === currentHouseId) || isObjectiveHouse;
                       const isCurrentHouse = isCurrent && house.id === currentHouseId;

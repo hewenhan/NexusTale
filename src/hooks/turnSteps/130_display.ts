@@ -14,7 +14,7 @@ export async function stepDisplay(ctx: TurnContext): Promise<void> {
       addMessage, updateState, setIsProcessing, setPendingNotificationsRef,
       waitForTypewriter, typewriterReadyRef, typewriterResolveRef,
     },
-    resolution, responseJson, messages, debugState, finalBgmKey, pendingNotifications,
+    responseJson, messages, debugState, finalBgmKey, pendingNotifications,
   } = ctx;
 
   const { image_prompt, image_characters, scene_visuals_update } = responseJson;
