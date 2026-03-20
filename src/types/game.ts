@@ -417,6 +417,19 @@ export const BGM_LIST = {
   4: ["levelBGM/Level4_1.mp3", "levelBGM/Level4_2.mp3"]
 };
 
+export const BG_LIST = [
+  "bg/bg1HD.webp",
+  "bg/bg2HD.webp",
+  "bg/bg3HD.webp",
+  "bg/bg4HD.webp",
+  "bg/bg5HD.webp",
+  "bg/bg6HD.webp",
+  "bg/bg7HD.webp",
+  "bg/bg8HD.webp",
+  "bg/bg9HD.webp",
+  "bg/bg10HD.webp",
+];
+
 export const DEFAULT_LOADING_MESSAGES = [
   "正在连接神经网络...",
   "正在翻阅世界辞典...",
