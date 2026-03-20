@@ -175,3 +175,15 @@ export function narrativeEquipmentDrop(p: {
 }): string {
   return `【装备掉落】：探索中发现了一件${p.rarity}品质的${p.typeName}【${p.name}】（${p.description}）！请在叙事中自然地描写发现这件装备的过程。不要和当前任务/任务链有关！`;
 }
+
+// ═══════════════════════════════════════════════════════════════
+// A7. 建筑揭盲 — 来源: applyNarrativeOverrides
+// ═══════════════════════════════════════════════════════════════
+
+/** 本回合由探索度引发的新建筑揭盲 */
+export function narrativeBuildingReveal(
+  buildings: { name: string; type: string }[],
+): string {
+  const list = buildings.map(b => `${b.name}(${b.type})`).join('、');
+  return `\n【建筑揭盲】：本回合探索中发现了新建筑：${list}。请自然地在叙事中体现发现新地点的过程。`;
+}

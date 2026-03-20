@@ -34,6 +34,17 @@ export function stepBehaviorOverride(ctx: PipelineContext): void {
     }
   }
 
+  // ── T≥2 idle → suicidal_idle（危机中发呆视为作死） ──
+  if (tension >= 2 && intent.intent === 'idle') {
+    const suicidalRoute = TENSION_ROUTE[tension]?.['suicidal_idle'];
+    if (suicidalRoute) {
+      ctx.intent = { ...intent, intent: 'suicidal_idle' };
+      ctx.tier = rollToTier(suicidalRoute.probabilities, ctx.effectiveRoll);
+      ctx.formulaBreakdown += `\n[行为覆写] 危机中idle → suicidal_idle`;
+      ctx.events.push({ type: 'behavior_override', description: '危机中idle → suicidal_idle' });
+    }
+  }
+
   // ── 探索度满区域：T1 explore 大失败降级 ──
   if (tension === 1 && intent.intent === 'explore' && ctx.tier === 0) {
     const nodeKey = state.currentNodeId ? `node_${state.currentNodeId}` : '';

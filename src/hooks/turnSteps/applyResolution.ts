@@ -6,7 +6,7 @@ import type { GameState, DebugOverrides } from '../../types/game';
 import type { PipelineResult } from '../../lib/pipeline';
 import { applyProgressAndReveals } from '../../lib/pipeline';
 import type { DirectorResult } from './directorSystem';
-import { narrativeRetreat, narrativeAffectionAid, narrativeAffectionSabotage } from '../../lib/narrativeRegistry';
+import { narrativeRetreat, narrativeAffectionAid, narrativeAffectionSabotage, narrativeBuildingReveal } from '../../lib/narrativeRegistry';
 
 /**
  * 消费 Debug 覆写，修改 resolution（mutate in place）
@@ -67,6 +67,22 @@ export function applyNarrativeOverrides(
     result += narrativeAffectionAid({ affection: state.affection, specialties: state.companionProfile.specialties });
   } else if (resolution.affectionTriggered === 'sabotage') {
     result += narrativeAffectionSabotage(state.affection);
+  }
+
+  // 建筑揭盲事实拼接
+  if (state.worldData && !resolution.newTransitState) {
+    const updatedWorldData = applyProgressAndReveals(
+      state.worldData, resolution.newProgressMap, resolution.houseSafetyUpdate,
+    );
+    const updatedNode = updatedWorldData.nodes.find(n => n.id === resolution.newNodeId);
+    const oldNode = state.worldData.nodes.find(n => n.id === resolution.newNodeId);
+    if (updatedNode && oldNode) {
+      const oldRevealedIds = new Set(oldNode.houses.filter(h => h.revealed).map(h => h.id));
+      const newlyRevealed = updatedNode.houses.filter(h => h.revealed && !oldRevealedIds.has(h.id));
+      if (newlyRevealed.length > 0) {
+        result += narrativeBuildingReveal(newlyRevealed.map(h => ({ name: h.name, type: h.type })));
+      }
+    }
   }
 
   return result;

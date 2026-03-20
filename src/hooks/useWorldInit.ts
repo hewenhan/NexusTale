@@ -71,6 +71,10 @@ export function useWorldInit(deps: WorldInitDeps) {
               : {})
           });
 
+          // Phase 1 完成 → 关闭世界 overlay
+          worldProgressRef.current?.finish();
+          setTimeout(() => setIsGeneratingWorld(false), 600);
+
           // Phase 2: 并行非阻塞 — 失败可降级
           const results = await Promise.allSettled([
             // 装备预设
@@ -120,6 +124,10 @@ export function useWorldInit(deps: WorldInitDeps) {
               console.warn(`[useWorldInit] ${labels[i]} failed (degraded):`, r.reason);
             }
           });
+
+          // Phase 2 完成 → 关闭角色 overlay
+          characterProgressRef.current?.finish();
+          setTimeout(() => setIsFleshingOutCharacter(false), 600);
         };
 
         try {
@@ -138,12 +146,19 @@ export function useWorldInit(deps: WorldInitDeps) {
             });
           }
         } finally {
-          worldProgressRef.current?.finish();
-          characterProgressRef.current?.finish();
+          // 兜底：确保 overlay 一定关闭（防止 attemptInit 内部未到 finish 就抛出）
+          if (worldProgressRef.current) worldProgressRef.current.finish();
+          if (characterProgressRef.current) characterProgressRef.current.finish();
           setTimeout(() => {
-            setIsGeneratingWorld(false);
-            setIsFleshingOutCharacter(false);
-          }, 600);
+            setIsGeneratingWorld(prev => {
+              if (prev) console.warn('[useWorldInit] finally 兜底关闭 world overlay');
+              return false;
+            });
+            setIsFleshingOutCharacter(prev => {
+              if (prev) console.warn('[useWorldInit] finally 兜底关闭 character overlay');
+              return false;
+            });
+          }, 800);
         }
       })();
     }

@@ -190,13 +190,6 @@ export function ChatHeader({
             </div>
           </button>
           <button
-            onClick={() => navigate('/')}
-            title="返回首页"
-            className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors"
-          >
-            <Home className="w-4 h-4 text-zinc-400" />
-          </button>
-          <button
             onClick={onExportSave}
             title="保存存档 (Ctrl+S)"
             className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors"
@@ -216,6 +209,20 @@ export function ChatHeader({
             className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors"
           >
             <Backpack className="w-4 h-4 text-zinc-400" />
+          </button>
+
+          {/* 分隔符 */}
+          <div className="w-px h-5 bg-zinc-700 mx-1" />
+
+          {/* 破坏性操作：视觉区分 + 确认 */}
+          <button
+            onClick={() => {
+              if (window.confirm('确定要返回首页吗？当前游戏进度将中断。')) navigate('/');
+            }}
+            title="返回首页"
+            className="p-2 bg-zinc-900 border border-zinc-700 rounded-full hover:bg-red-500/20 hover:border-red-500/40 transition-colors"
+          >
+            <Home className="w-4 h-4 text-zinc-500" />
           </button>
         </div>
 
@@ -259,13 +266,6 @@ export function ChatHeader({
                     <span>打字速度 {speedLabel}</span>
                   </button>
                   <button
-                    onClick={() => { navigate('/'); }}
-                    className="flex items-center gap-3 w-full px-4 py-3 hover:bg-zinc-800 transition-colors text-sm text-zinc-300"
-                  >
-                    <Home className="w-4 h-4 text-zinc-400" />
-                    <span>返回首页</span>
-                  </button>
-                  <button
                     onClick={() => { onExportSave(); }}
                     className="flex items-center gap-3 w-full px-4 py-3 hover:bg-zinc-800 transition-colors text-sm text-zinc-300"
                   >
@@ -287,6 +287,19 @@ export function ChatHeader({
                       className="w-full accent-zinc-400 cursor-pointer"
                     />
                   </div>
+                  <div className="border-t border-zinc-800" />
+                  <button
+                    onClick={() => {
+                      if (window.confirm('确定要返回首页吗？')) {
+                        setShowMoreMenu(false);
+                        navigate('/');
+                      }
+                    }}
+                    className="flex items-center gap-3 w-full px-4 py-3 hover:bg-red-500/10 transition-colors text-sm text-red-400"
+                  >
+                    <Home className="w-4 h-4" />
+                    <span>返回首页</span>
+                  </button>
                 </motion.div>
               )}
             </AnimatePresence>

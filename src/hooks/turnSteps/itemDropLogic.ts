@@ -28,22 +28,40 @@ export function resolveItemDrops(
   let prerolledEquipDrop: InventoryItem | null = null;
 
   const isExploreSuccess = resolution.isSuccess && intent.intent === 'explore' && !resolution.progressCapped;
+  const tier = resolution.snapPost.tier ?? 1;
 
-  // ── Step 3.9: Escape item drop ──
+  // ── 搜刮掉落: 统一 25% 掉率, tier 决定掉什么 ──
   if (isExploreSuccess) {
     if (Math.random() < 0.25) {
-      escapeItemRarity = rollEscapeRarity();
-      itemDropInstruction = narrativeItemDropFound({ rarity: escapeItemRarity, inTransit: !!resolution.newTransitState });
+      if (tier === 2 && state.equipmentPresets.length > 0) {
+        // 大成功 → 掉装备
+        const presets = state.equipmentPresets;
+        const idx = Math.floor(Math.random() * presets.length);
+        prerolledEquipDrop = presets[idx];
+        updateState(prev => {
+          const newPresets = [...prev.equipmentPresets];
+          newPresets.splice(idx, 1);
+          return { equipmentPresets: newPresets };
+        });
+        const equipType = prerolledEquipDrop.type === 'weapon' ? '武器' : '防具';
+        itemDropInstruction = narrativeEquipmentDrop({
+          rarity: prerolledEquipDrop.rarity,
+          typeName: equipType,
+          name: prerolledEquipDrop.name,
+          description: prerolledEquipDrop.description,
+        });
+      } else {
+        // 非大成功 / 装备池为空 → 掉退敌道具
+        escapeItemRarity = rollEscapeRarity();
+        itemDropInstruction = narrativeItemDropFound({ rarity: escapeItemRarity, inTransit: !!resolution.newTransitState });
+      }
     } else {
       itemDropInstruction = narrativeItemDropNone(!!resolution.newTransitState);
     }
   }
 
-  // ── Step 3.9b: Equipment drop ──
-  const shouldDropEquip = resolution.guaranteedDrop
-    || (isExploreSuccess && !resolution.progressCapped && resolution.roll >= 17 && Math.random() < 0.3);
-
-  if (shouldDropEquip) {
+  // ── guaranteedDrop: boss/里程碑必掉装备（独立于搜刮判定） ──
+  if (resolution.guaranteedDrop && !prerolledEquipDrop) {
     const presets = state.equipmentPresets;
     if (presets.length > 0) {
       const idx = Math.floor(Math.random() * presets.length);
@@ -54,13 +72,12 @@ export function resolveItemDrops(
         return { equipmentPresets: newPresets };
       });
       const equipType = prerolledEquipDrop.type === 'weapon' ? '武器' : '防具';
-      const equipInstruction = narrativeEquipmentDrop({
+      itemDropInstruction = narrativeEquipmentDrop({
         rarity: prerolledEquipDrop.rarity,
         typeName: equipType,
         name: prerolledEquipDrop.name,
         description: prerolledEquipDrop.description,
       });
-      itemDropInstruction = (itemDropInstruction || '') + equipInstruction;
     }
   }
 
