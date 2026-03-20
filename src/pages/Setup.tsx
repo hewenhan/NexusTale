@@ -10,6 +10,10 @@ import { ArtStylePicker } from '../components/ArtStylePicker';
 import { ArtStyleOption } from '../types/artStyles';
 import { handleError } from '../lib/errorPolicy';
 import { BackgroundImage } from '../components/BackgroundImage';
+import { useBGMControl } from '../contexts/BGMContext';
+import { BGMVolumeControl } from '../components/BGMVolumeControl';
+
+const TITLE_BGM = 'TITLE_BGM.mp3';
 
 // ── Shared dropdown option constants ──
 const GENDER_OPTIONS: { value: Gender | ''; label: string }[] = [
@@ -82,6 +86,9 @@ export default function Setup() {
   const navigate = useNavigate();
   const [step, setStep] = useState<'player' | 'aiCharacter' | 'world' | 'artStyle'>('player');
   const [bgTrigger, setBgTrigger] = useState(0);
+
+  // Title BGM
+  const { volume, changeVolume } = useBGMControl(TITLE_BGM);
 
   // ── Form state (grouped) ──
   const [player, setPlayer] = useState<CharacterProfile>({ ...DEFAULT_PROFILE, ...INIT_PLAYER_PROFILE });
@@ -260,17 +267,20 @@ export default function Setup() {
   // ── Step 1: Player Profile ──
   if (step === 'player') {
     return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6 flex flex-col items-center justify-end pb-6 font-sans">
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6 flex flex-col items-center justify-center font-sans">
         <BackgroundImage trigger={bgTrigger} />
+        <div className="fixed top-4 right-4 z-20">
+          <BGMVolumeControl volume={volume} onChangeVolume={changeVolume} />
+        </div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full space-y-6 bg-zinc-950/85 p-8 rounded-2xl border border-zinc-800/60 relative z-10 backdrop-blur-xl"
+          className="max-w-md w-full space-y-6 bg-zinc-900/50 p-8 rounded-2xl border border-zinc-800 relative z-10"
         >
           {stepIndicator(1)}
           <div className="space-y-2 text-center">
             <h2 className="text-2xl font-bold">你是谁？</h2>
-            <p className="text-zinc-300 text-sm">塑造你在这个世界中的形象。留空的项目将由 AI 自动补全。</p>
+            <p className="text-zinc-400 text-sm">塑造你在这个世界中的形象。留空的项目将由 AI 自动补全。</p>
           </div>
 
           <div className="space-y-4">
@@ -322,17 +332,20 @@ export default function Setup() {
   // ── Step 2: AI Character Setup ──
   if (step === 'aiCharacter') {
     return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6 flex flex-col items-center justify-end pb-6 font-sans">
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6 flex flex-col items-center justify-center font-sans">
         <BackgroundImage trigger={bgTrigger} />
+        <div className="fixed top-4 right-4 z-20">
+          <BGMVolumeControl volume={volume} onChangeVolume={changeVolume} />
+        </div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full space-y-6 bg-zinc-950/85 p-8 rounded-2xl border border-zinc-800/60 relative z-10 backdrop-blur-xl"
+          className="max-w-md w-full space-y-6 bg-zinc-900/50 p-8 rounded-2xl border border-zinc-800 relative z-10"
         >
           {stepIndicator(2)}
           <div className="space-y-2 text-center">
             <h2 className="text-2xl font-bold">你的搭档是谁？</h2>
-            <p className="text-zinc-300 text-sm">设定 AI 角色的基本信息。留空的项目将由 AI 自动补全，发型发色由 AI 生成。</p>
+            <p className="text-zinc-400 text-sm">设定 AI 角色的基本信息。留空的项目将由 AI 自动补全，发型发色由 AI 生成。</p>
           </div>
 
           <div className="space-y-4">
@@ -396,8 +409,11 @@ export default function Setup() {
   // ── Art Style Picker ──
   if (step === 'artStyle') {
     return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6 flex flex-col items-center justify-end pb-6 font-sans">
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6 flex flex-col items-center justify-center font-sans">
         <BackgroundImage trigger={bgTrigger} />
+        <div className="fixed top-4 right-4 z-20">
+          <BGMVolumeControl volume={volume} onChangeVolume={changeVolume} />
+        </div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -417,8 +433,11 @@ export default function Setup() {
 
   // ── Step 3: World ──
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6 flex flex-col items-center justify-end pb-6 font-sans">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6 flex flex-col items-center justify-center font-sans">
       <BackgroundImage trigger={bgTrigger} />
+      <div className="fixed top-4 right-4 z-20">
+        <BGMVolumeControl volume={volume} onChangeVolume={changeVolume} />
+      </div>
       <div className="max-w-2xl w-full space-y-8 relative z-10">
         {stepIndicator(3)}
         <div className="space-y-2 text-center">

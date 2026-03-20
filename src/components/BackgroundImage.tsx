@@ -78,6 +78,16 @@ export function BackgroundImage({ trigger }: { trigger: number }) {
           }}
         />
       ))}
+      {/* Dark overlay for readability */}
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.55)',
+          pointerEvents: 'none',
+          zIndex: layers.length,
+        }}
+      />
     </>
   );
 }

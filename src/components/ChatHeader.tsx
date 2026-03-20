@@ -10,6 +10,7 @@ import {
   Map, MoreHorizontal, RefreshCw, Save, Volume1, Volume2, VolumeX,
 } from 'lucide-react';
 import type { TextSpeed } from './TypewriterMessage';
+import { BGMVolumeControl } from './BGMVolumeControl';
 
 interface ChatHeaderProps {
   characterName: string;
@@ -146,29 +147,7 @@ export function ChatHeader({
 
         {/* === PC: 所有按钮一字排开 === */}
         <div className="hidden sm:flex items-center gap-2">
-          <div className="relative group/vol">
-            <button
-              onClick={() => onChangeVolume(volume === 0 ? 0.5 : 0)}
-              title={volume === 0 ? '取消静音' : '静音'}
-              className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors"
-            >
-              <VolumeIcon className="w-4 h-4 text-zinc-400" />
-            </button>
-            <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 hidden group-hover/vol:block z-50">
-              <div className="flex flex-col items-center bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-3 shadow-xl">
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={volume}
-                  onChange={e => onChangeVolume(parseFloat(e.target.value))}
-                  className="w-24 accent-zinc-400 cursor-pointer"
-                />
-                <span className="text-[10px] text-zinc-500 mt-1">{Math.round(volume * 100)}%</span>
-              </div>
-            </div>
-          </div>
+          <BGMVolumeControl volume={volume} onChangeVolume={onChangeVolume} />
           <button
             onClick={onCycleTextSpeed}
             title={`打字速度: ${speedLabel}`}

@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { GameProvider } from './contexts/GameContext';
+import { BGMProvider } from './contexts/BGMContext';
 import { GrandNotificationProvider } from './components/GrandNotification';
 import Home from './pages/Home';
 import Setup from './pages/Setup';
@@ -23,6 +24,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <GameProvider>
+          <BGMProvider>
           <GrandNotificationProvider>
             <Routes>
               <Route path="/" element={<Home />} />
@@ -31,6 +33,7 @@ export default function App() {
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </GrandNotificationProvider>
+          </BGMProvider>
         </GameProvider>
       </AuthProvider>
     </BrowserRouter>

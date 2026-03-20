@@ -6,7 +6,7 @@ import { DEFAULT_PROFILE, DEFAULT_LOADING_MESSAGES, INITIAL_STATE, type Gender, 
 import { VirtuosoHandle } from 'react-virtuoso';
 import { DebugOverlay } from '../components/DebugOverlay';
 import { useChatLogic } from '../hooks/useChatLogic';
-import { useBGM } from '../hooks/useBGM';
+import { useBGMControl } from '../contexts/BGMContext';
 import { ChatInput } from '../components/ChatInput';
 import { ProgressTracker } from '../components/ProgressTracker';
 import { type TextSpeed } from '../components/TypewriterMessage';
@@ -93,14 +93,14 @@ export default function Chat() {
     setDisplaySnapshot({ ...latestDeferredRef.current });
   }, [flushPendingNotifications]);
 
-  // BGM
+  // BGM — undefined means "don't touch, keep previous BGM playing"
   const currentBgmKey = useMemo(() => {
     for (let i = state.history.length - 1; i >= 0; i--) {
       if (state.history[i].bgmKey) return state.history[i].bgmKey;
     }
     return undefined;
   }, [state.history]);
-  const { volume, changeVolume } = useBGM(currentBgmKey);
+  const { volume, changeVolume } = useBGMControl(currentBgmKey);
 
   // Loading messages
   const [currentLoadingMessage, setCurrentLoadingMessage] = useState(DEFAULT_LOADING_MESSAGES[0]);

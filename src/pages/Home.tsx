@@ -3,9 +3,13 @@ import { useGame } from '../contexts/GameContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { Upload, Globe, Plus, History, AlertTriangle } from 'lucide-react';
-import { APP_TITLE, APP_SUBTITLE } from '../lib/appMeta';
+import { Upload, Globe, Plus, History, Sparkles, Dice5, ImageIcon, BookOpen, AlertTriangle } from 'lucide-react';
+import { APP_DESCRIPTION, APP_SUBTITLE, APP_TITLE } from '../lib/appMeta';
 import { BackgroundImage } from '../components/BackgroundImage';
+import { useBGMControl } from '../contexts/BGMContext';
+import { BGMVolumeControl } from '../components/BGMVolumeControl';
+
+const TITLE_BGM = 'TITLE_BGM.mp3';
 
 export default function Home() {
   const { state, updateState, loadSave, resetGame } = useGame();
@@ -20,6 +24,9 @@ export default function Home() {
   const [showNewGameConfirm, setShowNewGameConfirm] = useState(false);
 
   const hasSave = state.history && state.history.length > 0;
+
+  // Title BGM
+  const { volume, changeVolume } = useBGMControl(TITLE_BGM);
 
   const handleReconnect = async () => {
     setIsRefreshing(true);
@@ -98,32 +105,47 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-end pb-6 p-4 font-sans">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center p-4 font-sans">
       <BackgroundImage trigger={0} />
-
-      {/* Title — floats over the character area */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="fixed top-0 left-0 right-0 z-10 text-center pt-8 pb-4 px-4"
-        style={{ textShadow: '0 2px 20px rgba(0,0,0,1), 0 0 40px rgba(0,0,0,0.8)' }}
-      >
-        <h1 className="text-4xl font-bold tracking-tighter text-white">
-          {APP_TITLE}
-        </h1>
-        <p className="text-zinc-100 text-base font-medium leading-relaxed mt-1">{APP_SUBTITLE}</p>
-      </motion.div>
-
-      {/* Bottom panel — compact controls */}
+      {/* 音量控件 - 右上角 */}
+      <div className="fixed top-4 right-4 z-20">
+        <BGMVolumeControl volume={volume} onChangeVolume={changeVolume} />
+      </div>
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full space-y-4 relative z-10"
+        className="max-w-md w-full space-y-8 relative z-10"
       >
-        <div className="bg-zinc-950/85 border border-zinc-800/60 p-5 rounded-2xl space-y-5 backdrop-blur-xl">
+        <div className="text-center space-y-2">
+          <h1 className="text-4xl font-bold tracking-tighter bg-gradient-to-br from-white to-zinc-500 bg-clip-text text-transparent">
+            {APP_TITLE}
+          </h1>
+          <p className="text-zinc-200 text-base font-medium leading-relaxed">{APP_SUBTITLE}</p>
+          <p className="text-zinc-400 text-sm leading-6 max-w-md mx-auto">{APP_DESCRIPTION}</p>
+        </div>
+
+        {/* Feature highlights */}
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { icon: Sparkles, label: '沉浸式对话', desc: '和 AI 搭档自由互动' },
+            { icon: Dice5, label: '命运骰子', desc: '每次行动都有惊喜' },
+            { icon: ImageIcon, label: '实时插画', desc: '场景自动生成画面' },
+            { icon: BookOpen, label: '自由世界', desc: '你来定义故事舞台' },
+          ].map((f) => (
+            <div key={f.label} className="flex items-start gap-2.5 p-3 bg-zinc-900/60 border border-zinc-700/50 rounded-xl">
+              <f.icon className="w-4 h-4 text-zinc-300 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-medium text-zinc-200">{f.label}</p>
+                <p className="text-[11px] text-zinc-400">{f.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-zinc-900/40 border border-zinc-800/60 p-6 rounded-2xl space-y-6">
           
           {/* Auth Status */}
-          <div className="flex items-center justify-between p-3 bg-zinc-900 rounded-xl border border-zinc-800">
+          <div className="flex items-center justify-between p-4 bg-zinc-900 rounded-xl border border-zinc-800">
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${isAuthenticated ? 'bg-emerald-500' : 'bg-red-500'}`} />
               <span className="text-sm font-medium">
@@ -153,7 +175,7 @@ export default function Home() {
 
           {/* Language */}
           <div className="space-y-1">
-            <label className="text-xs text-zinc-500">AI 回复语言</label>
+            <label className="text-xs text-zinc-400">AI 回复语言</label>
             <div className="grid grid-cols-2 gap-2">
               {[
                 { value: 'zh', label: '中文' },
@@ -175,11 +197,11 @@ export default function Home() {
           </div>
 
           {/* Actions */}
-          <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-3">
             <button 
               onClick={() => hasSave && navigate('/chat')}
               disabled={!hasSave}
-              className={`flex items-center justify-center gap-2 p-3.5 rounded-xl transition-colors ${
+              className={`flex items-center justify-center gap-2 p-4 rounded-xl transition-colors ${
                 hasSave 
                   ? 'bg-white hover:bg-zinc-200 text-black' 
                   : 'bg-zinc-900/50 border border-zinc-800/50 text-zinc-600 cursor-not-allowed'
@@ -189,7 +211,7 @@ export default function Home() {
               <span className="text-sm font-medium">继续游戏</span>
             </button>
 
-            <label className="flex items-center justify-center gap-2 p-3.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl cursor-pointer transition-colors group">
+            <label className="flex items-center justify-center gap-2 p-4 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl cursor-pointer transition-colors group">
               <Upload className="w-5 h-5 text-zinc-400 group-hover:text-white transition-colors" />
               <span className="text-sm font-medium">读取存档</span>
               <input type="file" accept=".json" onChange={handleFileUpload} className="hidden" />
@@ -197,7 +219,7 @@ export default function Home() {
 
             <button 
               onClick={handleStartGame}
-              className={`flex items-center justify-center gap-2 p-3.5 rounded-xl transition-colors ${
+              className={`flex items-center justify-center gap-2 p-4 rounded-xl transition-colors ${
                 !hasSave 
                   ? 'bg-white hover:bg-zinc-200 text-black' 
                   : 'bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-white'
