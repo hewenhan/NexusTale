@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, LucideIcon } from 'lucide-react';
+import { createPortal } from 'react-dom';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -24,7 +25,7 @@ export function ConfirmModal({
   confirmButtonClass = "bg-amber-600 hover:bg-amber-500 text-white",
   icon: Icon = AlertTriangle
 }: ConfirmModalProps) {
-  return (
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -60,4 +61,7 @@ export function ConfirmModal({
       )}
     </AnimatePresence>
   );
+
+  if (typeof document === 'undefined') return null;
+  return createPortal(modalContent, document.body);
 }
