@@ -61,6 +61,7 @@ class RagService {
     // 等待 embedding 就绪（Worker warmup）
     const embeddingOk = await this.embedding.embedQuery('test');
     if (embeddingOk === null) {
+      console.error('[RagService] 模型加载失败，自动降级为 BM25 关键词检索。请检查网络环境或模型缓存状况。');
       this.useEmbedding = false;
       ragStatusEmitter.emit({
         phase: 'degraded',

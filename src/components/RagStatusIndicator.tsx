@@ -86,11 +86,13 @@ export function RagStatusIndicator() {
 
   return (
     <motion.div
-      className={`fixed right-4 bottom-32 z-20 ${config.bg} backdrop-blur-sm border ${config.border} rounded-xl px-3 py-2 shadow-lg`}
+      className={`fixed right-4 bottom-32 z-20 ${config.bg} backdrop-blur-sm border ${config.border} rounded-xl px-3 py-2 shadow-lg cursor-grab active:cursor-grabbing`}
       initial={{ opacity: 0, y: 10, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.3 }}
       layout
+      drag
+      dragMomentum={false}
     >
       <div className="flex items-center gap-2">
         {/* 图标 */}
