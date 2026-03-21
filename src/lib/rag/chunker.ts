@@ -7,6 +7,7 @@
  * - user 消息：每条独立一个文档
  * - narrator 消息：添加 [旁白] 前缀增强语义区分
  * - 过短消息（<10 字符）：跳过（"嗯"、"好"等无语义价值）
+ * - 地名前缀：注入 [地点名] 前缀，提升关键词检索精度
  *
  * 每轮预期产出：1 条 user + 1 条合并 model + 0-1 条 narrator ≈ 2-3 条 RagDocument
  */
@@ -15,11 +16,21 @@ import type { RagDocument } from './types';
 
 const MIN_TEXT_LENGTH = 10;
 
+/** 解析地点前缀 */
+function locPrefix(msg: ChatMessage, nodeNameMap: Map<string, string>): string {
+  const house = msg.currentHouseId ? nodeNameMap.get(msg.currentHouseId) : undefined;
+  const node = msg.currentNodeId ? nodeNameMap.get(msg.currentNodeId) : undefined;
+  const loc = house || node;
+  return loc ? `[${loc}] ` : '';
+}
+
 export function chunkMessages(
   messages: ChatMessage[],
   startIndex: number,
+  nodeNameMap?: Map<string, string>,
 ): Omit<RagDocument, 'embedding'>[] {
   const docs: Omit<RagDocument, 'embedding'>[] = [];
+  const names = nodeNameMap ?? new Map<string, string>();
   let i = startIndex;
 
   while (i < messages.length) {
@@ -29,7 +40,7 @@ export function chunkMessages(
       if (msg.text.length >= MIN_TEXT_LENGTH) {
         docs.push({
           id: msg.id,
-          text: msg.text,
+          text: `${locPrefix(msg, names)}${msg.text}`,
           metadata: {
             role: 'user',
             nodeId: msg.currentNodeId,
@@ -48,7 +59,7 @@ export function chunkMessages(
       if (msg.text.length >= MIN_TEXT_LENGTH) {
         docs.push({
           id: msg.id,
-          text: `[旁白] ${msg.text}`,
+          text: `[旁白] ${locPrefix(msg, names)}${msg.text}`,
           metadata: {
             role: 'narrator',
             nodeId: msg.currentNodeId,
@@ -78,7 +89,7 @@ export function chunkMessages(
     if (mergedTexts.length > 0) {
       docs.push({
         id: firstModelMsg.id,
-        text: mergedTexts.join('\n'),
+        text: `${locPrefix(firstModelMsg, names)}${mergedTexts.join('\n')}`,
         metadata: {
           role: 'model',
           nodeId: firstModelMsg.currentNodeId,

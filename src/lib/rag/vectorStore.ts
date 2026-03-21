@@ -174,13 +174,18 @@ export class VectorStore {
     }
   }
 
-  /** 获取所有文档文本（供 BM25 降级用） */
+  /** 获取所有文档文本（供 BM25 检索用） */
   getAllTexts(): { id: string; text: string; turnIndex: number }[] {
     return Array.from(this.documents.values()).map(d => ({
       id: d.id,
       text: d.text,
       turnIndex: d.metadata.turnIndex,
     }));
+  }
+
+  /** 按 ID 获取单个文档 */
+  getDocument(id: string): RagDocument | undefined {
+    return this.documents.get(id);
   }
 
   /** 已存储文档数量 */

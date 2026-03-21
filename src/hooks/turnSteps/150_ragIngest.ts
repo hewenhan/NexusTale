@@ -11,5 +11,5 @@ import { ragService } from '../../lib/rag';
 export async function stepRagIngest(ctx: TurnContext): Promise<void> {
   // fire-and-forget：不 await，不阻塞回合完成
   console.log('[Turn Step 150] Triggering RAG Ingest...');
-  ragService.ingest(ctx.deps.state.history).catch(() => {});
+  ragService.ingest(ctx.deps.state.history, ctx.deps.state.worldData).catch(() => {});
 }

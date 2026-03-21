@@ -15,7 +15,8 @@ export async function stepRagRetrieve(ctx: TurnContext): Promise<void> {
     console.log('[Turn Step 015] Retrieving RAG Context for query:', ctx.userInput);
     ctx.ragContext = await ragService.query(
       ctx.userInput,
-      ctx.deps.state.history.length,
+      ctx.deps.state.history,
+      ctx.deps.state.worldData,
     );
     if (ctx.ragContext) {
       console.log('[Turn Step 015] RAG Context injected successfully');

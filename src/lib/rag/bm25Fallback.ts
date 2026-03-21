@@ -1,7 +1,6 @@
 /**
- * 纯算法降级方案：当 WASM/Worker 不可用时
- * 基于 BM25 的关键词匹配检索
- * - 中文：按字符分割（unigram）
+ * BM25 关键词匹配检索（混合检索模式下与向量检索并行）
+ * - 中文：unigram + bigram（双字滑窗，大幅提升短语召回）
  * - 英文：按空格分词
  * - 零外部依赖，纯字符串处理
  */
@@ -9,26 +8,40 @@
 const K1 = 1.5;
 const B = 0.75;
 
+function isCJK(code: number): boolean {
+  return (
+    (code >= 0x4E00 && code <= 0x9FFF) ||
+    (code >= 0x3040 && code <= 0x30FF) ||
+    (code >= 0xAC00 && code <= 0xD7AF)
+  );
+}
+
 function tokenize(text: string): string[] {
-  // 英文单词 + 中文单字
   const tokens: string[] = [];
   const wordRegex = /[a-zA-Z]+/g;
   let match;
   while ((match = wordRegex.exec(text)) !== null) {
     tokens.push(match[0].toLowerCase());
   }
-  // 中日韩字符逐字
+  // CJK: unigram + bigram
+  const cjk: string[] = [];
   for (const ch of text) {
-    const code = ch.codePointAt(0)!;
-    if (
-      (code >= 0x4E00 && code <= 0x9FFF) ||   // CJK Unified
-      (code >= 0x3040 && code <= 0x30FF) ||     // Hiragana + Katakana
-      (code >= 0xAC00 && code <= 0xD7AF)        // Korean
-    ) {
-      tokens.push(ch);
+    if (isCJK(ch.codePointAt(0)!)) {
+      cjk.push(ch);
+    } else if (cjk.length > 0) {
+      flushCJK(cjk, tokens);
+      cjk.length = 0;
     }
   }
+  if (cjk.length > 0) flushCJK(cjk, tokens);
   return tokens;
+}
+
+function flushCJK(chars: string[], out: string[]): void {
+  for (let i = 0; i < chars.length; i++) {
+    out.push(chars[i]);
+    if (i + 1 < chars.length) out.push(chars[i] + chars[i + 1]);
+  }
 }
 
 export function bm25Search(

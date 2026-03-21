@@ -62,7 +62,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (state.history.length > 0) {
       console.log('[GameContext] 页面挂载，同步 RAG 记忆中...');
-      ragService.ingest(state.history).catch(() => {});
+      ragService.ingest(state.history, state.worldData).catch(() => {});
     }
   }, []);
 
@@ -78,7 +78,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const parsed = migrateSave(JSON.parse(json));
       if (!parsed.history || !Array.isArray(parsed.history)) return false;
       setState({ ...INITIAL_STATE, ...parsed });
-      ragService.ingest(parsed.history).catch(() => {});
+      ragService.ingest(parsed.history, parsed.worldData).catch(() => {});
       return true;
     } catch (e) {
       handleError('silent', 'Invalid save file', e);
