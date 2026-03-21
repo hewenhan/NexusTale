@@ -36,6 +36,7 @@ class RagService {
   private lastIngestedIndex = 0;
   private fingerprint: SaveFingerprint | null = null;
   private useEmbedding = true;
+  private ingestLock: Promise<void> = Promise.resolve();
 
   constructor() {
     this.store = new VectorStore();
@@ -180,6 +181,22 @@ class RagService {
    * - SL 回档（lastIngestedIndex > history.length）→ 裁剪 + 差量
    */
   async ingest(history: ChatMessage[], worldData?: WorldData | null): Promise<void> {
+    // 串行化：等待上一次 ingest 完成，防止并发 ONNX 推理崩溃
+    const prev = this.ingestLock;
+    let unlock: () => void;
+    this.ingestLock = new Promise<void>(r => { unlock = r; });
+    try {
+      await prev;
+    } catch { /* 忽略上一次的错误 */ }
+
+    try {
+      await this._ingestCore(history, worldData);
+    } finally {
+      unlock!();
+    }
+  }
+
+  private async _ingestCore(history: ChatMessage[], worldData?: WorldData | null): Promise<void> {
     await this.ready;
 
     if (history.length === 0) return;
