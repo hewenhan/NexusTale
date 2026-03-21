@@ -19,18 +19,42 @@ class RagStatusEmitter {
 
   /** ragService 内部调用 */
   emit(partial: Partial<RagStatus>): void {
-    Object.assign(this.current, partial);
-    this.listeners.forEach(fn => fn({ ...this.current }));
+    const nextPhase = partial.phase !== undefined ? partial.phase : this.current.phase;
+    const nextProgress = partial.progress !== undefined ? partial.progress : this.current.progress;
+    const nextProgressText = partial.progressText !== undefined ? partial.progressText : this.current.progressText;
+    const nextIndexedCount = partial.indexedCount !== undefined ? partial.indexedCount : this.current.indexedCount;
+    const nextTotalCount = partial.totalCount !== undefined ? partial.totalCount : this.current.totalCount;
+    const nextModelCached = partial.modelCached !== undefined ? partial.modelCached : this.current.modelCached;
+
+    if (
+        nextPhase === this.current.phase &&
+        nextProgress === this.current.progress &&
+        nextProgressText === this.current.progressText &&
+        nextIndexedCount === this.current.indexedCount &&
+        nextTotalCount === this.current.totalCount &&
+        nextModelCached === this.current.modelCached
+    ) {
+        return; // No actual changes
+    }
+  
+    this.current = {
+        phase: nextPhase,
+        progress: nextProgress,
+        progressText: nextProgressText,
+        indexedCount: nextIndexedCount,
+        totalCount: nextTotalCount,
+        modelCached: nextModelCached,
+    };
+    this.listeners.forEach(fn => fn(this.current));
   }
 
   /** UI 组件订阅 */
   subscribe = (fn: Listener): (() => void) => {
     this.listeners.add(fn);
-    fn({ ...this.current });
     return () => this.listeners.delete(fn);
   };
 
-  get snapshot(): RagStatus { return { ...this.current }; }
+  get snapshot(): RagStatus { return this.current; }
 }
 
 export const ragStatusEmitter = new RagStatusEmitter();
