@@ -26,6 +26,7 @@ import type { TurnContext, TurnDeps } from './types';
 import type { DirectorResult } from './directorSystem';
 
 import { stepSummary } from './010_summary';
+import { stepRagRetrieve } from './015_ragRetrieve';
 import { stepIntentExtract } from './020_intentExtract';
 import { stepDirector } from './030_director';
 import { stepRetreat } from './040_retreat';
@@ -39,6 +40,7 @@ import { stepLlmCall } from './110_llmCall';
 import { stepPostLlm } from './120_postLlm';
 import { stepDisplay } from './130_display';
 import { stepBagAndCeremony } from './140_bagAndCeremony';
+import { stepRagIngest } from './150_ragIngest';
 
 function createTurnContext(deps: TurnDeps, userInput: string): TurnContext {
   const emptyDirector: DirectorResult = {
@@ -75,6 +77,8 @@ function createTurnContext(deps: TurnDeps, userInput: string): TurnContext {
     escapeItemRarity: null,
     itemDropInstruction: null,
     prerolledEquipDrop: null,
+    // Step RAG
+    ragContext: '',
     // Step 100
     pendingNotifications: [],
     // Step 110
@@ -94,6 +98,7 @@ export async function runTurn(deps: TurnDeps, userInput: string): Promise<void> 
 
   // ── 回合管线，按序执行 ──
   await stepSummary(ctx);       // ① 摘要
+  await stepRagRetrieve(ctx);   // ★ RAG 检索
   await stepIntentExtract(ctx); // ② 意图
   await stepDirector(ctx);      // ③ 导演
   stepRetreat(ctx);             // ④ 掉头
@@ -117,4 +122,5 @@ export async function runTurn(deps: TurnDeps, userInput: string): Promise<void> 
   stepPostLlm(ctx);             // ⑫ 结算
   await stepDisplay(ctx);       // ⑬ 显示
   await stepBagAndCeremony(ctx);// ⑭ 入包
+  await stepRagIngest(ctx);     // ★ RAG 入库
 }

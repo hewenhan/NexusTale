@@ -28,6 +28,7 @@ import { usePortraitLoader } from '../hooks/usePortraitLoader';
 import { useAffectionAnim } from '../hooks/useAffectionAnim';
 import { useWorldInit } from '../hooks/useWorldInit';
 import { usePortraitRegeneration } from '../hooks/usePortraitRegeneration';
+import { RagStatusIndicator } from '../components/RagStatusIndicator';
 
 export default function Chat() {
   const { state, updateState, exportSave } = useGame();
@@ -368,6 +369,7 @@ export default function Chat() {
       </AnimatePresence>
 
       <DebugOverlay state={state} onUpdateState={updateState} />
+      <RagStatusIndicator />
       <DriveToast visible={driveError && !driveToastDismissed} onDismiss={() => setDriveToastDismissed(true)} onReconnect={handleReconnectDrive} />
       {retryDialog}
     </div>

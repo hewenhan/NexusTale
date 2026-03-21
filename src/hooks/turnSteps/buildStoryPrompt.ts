@@ -166,6 +166,8 @@ export interface StoryPromptInput {
   expectGetItem?: boolean;
   /** 结构化既定事实（推荐使用） */
   facts?: NarrativeFacts;
+  /** RAG 语义检索召回的历史片段 */
+  ragContext?: string;
   /** @deprecated 使用 facts.itemDropInstruction 替代 */
   itemDropInstruction?: string | null;
   /** @deprecated 使用 facts.narrativeInstruction 替代 */
@@ -224,7 +226,7 @@ const systemPrompt = buildSystemPrompt({
   });
 
   return `${systemPrompt}
-  
+  ${input.ragContext ? `\n${input.ragContext}\n` : ''}
   [Chat History]
   ${historyText}
   [引擎防火墙]: 

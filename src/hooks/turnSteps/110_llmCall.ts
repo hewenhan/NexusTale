@@ -28,6 +28,7 @@ export async function stepLlmCall(ctx: Readonly<TurnContext>): Promise<LlmCallSt
     state, resolution: resolution!, currentSummary, userInput, visionContext,
     expectGetItem: !!ctx.escapeItemRarity,
     facts,
+    ragContext: ctx.ragContext,
   });
 
   const responseJson = await generateTurn(fullPrompt);

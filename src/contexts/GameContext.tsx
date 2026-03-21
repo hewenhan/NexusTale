@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { GameState, INITIAL_STATE, ChatMessage, KEEP_RECENT_TURNS } from '../types/game';
 import { handleError } from '../lib/errorPolicy';
+import { ragService } from '../lib/rag';
 
 interface GameContextType {
   state: GameState;
@@ -69,6 +70,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const parsed = migrateSave(JSON.parse(json));
       if (!parsed.history || !Array.isArray(parsed.history)) return false;
       setState({ ...INITIAL_STATE, ...parsed });
+      ragService.ingest(parsed.history).catch(() => {});
       return true;
     } catch (e) {
       handleError('silent', 'Invalid save file', e);
@@ -82,6 +84,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const resetGame = () => {
     setState(INITIAL_STATE);
+    ragService.reset().catch(() => {});
   };
 
   const addMessage = (message: ChatMessage) => {

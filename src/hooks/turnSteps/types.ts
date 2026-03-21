@@ -85,6 +85,9 @@ export interface TurnContext {
   // ── Step 100: Notifications ──
   pendingNotifications: Omit<GrandNotificationData, 'id'>[];
 
+  // ── Step RAG: Retrieve ──
+  ragContext: string;
+
   // ── Step 110: LLM ──
   facts: NarrativeFacts | null;
   responseJson: any;
