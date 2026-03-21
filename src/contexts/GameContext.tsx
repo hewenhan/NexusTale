@@ -58,6 +58,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('ai_rpg_save', JSON.stringify(state));
   }, [state]);
 
+  // 页面加载时同步一次 RAG，防止重载或中断时卡在就绪状态
+  useEffect(() => {
+    if (state.history.length > 0) {
+      console.log('[GameContext] 页面挂载，同步 RAG 记忆中...');
+      ragService.ingest(state.history).catch(() => {});
+    }
+  }, []);
+
   const updateState = (updates: Partial<GameState> | ((prev: GameState) => Partial<GameState>)) => {
     setState(prev => {
       const newUpdates = typeof updates === 'function' ? updates(prev) : updates;

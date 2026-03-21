@@ -89,6 +89,7 @@ class RagService {
     const recentCutoff = Math.max(0, currentHistoryLength - KEEP_RECENT_TURNS * 8);
 
     if (this.useEmbedding) {
+      console.log(`[RAG Query] Embedding Search query="${queryText.slice(0, 30)}..."`);
       const queryVec = await this.embedding.embedQuery(queryText);
       if (queryVec) {
         const results = this.store.search(queryVec, TOP_K + 5, SCORE_THRESHOLD);
@@ -96,14 +97,17 @@ class RagService {
         const filtered = results
           .filter(r => r.document.metadata.turnIndex < recentCutoff)
           .slice(0, TOP_K);
+        console.log(`[RAG Query] Vector Results found=${filtered.length}`, filtered);
         return formatRagContext(filtered);
       }
     }
 
     // 降级到 BM25
+    console.log(`[RAG Query] BM25 Fallback Search query="${queryText.slice(0, 30)}..."`);
     const allTexts = this.store.getAllTexts();
     const eligibleTexts = allTexts.filter(t => t.turnIndex < recentCutoff);
     const hits = bm25Search(queryText, eligibleTexts, TOP_K);
+    console.log(`[RAG Query] BM25 Results found=${hits.length}`, hits);
     return formatBm25Context(hits, allTexts);
   }
 
@@ -131,8 +135,11 @@ class RagService {
       this.fingerprint.firstMessageId === currentFp.firstMessageId &&
       this.fingerprint.firstMessageTs === currentFp.firstMessageTs;
 
+    console.log(`[RAG Ingest] Input size: ${history.length}, fpMatch: ${!!fpMatch}, lastIngestedIndex: ${this.lastIngestedIndex}`);
+
     if (!fpMatch) {
       // 不同存档 → 全量重建
+      console.log(`[RAG Ingest] Started Full Rebuild...`);
       await this.store.clear();
       this.lastIngestedIndex = 0;
       this.fingerprint = currentFp;
@@ -142,6 +149,7 @@ class RagService {
 
     // SL 回档检测
     if (this.lastIngestedIndex > history.length) {
+      console.log(`[RAG Ingest] SL rewind detected: ${this.lastIngestedIndex} -> ${history.length}`);
       await this.store.removeFrom(history.length);
       this.lastIngestedIndex = history.length;
     }
@@ -149,6 +157,7 @@ class RagService {
     // 增量入库
     if (this.lastIngestedIndex < history.length) {
       const chunks = chunkMessages(history, this.lastIngestedIndex);
+      console.log(`[RAG Ingest] Incremental update: ${chunks.length} new chunks`);
       if (chunks.length > 0) {
         await this._embedAndStore(chunks);
       }

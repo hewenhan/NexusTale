@@ -12,11 +12,16 @@ import { ragService } from '../../lib/rag';
 
 export async function stepRagRetrieve(ctx: TurnContext): Promise<void> {
   try {
+    console.log('[Turn Step 015] Retrieving RAG Context for query:', ctx.userInput);
     ctx.ragContext = await ragService.query(
       ctx.userInput,
       ctx.deps.state.history.length,
     );
-  } catch {
+    if (ctx.ragContext) {
+      console.log('[Turn Step 015] RAG Context injected successfully');
+    }
+  } catch (err) {
+    console.warn('[Turn Step 015] RAG Retrieval failed:', err);
     // RAG 异常不中断回合
     ctx.ragContext = '';
   }
