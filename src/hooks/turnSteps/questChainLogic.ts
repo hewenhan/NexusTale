@@ -22,7 +22,7 @@ import {
   narrativeQuestDispatch, narrativeQuestItemInBossFight,
   narrativeQuestChainComplete, narrativeQuestStageAdvance,
   narrativeQuestItemUsed, narrativeQuestItemCannotUse,
-  narrativeQuestArrival,
+  narrativeQuestArrival, narrativeQuestAreaOnlyArrival,
 } from '../../lib/narrativeRegistry';
 
 // ─── Types ────────────────────────────────────────────────────
@@ -265,6 +265,12 @@ export function applyQuestCrisisAnchoring(
   const targetHouse = targetNode?.houses.find(h => h.id === currentStage.targetHouseId);
   const atTargetLocation = resolution.newNodeId === currentStage.targetNodeId
     && (resolution.newHouseId || '') === (currentStage.targetHouseId || '');
+
+  // 宏观区域到达但微观建筑未进入 — 引导玩家进屋
+  if (!atTargetLocation && currentStage.targetHouseId) {
+    const houseName = targetHouse?.name || currentStage.targetLocationName;
+    return narrativeQuestAreaOnlyArrival({ areaName: targetNode?.name || '目标区域', houseName }) + '\n' + narrativeInstruction;
+  }
 
   if (!atTargetLocation) return narrativeInstruction;
 

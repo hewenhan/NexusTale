@@ -245,6 +245,7 @@ export default function Chat() {
         onExportSave={handleExportSave}
         onShowMap={() => setShowMap(true)}
         onShowStatus={() => setShowStatus(true)}
+        isFleshingOut={isFleshingOutCharacter}
       />
 
       <ProgressTracker state={{...state, ...displaySnapshot}} />
@@ -358,9 +359,6 @@ export default function Chat() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {isFleshingOutCharacter && <FleshingOutOverlay ref={characterProgressRef} loadingMessages={state.loadingMessages} />}
-      </AnimatePresence>
       <AnimatePresence>
         {isGeneratingWorld && <FleshingOutOverlay ref={worldProgressRef} isWorld loadingMessages={state.loadingMessages} />}
       </AnimatePresence>

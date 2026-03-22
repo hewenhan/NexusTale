@@ -6,7 +6,7 @@ import { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import {
-  AlertCircle, Backpack, ChevronsRight, Heart, Home,
+  AlertCircle, Backpack, ChevronsRight, Heart, Home, Loader2,
   Map, MoreHorizontal, RefreshCw, Save, Volume1, Volume2, VolumeX,
 } from 'lucide-react';
 import type { TextSpeed } from './TypewriterMessage';
@@ -37,6 +37,8 @@ interface ChatHeaderProps {
   onExportSave: () => void;
   onShowMap: () => void;
   onShowStatus: () => void;
+  /** Phase 2 非阻塞加载中（头像/装备/地图） */
+  isFleshingOut?: boolean;
 }
 
 export function ChatHeader({
@@ -46,6 +48,7 @@ export function ChatHeader({
   volume, onChangeVolume,
   textSpeed, onCycleTextSpeed, speedLabel,
   onExportSave, onShowMap, onShowStatus,
+  isFleshingOut,
 }: ChatHeaderProps) {
   const navigate = useNavigate();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -122,6 +125,19 @@ export function ChatHeader({
                 )}
               </AnimatePresence>
             </span>
+            <AnimatePresence>
+              {isFleshingOut && (
+                <motion.span
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="text-xs text-cyan-400 flex items-center gap-1 whitespace-nowrap"
+                >
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span className="hidden sm:inline">完善中</span>
+                </motion.span>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>

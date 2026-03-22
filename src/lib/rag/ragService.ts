@@ -31,17 +31,30 @@ const RRF_K = 60;                 // RRF 平滑常数
 
 class RagService {
   private store: VectorStore;
-  private embedding: EmbeddingProvider;
-  private ready: Promise<void>;
+  private embedding: EmbeddingProvider | null = null;
+  private ready: Promise<void> | null = null;
   private lastIngestedIndex = 0;
   private fingerprint: SaveFingerprint | null = null;
   private useEmbedding = true;
   private ingestLock: Promise<void> = Promise.resolve();
+  private isMobileApple: boolean;
 
   constructor() {
     this.store = new VectorStore();
-    this.embedding = new EmbeddingProvider();
-    this.ready = this.init();
+    // iOS / iPadOS 设备检测 — 跳过 ONNX，直接降级 BM25
+    this.isMobileApple = /iPhone|iPod|iPad/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (this.isMobileApple) {
+      this.useEmbedding = false;
+    }
+    // 不再在构造时初始化 — 延迟到首次 query/ingest 时按需拉起
+  }
+
+  private ensureInit(): Promise<void> {
+    if (!this.ready) {
+      this.ready = this.init();
+    }
+    return this.ready;
   }
 
   private async init(): Promise<void> {
@@ -51,6 +64,17 @@ class RagService {
     const meta = await this.store.getMeta();
     this.fingerprint = meta.fingerprint;
     this.lastIngestedIndex = meta.lastIngestedIndex;
+
+    // iOS 降级：跳过整个 embedding 预热
+    if (this.isMobileApple) {
+      console.warn('[RagService] iOS 设备检测到，跳过 ONNX 模型加载，使用 BM25 关键词检索。');
+      ragStatusEmitter.emit({
+        phase: 'degraded',
+        degradeReason: '移动端记忆降级为关键词检索',
+        indexedCount: this.store.size,
+      });
+      return;
+    }
 
     // 检查模型是否已缓存
     let modelCached = false;
@@ -66,6 +90,9 @@ class RagService {
       indexedCount: this.store.size,
       progressText: modelCached ? '加载模型中...' : '首次准备记忆系统...',
     });
+
+    // 按需创建 EmbeddingProvider
+    this.embedding = new EmbeddingProvider();
 
     // 等待 embedding 就绪（Worker warmup）
     const embeddingOk = await this.embedding.embedQuery('test');
@@ -97,7 +124,7 @@ class RagService {
     history: ChatMessage[],
     worldData: WorldData | null,
   ): Promise<string> {
-    await this.ready;
+    await this.ensureInit();
 
     if (this.store.size === 0) return '';
 
@@ -114,7 +141,7 @@ class RagService {
     const bm25Hits: { id: string; score: number }[] = [];
 
     // Vector 检索
-    if (this.useEmbedding) {
+    if (this.useEmbedding && this.embedding) {
       const queryVec = await this.embedding.embedQuery(cleaned);
       if (queryVec) {
         const results = this.store.search(queryVec, TOP_K * 5, SCORE_THRESHOLD);
@@ -197,7 +224,7 @@ class RagService {
   }
 
   private async _ingestCore(history: ChatMessage[], worldData?: WorldData | null): Promise<void> {
-    await this.ready;
+    await this.ensureInit();
 
     if (history.length === 0) return;
 
@@ -293,7 +320,7 @@ class RagService {
 
   /** 嵌入 + 写入（增量/重建共享逻辑） */
   private async _embedAndStore(chunks: Omit<RagDocument, 'embedding'>[]): Promise<void> {
-    if (this.useEmbedding) {
+    if (this.useEmbedding && this.embedding) {
       const texts = chunks.map(c => c.text);
       const embeddings = await this.embedding.embedTexts(texts);
       if (embeddings) {
@@ -313,7 +340,7 @@ class RagService {
     }
 
     // 降级模式：存储空 embedding（仅用于 BM25 文本检索）
-    const zeroDim = this.embedding.dimension;
+    const zeroDim = this.embedding?.dimension ?? 384;
     const docs: RagDocument[] = chunks.map(c => ({
       ...c,
       embedding: new Float32Array(zeroDim),
@@ -323,7 +350,7 @@ class RagService {
 
   /** 重置（新游戏时调用） */
   async reset(): Promise<void> {
-    await this.ready;
+    await this.ensureInit();
     await this.store.clear();
     this.lastIngestedIndex = 0;
     this.fingerprint = null;

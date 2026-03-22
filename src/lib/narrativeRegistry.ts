@@ -83,12 +83,20 @@ export function narrativeQuestStageAdvance(p: {
 
 /** 任务道具使用（普通消耗） */
 export function narrativeQuestItemUsed(itemName: string): string {
-  return `【系统强制 - 任务道具使用】：玩家使用了【${itemName}】。请描写道具消耗掉的效果。`;
+  return `【系统强制 - 任务道具使用】：玩家使用了【${itemName}】。这标志着漫长任务链的彻底终结。请描写道具消耗掉的效果，并结合任务链进展和结果合理描写一段极具张力的尾声场面，突出玩家的成就感和故事的高潮。`;
 }
 
-/** 任务道具无法使用（不在目标地点） */
+/** 任务道具无法使用（不在目标地点 / 前置不匹配）—— 最高优先级系统拒绝 */
 export function narrativeQuestItemCannotUse(itemName: string): string {
-  return `【系统强制 - 任务道具无法使用】：玩家使用了【${itemName}】，请 NPC 结合上下文使用道具而不消耗道具`;
+  return `【系统强制 - 地点或前置不吻合】：玩家试图在这里使用关键道具【${itemName}】失败！地点完全不对（目标在这个区域的某特定内部地点/未进门）。请 NPC 严肃地告知地点或前提没找对`;
+}
+
+/** 宏观区域到达但未进入微观建筑 — 引导玩家进屋 */
+export function narrativeQuestAreaOnlyArrival(p: {
+  areaName: string;
+  houseName: string;
+}): string {
+  return `【系统提示-寻路阶段】：玩家仅回到了宏观的对应区域【${p.areaName}】，但任务精确目标在这个区域的某个特定内部建筑【${p.houseName}】里。由于玩家没进去，请 NPC 引导玩家需要进屋才能交差。不可描述任务已完成或道具已生效。`;
 }
 
 // ═══════════════════════════════════════════════════════════════
