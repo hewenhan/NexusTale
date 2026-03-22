@@ -20,14 +20,16 @@ export async function stepIntentExtract(ctx: TurnContext): Promise<void> {
     intent = await waitForConfuseResolution(extraction.confuse, extraction.intent);
   }
 
-  if (intent.targetId === 'current_objective' && intent.intent !== 'use_item'
-    && state.currentObjective && state.worldData) {
-    const pathResult = resolveObjectivePathfinding(
-      state.currentNodeId!, state.currentHouseId, state.currentObjective, state.worldData.nodes,
-    );
-    intent.intent = pathResult.intent;
-    intent.targetId = pathResult.targetId;
-    console.log('Intent (pathfinding resolved):', intent);
+  if (intent.targetId === 'current_objective' && state.currentObjective && state.worldData) {
+    // use_item 不经过寻路覆写，保持原始意图
+    if (intent.intent !== 'use_item') {
+      const pathResult = resolveObjectivePathfinding(
+        state.currentNodeId!, state.currentHouseId, state.currentObjective, state.worldData.nodes,
+      );
+      intent.intent = pathResult.intent;
+      intent.targetId = pathResult.targetId;
+      console.log('Intent (pathfinding resolved):', intent);
+    }
   }
 
   ctx.intent = intent;
