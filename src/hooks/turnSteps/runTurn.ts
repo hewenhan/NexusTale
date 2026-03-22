@@ -100,9 +100,9 @@ export async function runTurn(deps: TurnDeps, userInput: string): Promise<void> 
   const ctx = createTurnContext(deps, userInput);
 
   // ── 回合管线，按序执行 ──
-  await stepSummary(ctx);         // ① 摘要
   await stepInputPreprocess(ctx); // ★ 输入预处理
   await stepRagRetrieve(ctx);     // ★ RAG 检索
+  await stepSummary(ctx);         // ① 摘要
   await stepIntentExtract(ctx);   // ② 意图
   await stepDirector(ctx);      // ③ 导演
   stepRetreat(ctx);             // ④ 掉头

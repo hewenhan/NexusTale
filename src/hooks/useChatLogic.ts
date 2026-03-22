@@ -8,6 +8,7 @@ import { INVENTORY_CAPACITY } from '../types/game';
 import type { QuestCompletionCeremony, InventoryItem, IntentResult, ConfuseData } from '../types/game';
 
 import { runTurn } from './turnSteps';
+import { translatePinyinInput } from '../services/pinyinTranslateService';
 import type { TurnDeps } from './turnSteps';
 
 // ─── Main Hook ────────────────────────────────────────────────
@@ -174,10 +175,22 @@ export function useChatLogic() {
 
     setIsProcessing(true);
 
+    // 拼音辅助：在写入聊天记录前完成翻译，确保气泡直接显示中文
+    let processedInput = userInput;
+    if (state.pinyinAssist) {
+      try {
+        const translated = await translatePinyinInput(userInput, state);
+        if (translated !== userInput) {
+          console.log(`[PinyinAssist] "${userInput}" → "${translated}"`);
+          processedInput = translated;
+        }
+      } catch { /* 降级：保留原始输入 */ }
+    }
+
     addMessage({
       id: uuidv4(),
       role: 'user',
-      text: userInput,
+      text: processedInput,
       timestamp: Date.now(),
     });
 
@@ -191,7 +204,7 @@ export function useChatLogic() {
         setIsProcessing, addItemToBag, setPendingCeremony,
       };
 
-      await runTurn(deps, userInput);
+      await runTurn(deps, processedInput);
 
     } catch (error) {
       handleError('critical', 'Turn processing failed', error);
