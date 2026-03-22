@@ -97,6 +97,7 @@ export function createMockState(overrides: Partial<GameState> = {}): GameState {
     summaryCoveredUpTo: 0,
     loadingMessages: [],
     language: 'zh',
+    pinyinAssist: false,
     hp: 80,
     hpDescription: 'Minor scratches',
     lives: 3,

@@ -49,9 +49,10 @@ export interface TurnDeps {
 // ─── 共享可变上下文 ──────────────────────────────────────────
 
 export interface TurnContext {
-  // ── 不可变输入 ──
+  // ── 不可变输入与原始输入 ──
   readonly deps: TurnDeps;
-  readonly userInput: string;
+  userInput: string; // 修正拼音后可能会改变
+  rawUserInput: string | null;
 
   // ── Step 010: Summary ──
   currentSummary: string;

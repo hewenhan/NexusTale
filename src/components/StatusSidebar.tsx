@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { X, Heart, Shield, MapPin, Target, RefreshCw, User } from 'lucide-react';
+import { X, Heart, Shield, MapPin, Target, RefreshCw, User, Languages } from 'lucide-react';
 import { GameState, RARITY_COLORS } from '../types/game';
 import { useState, useMemo } from 'react';
 import { extractProgressMap } from '../lib/pipeline';
@@ -11,9 +11,10 @@ interface StatusSidebarProps {
   onRegenerateCompanionPortrait?: () => void;
   onRegeneratePlayerPortrait?: () => void;
   onViewCeremony?: () => void;
+  onTogglePinyinAssist?: () => void;
 }
 
-export function StatusSidebar({ state, onClose, onRegenerateCompanionPortrait, onRegeneratePlayerPortrait, onViewCeremony }: StatusSidebarProps) {
+export function StatusSidebar({ state, onClose, onRegenerateCompanionPortrait, onRegeneratePlayerPortrait, onViewCeremony, onTogglePinyinAssist }: StatusSidebarProps) {
   const currentNode = state.worldData?.nodes.find(n => n.id === state.currentNodeId);
   const currentHouse = currentNode?.houses.find(h => h.id === state.currentHouseId);
   const { url: portraitUrl } = usePortraitLoader(state.characterPortraitFileName);
@@ -211,6 +212,33 @@ export function StatusSidebar({ state, onClose, onRegenerateCompanionPortrait, o
               </div>
             </div>
           )}
+
+          {/* 辅助功能 */}
+          <div>
+            <h3 className="text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider flex items-center gap-1">
+              <Languages className="w-3.5 h-3.5" /> 辅助功能
+            </h3>
+            <div className="bg-zinc-950 border border-zinc-800 p-3 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-zinc-300">拼音辅助输入</div>
+                <button
+                  onClick={onTogglePinyinAssist}
+                  className={`relative w-10 h-5 rounded-full transition-colors ${
+                    state.pinyinAssist ? 'bg-emerald-600' : 'bg-zinc-700'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                      state.pinyinAssist ? 'translate-x-5' : ''
+                    }`}
+                  />
+                </button>
+              </div>
+              <p className="text-xs text-zinc-500 mt-1.5">
+                开启后，拼音输入将自动翻译为中文
+              </p>
+            </div>
+          </div>
 
 
 

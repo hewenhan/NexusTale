@@ -304,6 +304,8 @@ export interface GameState {
   summaryCoveredUpTo: number;
   loadingMessages: string[];
   language: 'zh' | 'en';
+  /** 拼音辅助输入：开启后用户输入将经 LITE 模型翻译为语境化中文 */
+  pinyinAssist: boolean;
 
   // 2. Core survival & economy values (TS-controlled)
   hp: number;             // (0-100)
@@ -485,6 +487,7 @@ export const INITIAL_STATE: GameState = {
   summaryCoveredUpTo: 0,
   loadingMessages: DEFAULT_LOADING_MESSAGES,
   language: 'zh',
+  pinyinAssist: false,
 
   // Core survival
   hp: 100,

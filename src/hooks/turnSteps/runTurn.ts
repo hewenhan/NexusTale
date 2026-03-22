@@ -7,6 +7,7 @@
  *
  * 执行顺序：
  *   ① 历史摘要维护          → 压缩旧消息
+ *   ★ 输入预处理            → 拼音/外语翻译成语境中文
  *   ② 意图提取              → AI 意图识别 + 歧义消解 + 寻路
  *   ③ 导演系统              → seek_quest 升级 + 任务链生成
  *   ④ 赶路掉头              → transit 方向反转
@@ -27,6 +28,7 @@ import type { DirectorResult } from './directorSystem';
 
 import { stepSummary } from './010_summary';
 import { stepRagRetrieve } from './015_ragRetrieve';
+import { stepInputPreprocess } from './018_inputPreprocess';
 import { stepIntentExtract } from './020_intentExtract';
 import { stepDirector } from './030_director';
 import { stepRetreat } from './040_retreat';
@@ -54,6 +56,7 @@ function createTurnContext(deps: TurnDeps, userInput: string): TurnContext {
   return {
     deps,
     userInput,
+    rawUserInput: null,
 
     // Step 010
     currentSummary: deps.state.summary,
@@ -97,9 +100,10 @@ export async function runTurn(deps: TurnDeps, userInput: string): Promise<void> 
   const ctx = createTurnContext(deps, userInput);
 
   // ── 回合管线，按序执行 ──
-  await stepSummary(ctx);       // ① 摘要
-  await stepRagRetrieve(ctx);   // ★ RAG 检索
-  await stepIntentExtract(ctx); // ② 意图
+  await stepSummary(ctx);         // ① 摘要
+  await stepInputPreprocess(ctx); // ★ 输入预处理
+  await stepRagRetrieve(ctx);     // ★ RAG 检索
+  await stepIntentExtract(ctx);   // ② 意图
   await stepDirector(ctx);      // ③ 导演
   stepRetreat(ctx);             // ④ 掉头
 

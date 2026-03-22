@@ -319,6 +319,7 @@ export default function Chat() {
             onViewCeremony={() => { setShowStatus(false); showLastCeremony(); }}
             onRegenerateCompanionPortrait={regenerateCompanionPortrait}
             onRegeneratePlayerPortrait={regeneratePlayerPortrait}
+            onTogglePinyinAssist={() => updateState(prev => ({ pinyinAssist: !prev.pinyinAssist }))}
           />
         )}
       </AnimatePresence>

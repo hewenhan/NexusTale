@@ -43,6 +43,10 @@ function migrateSave(parsed: any): any {
   if (parsed.lastCeremony === undefined) {
     parsed.lastCeremony = null;
   }
+  // Migration: 旧存档没有 pinyinAssist 字段
+  if (parsed.pinyinAssist === undefined) {
+    parsed.pinyinAssist = false;
+  }
   return parsed;
 }
 
