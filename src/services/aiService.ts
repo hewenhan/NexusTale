@@ -229,3 +229,42 @@ export async function extractIntent(
   return { intent: { intent: 'idle', targetId: null }, confuse: null };
 }
 
+// ─── 不耻下问：自动生成玩家行动 ──────────────────────────────
+
+interface AutoStoryContext {
+  worldview: string;
+  currentLocation: string;
+  currentQuest: string | null;
+  inventory: string[];
+  companionName: string;
+  recentHistory: string[];
+}
+
+/**
+ * 使用 Lite 模型根据当前游戏上下文，生成一段像玩家自己输入的第一人称行动文本。
+ */
+export async function generateAutoUserAction(ctx: AutoStoryContext): Promise<string> {
+  const prompt = `你是一个文字冒险游戏的玩家助手。根据以下游戏上下文，替玩家写一句简短的第一人称行动指令（就像玩家自己打字输入的那样）。
+
+要求：
+- 只输出一句话，不超过30个字
+- 第一人称视角，口语化
+- 要合理、符合当前情境，推动剧情发展
+- 不要重复最近已做过的行动
+- 不要加引号、不要加任何前缀说明
+
+【世界观】${ctx.worldview.slice(0, 300)}
+【当前位置】${ctx.currentLocation}
+【当前任务】${ctx.currentQuest || '无特定任务'}
+【携带物品】${ctx.inventory.length > 0 ? ctx.inventory.join('、') : '无'}
+【同伴】${ctx.companionName}
+【最近行动】${ctx.recentHistory.slice(-3).join(' → ') || '刚开始冒险'}
+
+请直接输出玩家行动：`;
+
+  const text = await modelService.generateText('lite', prompt);
+  if (!text) throw new Error('Auto story generation returned empty');
+  // 清理：去除引号、换行、多余空白
+  return text.replace(/["""''「」『』]/g, '').replace(/\n/g, '').trim().slice(0, 50);
+}
+

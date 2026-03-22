@@ -6,9 +6,11 @@ interface ChatInputProps {
   onSend: (message: string) => Promise<void | boolean>;
   onBackpackClick?: () => void;
   inventoryCount?: number;
+  onActivity?: () => void;
+  textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
 }
 
-export function ChatInput({ isProcessing, onSend, onBackpackClick, inventoryCount = 0 }: ChatInputProps) {
+export function ChatInput({ isProcessing, onSend, onBackpackClick, inventoryCount = 0, onActivity, textareaRef: externalRef }: ChatInputProps) {
   const [input, setInput] = useState("");
 
   const handleSend = async () => {
@@ -18,7 +20,8 @@ export function ChatInput({ isProcessing, onSend, onBackpackClick, inventoryCoun
     await onSend(val);
   };
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const internalRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = externalRef || internalRef;
 
   // Auto-resize textarea height
   useLayoutEffect(() => {
@@ -50,8 +53,9 @@ export function ChatInput({ isProcessing, onSend, onBackpackClick, inventoryCoun
         <textarea
           ref={textareaRef}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => { setInput(e.target.value); onActivity?.(); }}
           onKeyDown={async (e) => {
+            onActivity?.();
             if (e.key === 'Enter' && !e.shiftKey && !isProcessing && input.trim()) {
               e.preventDefault();
               await handleSend();

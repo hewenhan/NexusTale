@@ -29,6 +29,8 @@ import { useAffectionAnim } from '../hooks/useAffectionAnim';
 import { useWorldInit } from '../hooks/useWorldInit';
 import { usePortraitRegeneration } from '../hooks/usePortraitRegeneration';
 import { RagStatusIndicator } from '../components/RagStatusIndicator';
+import { useAutoStoryTaunt } from '../hooks/useAutoStoryTaunt';
+import { TauntModal } from '../components/TauntModal';
 
 export default function Chat() {
   const { state, updateState, exportSave } = useGame();
@@ -59,6 +61,25 @@ export default function Chat() {
   const animatedIdsRef = useRef<Set<string>>(new Set(state.history.map(m => m.id)));
 
   const { isProcessing, handleTurn, flushPendingNotifications, pendingBagItem, resolveBagDiscard, rejectBagItem, pendingConfuse, isConfuseModalVisible, resolveConfuse, minimizeConfuse, restoreConfuse, pendingCeremony, dismissCeremony, showLastCeremony, isCeremonyGenerating } = useChatLogic();
+
+  // 不耻下问：空闲嘲讽 & 自动编故事
+  const chatTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const [tauntPaused, setTauntPaused] = useState(false);
+  const { isTauntVisible, isGenerating: isTauntGenerating, closeTaunt, triggerAutoStory, resetTimer: resetIdleTimer, countdownSeconds } = useAutoStoryTaunt({ isProcessing, hasOverlay: tauntPaused });
+
+  const handleTauntDismiss = useCallback(() => {
+    closeTaunt();
+    // 聚焦输入框
+    setTimeout(() => chatTextareaRef.current?.focus(), 100);
+  }, [closeTaunt]);
+
+  const handleTauntAutoStory = useCallback(async () => {
+    const action = await triggerAutoStory();
+    if (action) {
+      await handleTurn(action);
+    }
+    setTimeout(() => chatTextareaRef.current?.focus(), 100);
+  }, [triggerAutoStory, handleTurn]);
 
   // World initialization (extracted hook)
   const { isGeneratingWorld, isFleshingOutCharacter } = useWorldInit({
@@ -128,6 +149,11 @@ export default function Chat() {
   useEffect(() => {
     if (!state.playerProfile.name) setShowProfileModal(true);
   }, [state.playerProfile.name]);
+
+  // 当有任意 Overlay 打开时暂停嘲讽计时器
+  useEffect(() => {
+    setTauntPaused(showStatus || showMap || showInventory || !!pendingBagItem || showProfileModal || isGeneratingWorld);
+  }, [showStatus, showMap, showInventory, pendingBagItem, showProfileModal, isGeneratingWorld]);
 
   const handleReconnectDrive = useCallback(async () => {
     setIsReconnecting(true);
@@ -288,6 +314,8 @@ export default function Chat() {
         onSend={handleTurn}
         onBackpackClick={() => setShowInventory(true)}
         inventoryCount={state.inventory.length}
+        onActivity={resetIdleTimer}
+        textareaRef={chatTextareaRef}
       />
 
       <AnimatePresence>
@@ -369,6 +397,13 @@ export default function Chat() {
 
       <DebugOverlay state={state} onUpdateState={updateState} />
       <RagStatusIndicator />
+      <TauntModal
+        isOpen={isTauntVisible}
+        isGenerating={isTauntGenerating}
+        countdownSeconds={countdownSeconds}
+        onDismiss={handleTauntDismiss}
+        onAutoStory={handleTauntAutoStory}
+      />
       <DriveToast visible={driveError && !driveToastDismissed} onDismiss={() => setDriveToastDismissed(true)} onReconnect={handleReconnectDrive} />
       {retryDialog}
     </div>
