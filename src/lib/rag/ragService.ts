@@ -174,7 +174,16 @@ class RagService {
 
     if (merged.length === 0) return '';
 
-    console.log(`[RAG Query] RRF merged top-${TOP_K}:`, merged.map(([id, s]) => `${id.slice(0, 8)}…=${s.toFixed(4)}`));
+    // console.log(`[RAG Query] RRF merged top-${TOP_K}:`, merged.map(([id, s]) => `${id.slice(0, 8)}…=${s.toFixed(4)}`));
+    // 打印每个命中文档文本前 30 字
+    let consoleTextArr: string[] = [];
+    merged.forEach(([id]) => {
+      const doc = this.store.getDocument(id);
+      if (doc) {
+        consoleTextArr.push(doc.text.slice(0, 30));
+      }
+    });
+    console.log(`[RAG Query] Merged hits sample texts:`, consoleTextArr);
 
     // ── 4. 上下文窗口扩展 ──
     // 从命中文档的 turnIndex 出发，在 history 中前后各取 CONTEXT_WINDOW 条

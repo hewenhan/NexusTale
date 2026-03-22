@@ -20,7 +20,8 @@ export async function stepIntentExtract(ctx: TurnContext): Promise<void> {
     intent = await waitForConfuseResolution(extraction.confuse, extraction.intent);
   }
 
-  if (intent.targetId === 'current_objective' && state.currentObjective && state.worldData) {
+  if (intent.targetId === 'current_objective' && intent.intent !== 'use_item'
+    && state.currentObjective && state.worldData) {
     const pathResult = resolveObjectivePathfinding(
       state.currentNodeId!, state.currentHouseId, state.currentObjective, state.worldData.nodes,
     );
