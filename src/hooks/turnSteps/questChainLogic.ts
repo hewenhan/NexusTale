@@ -171,10 +171,8 @@ export async function resolveQuestItemUsage(
     return result;
   }
 
-  // 位置检查：节点级任务（targetHouseId 为空）只需匹配 nodeId
-  const needsBuilding = !!currentStage.targetHouseId;
   const atTargetLocation = resolution.newNodeId === currentStage.targetNodeId
-    && (!needsBuilding || (resolution.newHouseId || '') === currentStage.targetHouseId);
+    && (resolution.newHouseId || '') === (currentStage.targetHouseId || '');
 
   if (!atTargetLocation) {
     result.narrativeInstruction = narrativeQuestItemCannotUse(matchedItem.name) + '\n' + narrativeInstruction;
@@ -265,9 +263,8 @@ export function applyQuestCrisisAnchoring(
 
   const targetNode = state.worldData?.nodes.find(n => n.id === currentStage.targetNodeId);
   const targetHouse = targetNode?.houses.find(h => h.id === currentStage.targetHouseId);
-  const needsBuildingCrisis = !!currentStage.targetHouseId;
   const atTargetLocation = resolution.newNodeId === currentStage.targetNodeId
-    && (!needsBuildingCrisis || (resolution.newHouseId || '') === currentStage.targetHouseId);
+    && (resolution.newHouseId || '') === (currentStage.targetHouseId || '');
 
   // 宏观区域到达但微观建筑未进入 — 引导玩家进屋
   if (!atTargetLocation && currentStage.targetHouseId) {
