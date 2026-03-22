@@ -239,6 +239,8 @@ function buildMoveNarrative(
   state: GameState,
 ): string {
   const mt = moveTarget;
+  const currentNode = findNode(state, state.currentNodeId);
+  const currentHouse = currentNode?.houses.find(h => h.id === state.currentHouseId) || null;
 
   if (tension <= 1) {
     if (mt?.type === 'cross-node') {
@@ -246,23 +248,23 @@ function buildMoveNarrative(
         return `【系统指令】：玩家走出当前建筑，准备前往【${mt.targetName}】。请描写走出建筑来到街区的场景。`;
       }
       if (state.pacingState.tensionLevel === 0) {
-        return '【系统强制】：玩家选择离开安全区，踏入外部世界。当前紧张度强制升至1级（探索态）。请描写出发踏上旅途的场景。';
+        return `【系统强制】：玩家选择离开安全区，踏入外部世界${mt.targetName}。当前紧张度强制升至1级（探索态）。请描写出发踏上旅途的场景。`;
       }
-      return '【系统指令】：玩家踏上旅途，正在赶往新区域。请描写动身离开与旅途初段的见闻。';
+      return `【系统指令】：玩家踏上旅途，正在赶往新区域${mt.targetName}。请描写动身离开与旅途初段的见闻。`;
     }
     if (mt?.type === 'enter-house') {
       return `【系统指令】：玩家进入${mt.house.name}。请描写进入该建筑的场景。`;
     }
     if (mt?.type === 'exit-to-house') {
-      return `【系统指令】：玩家走出当前建筑来到街区野外，正准备前往${mt.house.name}。请描写走出建筑的场景。`;
+      return `【系统指令】：玩家从${currentNode?.name || '街区'}回到${mt.house.name}。请描写走出建筑的场景。`;
     }
     if (mt?.type === 'exit-building') {
-      return '【系统指令】：玩家退出当前建筑，回到街区野外。请描写走出建筑的场景。';
+      return `【系统指令】：玩家退出当前建筑${currentHouse ? ` ${currentHouse.name}` : ''}，回到街区野外。请描写走出建筑的场景。`;
     }
     if (mt?.type === 'unreachable') {
-      return '【系统指令】：目标位置未揭盲或不可达。请描写找不到出路的场景。';
+      return `【系统指令】：目标位置未揭盲或不可达。请描写找不到出路的场景。`;
     }
-    return '【系统指令】：玩家想移动但未指定明确方向。请询问玩家要去哪里。';
+    return `【系统指令】：玩家想移动但未指定明确方向。请询问玩家要去哪里。`;
   }
 
   if (tension === 2) {

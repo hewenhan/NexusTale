@@ -2,13 +2,12 @@
  * Step ⑥½ BOSS 检测
  *
  * 职责：
- * - 检测当前位置（step ④ 确定后）是否存在持久 BOSS
- * - 存在 BOSS → 强制拉高紧张度到 BOSS 等级
- * - 检测 BOSS 是否在本回合被击败（combat 大成功导致紧张度骤降）
- * - BOSS 击败 → 清除标记、位置变为 safe、emit boss_defeated 事件
- * - 首次进入 BOSS 区域 → emit boss_encounter 事件
- *
- * 纯计算，不生成叙事文本。
+ * - 检测当前位置是否存在持久 BOSS
+ * - 首次进入 BOSS 区域 → 强制拉高紧张度 + emit boss_encounter
+ * - 后续回合完全尊重 TENSION_ROUTE 配置表的 tensionDelta 结果：
+ *   - tensionDelta 将紧张度降至 boss 等级以下 → BOSS 击败
+ *   - 否则 → 不覆写，维持配置表结果
+ * - BOSS 击败 → 清除标记、位置变为 safe、T→0、emit boss_defeated
  */
 
 import type { PipelineContext } from './types';
@@ -43,12 +42,17 @@ export function stepBossCheck(ctx: PipelineContext): void {
 
   ctx.inBossZone = true;
 
-  const wasCombat = intent.intent === 'combat';
-  const wasCrit = ctx.tier === 2;
-  const tensionDropped = ctx.newTensionLevel < boss.tensionLevel;
+  const locationName = ctx.newHouseId
+    ? (findHouse(node, ctx.newHouseId)?.name || ctx.newHouseId)
+    : node.name;
 
-  if (wasCombat && wasCrit && tensionDropped) {
-    // BOSS 击败
+  // ── 首次进入判定 ──
+  const wasHere = ctx.newHouseId
+    ? state.currentHouseId === ctx.newHouseId
+    : state.currentNodeId === ctx.newNodeId && !state.currentHouseId;
+
+  // ── BOSS 击败：tensionDelta 将紧张度降至 boss 等级以下 ──
+  if (intent.intent === 'combat' && ctx.newTensionLevel < boss.tensionLevel) {
     ctx.bossDefeatedKey = bossLocationKey;
     ctx.inBossZone = false;
     ctx.guaranteedDrop = 'boss';
@@ -60,30 +64,19 @@ export function stepBossCheck(ctx: PipelineContext): void {
     ctx.newTensionLevel = 0;
     ctx.isInSafeZone = true;
     ctx.tensionChanged = ctx.newTensionLevel !== state.pacingState.tensionLevel;
-
-    const locationName = ctx.newHouseId
-      ? (findHouse(node, ctx.newHouseId)?.name || ctx.newHouseId)
-      : node.name;
     ctx.events.push({ type: 'boss_defeated', locationName });
     return;
   }
 
-  // BOSS 存活：强制拉高紧张度
-  if (ctx.newTensionLevel < boss.tensionLevel) {
-    ctx.newTensionLevel = boss.tensionLevel;
-  }
-  ctx.tensionChanged = ctx.newTensionLevel !== state.pacingState.tensionLevel;
-  ctx.isInSafeZone = false;
-
-  // 首次进入 BOSS 区域
-  const wasHere = ctx.newHouseId
-    ? state.currentHouseId === ctx.newHouseId
-    : state.currentNodeId === ctx.newNodeId && !state.currentHouseId;
-
+  // ── 首次进入 BOSS 区域 → 强制拉高紧张度 ──
   if (!wasHere) {
-    const locationName = ctx.newHouseId
-      ? (findHouse(node, ctx.newHouseId)?.name || ctx.newHouseId)
-      : node.name;
+    if (ctx.newTensionLevel < boss.tensionLevel) {
+      ctx.newTensionLevel = boss.tensionLevel;
+    }
     ctx.events.push({ type: 'boss_encounter', locationName, tensionLevel: boss.tensionLevel });
   }
+
+  // ── 后续回合：不覆写 tensionDelta 结果，完全尊重配置表 ──
+  ctx.isInSafeZone = false;
+  ctx.tensionChanged = ctx.newTensionLevel !== state.pacingState.tensionLevel;
 }
