@@ -130,13 +130,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refreshSession]);
 
   const reconnectDrive = useCallback(async () => {
-    const hasRefreshToken = !!localStorage.getItem('google_refresh_token');
-    if (hasRefreshToken) {
-      await refreshSession();
-    } else {
-      await login();
-    }
-  }, [refreshSession]);
+    // 清除旧凭据，强制走完整的重新授权流程
+    localStorage.removeItem('google_access_token');
+    localStorage.removeItem('google_refresh_token');
+    setAccessToken(null);
+    setDriveError(false);
+    await login();
+  }, []);
 
   const logout = () => {
     setAccessToken(null);
