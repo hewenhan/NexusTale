@@ -88,6 +88,6 @@ export const GAME_CONFIG = {
     /** 空闲多久后触发嘲讽弹窗（毫秒） */
     idleTriggerMs: 90_000,
     /** 弹窗内倒计时秒数（纯视觉效果，倒计时结束后自动触发求助） */
-    countdownSeconds: 20,
+    countdownSeconds: 0,
   },
 } as const;
