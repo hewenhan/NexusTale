@@ -252,6 +252,7 @@ export async function generateAutoUserAction(ctx: AutoStoryContext): Promise<str
 - 要合理、符合当前情境，推动剧情发展
 - 不要重复最近已做过的行动
 - 不要加引号、不要加任何前缀说明
+- 遵守空间物理学和因果律，没在任务所在地别搞任务相关的事，没在战斗中别说战斗指令，等等。玩家不是神经病
 
 【世界观】${ctx.worldview.slice(0, 300)}
 【当前位置】${ctx.currentLocation}
