@@ -26,9 +26,9 @@ export function TauntModal({ isOpen, isGenerating, countdownSeconds, onDismiss, 
     }
   }, [isOpen, countdownSeconds]);
 
-  // 倒计时逻辑
+  // 倒计时逻辑（countdownSeconds === 0 表示无限时间，不倒计时）
   useEffect(() => {
-    if (!isOpen || isGenerating) return;
+    if (!isOpen || isGenerating || countdownSeconds === 0) return;
     const interval = setInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
@@ -39,15 +39,16 @@ export function TauntModal({ isOpen, isGenerating, countdownSeconds, onDismiss, 
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [isOpen, isGenerating]);
+  }, [isOpen, isGenerating, countdownSeconds]);
 
-  // 倒计时到 0 自动触发（仅一次）
+  // 倒计时到 0 自动触发（仅一次；countdownSeconds === 0 时禁用自动触发）
   useEffect(() => {
+    if (countdownSeconds === 0) return;
     if (isOpen && countdown === 0 && !isGenerating && !firedRef.current) {
       firedRef.current = true;
       onAutoStoryRef.current();
     }
-  }, [isOpen, countdown, isGenerating]);
+  }, [isOpen, countdown, isGenerating, countdownSeconds]);
 
   const modal = (
     <AnimatePresence>
@@ -107,8 +108,8 @@ export function TauntModal({ isOpen, isGenerating, countdownSeconds, onDismiss, 
               CONTINUE?
             </motion.p>
 
-            {/* 倒计时 */}
-            {!isGenerating && (
+            {/* 倒计时（countdownSeconds === 0 时不显示） */}
+            {!isGenerating && countdownSeconds > 0 && (
               <motion.div
                 key={countdown}
                 initial={{ scale: 1.5, opacity: 0 }}
@@ -182,11 +183,13 @@ export function TauntModal({ isOpen, isGenerating, countdownSeconds, onDismiss, 
               transition={{ duration: 2, repeat: Infinity }}
               className="mt-8 text-zinc-600 text-xs"
             >
-              {countdown > 0 && !isGenerating
-                ? `${countdown} 秒后自动帮你编`
-                : isGenerating
-                  ? '小模型正在替你想...'
-                  : '时间到！'}
+              {isGenerating
+                ? '小模型正在替你想...'
+                : countdownSeconds === 0
+                  ? '慢慢想吧，不急'
+                  : countdown > 0
+                    ? `${countdown} 秒后自动帮你编`
+                    : '时间到！'}
             </motion.p>
           </motion.div>
         </motion.div>
