@@ -89,5 +89,7 @@ export const GAME_CONFIG = {
     idleTriggerMs: 90_000,
     /** 弹窗内倒计时秒数（纯视觉效果，倒计时结束后自动触发求助） */
     countdownSeconds: 0,
+    /** 空输入发送时自动编故事（Enter / 点击发送时输入框为空则触发） */
+    emptyInputAutoStory: true,
   },
 } as const;

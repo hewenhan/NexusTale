@@ -5,7 +5,7 @@
 import { findNode, findHouse, getVisibleHouses, applyProgressAndReveals } from '../../lib/pipeline';
 import { CharacterProfile, INVENTORY_CAPACITY, type GameState } from '../../types/game';
 import type { PipelineResult } from '../../lib/pipeline';
-import { getLastSceneVisuals } from './helpers';
+import { buildCharacterRoleString, getLastSceneVisuals } from './helpers';
 import { type NarrativeFacts } from '../../lib/narrativeRegistry';
 import { buildSystemPrompt } from './storySystemPrompt';
 
@@ -97,20 +97,6 @@ export function buildThemeInstruction(state: GameState, resolution: PipelineResu
   return `\n[旅途剧本提示：继续赶路。当前路段的物理环境已锁定为【${state.transitState.lockedTheme}】，请连贯描写（偶尔描述环境流转）。${objectiveHint}\n**[绝对法则]：绝不可凭空制造危机，维持安全赶路氛围。**]`;
 }
 
-// ── 角色设定字符串 ──
-function buildCharacterRoleString(profile: CharacterProfile): string {
-  const cp = profile;
-  return [
-    `Name: ${cp.name}`, `Gender: ${cp.gender}`, `Age: ${cp.age}`,
-    `Orientation: ${cp.orientation}`,
-    `Appearance: Skin=${cp.skinColor}, Height=${cp.height}, Build=${cp.weight}, Hair=${cp.hairStyle} ${cp.hairColor}`,
-    `PersonalityDesc: ${cp.personalityDesc}`,
-    `Description: ${cp.description}`, `Personality: ${cp.personality}`,
-    `Background: ${cp.background}`,
-    `Specialties: ${cp.specialties}`, `Hobbies: ${cp.hobbies}`, `Dislikes: ${cp.dislikes}`,
-  ].join('\n');
-}
-
 // ── 背包与任务链上下文 ──
 function buildInventoryAndQuestContext(state: GameState): string {
   const parts: string[] = [];
@@ -187,7 +173,7 @@ export function buildStoryPrompt(input: StoryPromptInput): string {
   const locationContext = buildLocationContext(state, resolution, visionContext);
   const progressLabel = buildProgressLabel(state, resolution);
   const themeInstruction = facts.themeInstruction;
-  const characterRoleString = buildCharacterRoleString(state.companionProfile );
+  const characterRoleString = buildCharacterRoleString(state.companionProfile);
   const playerRoleString = buildCharacterRoleString(state.playerProfile);
   const inventoryAndQuestContext = buildInventoryAndQuestContext(state);
   const narrativeInstruction = facts.narrativeInstruction;

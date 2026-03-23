@@ -240,5 +240,8 @@ export function useChatLogic() {
     showLastCeremony,
     // Ceremony generation progress bar
     isCeremonyGenerating,
+    // 暴露锁，供空输入自动编故事等场景使用
+    lockRef,
+    setIsProcessing,
   };
 }

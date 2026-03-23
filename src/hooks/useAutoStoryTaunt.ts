@@ -71,7 +71,7 @@ export function useAutoStoryTaunt({ isProcessing, hasOverlay = false }: UseAutoS
           .map(m => m.text),
       };
 
-      const action = await generateAutoUserAction(ctx);
+      const action = await generateAutoUserAction(ctx, state);
       setIsTauntVisible(false);
       return action;
     } catch (e) {

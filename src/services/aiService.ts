@@ -1,8 +1,9 @@
 import * as modelService from './modelService';
 import type { IntentResult, IntentExtractionResult, ConfuseData, ConfuseCandidate, NodeData, GameState } from '../types/game';
-import { getLastIntent } from './intentHelpers';
+import { formatConnectedNodes, formatRecentConversation, formatVisibleHouses, getLastIntent } from './intentHelpers';
 import { buildIntentPrompt } from './intentPromptTemplate';
 import { handleError } from '../lib/errorPolicy';
+import { buildCharacterRoleString } from '../hooks/turnSteps/helpers';
 
 /**
  * 宏观寻路：BFS 找到从当前位置到目标的下一步微操。
@@ -243,29 +244,40 @@ interface AutoStoryContext {
 /**
  * 使用 Lite 模型根据当前游戏上下文，生成一段像玩家自己输入的第一人称行动文本。
  */
-export async function generateAutoUserAction(ctx: AutoStoryContext): Promise<string> {
+export async function generateAutoUserAction(ctx: AutoStoryContext, state: GameState): Promise<string> {
   const prompt = `你是一个文字冒险游戏的玩家助手。根据以下游戏上下文，替玩家写一句简短的第一人称行动指令（就像玩家自己打字输入的那样）。
 
 要求：
-- 只输出一句话，不超过30个字
+- 控制输出字数不超过200个字
 - 第一人称视角，口语化
 - 要合理、符合当前情境，推动剧情发展
 - 不要重复最近已做过的行动
-- 不要加引号、不要加任何前缀说明
+- 格式要求：括号内为独白/剧情演绎，括号外为玩家说的话
 - 遵守空间物理学和因果律，没在任务所在地别搞任务相关的事，没在战斗中别说战斗指令，等等。玩家不是神经病
+- 如果当前位置不在任务目标地点，说明还很远，该闲聊闲聊
+
+**近期上下文**
+${true && formatRecentConversation(state) ? formatRecentConversation(state) : ''}
 
 【世界观】${ctx.worldview.slice(0, 300)}
 【当前位置】${ctx.currentLocation}
+【相连节点】${formatConnectedNodes(state)},
+【可见室内】${formatVisibleHouses(state)}
 【当前任务】${ctx.currentQuest || '无特定任务'}
 【携带物品】${ctx.inventory.length > 0 ? ctx.inventory.join('、') : '无'}
-【同伴】${ctx.companionName}
 【最近行动】${ctx.recentHistory.slice(-3).join(' → ') || '刚开始冒险'}
+【危机级别】${state.pacingState.tensionLevel}
+=== 同伴 ===
+${buildCharacterRoleString(state.companionProfile)}
+
+=== 玩家 ===
+${buildCharacterRoleString(state.playerProfile)}
 
 请直接输出玩家行动：`;
 
   const text = await modelService.generateText('lite', prompt);
   if (!text) throw new Error('Auto story generation returned empty');
   // 清理：去除引号、换行、多余空白
-  return text.replace(/["""''「」『』]/g, '').replace(/\n/g, '').trim().slice(0, 50);
+  return text.replace(/["""''「」『』]/g, '').replace(/\n/g, '').trim().slice(0, 500);
 }
 

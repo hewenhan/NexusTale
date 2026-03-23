@@ -32,6 +32,7 @@ import { RagStatusIndicator } from '../components/RagStatusIndicator';
 import { useAutoStoryTaunt } from '../hooks/useAutoStoryTaunt';
 import { TauntModal } from '../components/TauntModal';
 import { getVisibleHouses } from '../lib/pipeline';
+import { GAME_CONFIG } from '../lib/gameConfig';
 
 export default function Chat() {
   const { state, updateState, exportSave } = useGame();
@@ -61,7 +62,7 @@ export default function Chat() {
   // 已播放过打字动画的消息 ID 集合（防止 Virtuoso 卸载/重挂时重新打字）
   const animatedIdsRef = useRef<Set<string>>(new Set(state.history.map(m => m.id)));
 
-  const { isProcessing, handleTurn, flushPendingNotifications, pendingBagItem, resolveBagDiscard, rejectBagItem, pendingConfuse, isConfuseModalVisible, resolveConfuse, minimizeConfuse, restoreConfuse, pendingCeremony, dismissCeremony, showLastCeremony, isCeremonyGenerating } = useChatLogic();
+  const { isProcessing, handleTurn, flushPendingNotifications, pendingBagItem, resolveBagDiscard, rejectBagItem, pendingConfuse, isConfuseModalVisible, resolveConfuse, minimizeConfuse, restoreConfuse, pendingCeremony, dismissCeremony, showLastCeremony, isCeremonyGenerating, lockRef, setIsProcessing } = useChatLogic();
 
   // 不耻下问：空闲嘲讽 & 自动编故事
   const chatTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -81,6 +82,29 @@ export default function Chat() {
     }
     setTimeout(() => chatTextareaRef.current?.focus(), 100);
   }, [triggerAutoStory, handleTurn]);
+
+  const handleEmptySend = useCallback(async () => {
+    if (!GAME_CONFIG.taunt.emptyInputAutoStory) return;
+    if (lockRef.current || isProcessing) return;
+    // 加双重锁：和正常发消息一样，立即进入「等待回复」状态
+    lockRef.current = true;
+    setIsProcessing(true);
+    try {
+      const action = await triggerAutoStory();
+      if (action) {
+        // 释放锁，交给 handleTurn 重新获取
+        lockRef.current = false;
+        setIsProcessing(false);
+        await handleTurn(action);
+      } else {
+        lockRef.current = false;
+        setIsProcessing(false);
+      }
+    } catch {
+      lockRef.current = false;
+      setIsProcessing(false);
+    }
+  }, [triggerAutoStory, handleTurn, isProcessing, lockRef, setIsProcessing]);
 
   // World initialization (extracted hook)
   const { isGeneratingWorld, isFleshingOutCharacter } = useWorldInit({
@@ -313,6 +337,7 @@ export default function Chat() {
       <ChatInput
         isProcessing={isProcessing}
         onSend={handleTurn}
+        onEmptySend={handleEmptySend}
         onBackpackClick={() => setShowInventory(true)}
         inventoryCount={state.inventory.length}
         onActivity={resetIdleTimer}
