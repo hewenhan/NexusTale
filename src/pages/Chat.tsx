@@ -19,7 +19,7 @@ import { FakeProgressBarHandle } from '../components/FakeProgressBar';
 import { useRetryDialog } from '../components/RetryDialog';
 import { InventoryPanel } from '../components/InventoryPanel';
 import { DiscardPanel } from '../components/DiscardPanel';
-import { IntentConfirmModal } from '../components/IntentConfirmModal';
+import { IntentConfirmModal, type MoveTargetOption } from '../components/IntentConfirmModal';
 import { PendingIntentBanner } from '../components/PendingIntentBanner';
 import { QuestCeremonyOverlay } from '../components/QuestCeremonyOverlay';
 import { ChatHeader } from '../components/ChatHeader';
@@ -31,6 +31,7 @@ import { usePortraitRegeneration } from '../hooks/usePortraitRegeneration';
 import { RagStatusIndicator } from '../components/RagStatusIndicator';
 import { useAutoStoryTaunt } from '../hooks/useAutoStoryTaunt';
 import { TauntModal } from '../components/TauntModal';
+import { getVisibleHouses } from '../lib/pipeline';
 
 export default function Chat() {
   const { state, updateState, exportSave } = useGame();
@@ -323,13 +324,42 @@ export default function Chat() {
           <IntentConfirmModal
             confuse={pendingConfuse.confuse}
             defaultIntent={pendingConfuse.defaultIntent}
-            connectedNodes={(() => {
-              if (!state.worldData || !state.currentNodeId) return [];
+            moveTargets={(() => {
+              const targets: MoveTargetOption[] = [];
+              if (!state.worldData || !state.currentNodeId) return targets;
               const currentNode = state.worldData.nodes.find(n => n.id === state.currentNodeId);
-              if (!currentNode) return [];
-              return currentNode.connections
-                .map(id => state.worldData!.nodes.find(n => n.id === id))
-                .filter((n): n is NonNullable<typeof n> => !!n);
+              if (!currentNode) return targets;
+
+              // 1. null 占位：离开建筑 or 户外
+              targets.push({
+                id: null,
+                name: state.currentHouseId ? '离开当前建筑 (Outdoor)' : '野外/随机探索 (Outdoor)',
+                type: '',
+              });
+
+              // 2. 相连节点
+              for (const connId of currentNode.connections) {
+                const connNode = state.worldData!.nodes.find(n => n.id === connId);
+                if (connNode) targets.push({ id: connNode.id, name: connNode.name, type: connNode.type });
+              }
+
+              // 3. 当前节点可见建筑
+              for (const house of getVisibleHouses(currentNode)) {
+                if (house.id !== state.currentHouseId) {
+                  targets.push({ id: house.id, name: house.name, type: `建筑 (${house.type})` });
+                }
+              }
+
+              // 4. 防御兜底：confuse 候选中存在的 targetId 如果不在已知列表中则补全
+              const knownIds = new Set(targets.map(t => t.id));
+              for (const c of pendingConfuse.confuse.type) {
+                if (c.intent === 'move' && c.targetId && !knownIds.has(c.targetId)) {
+                  knownIds.add(c.targetId);
+                  targets.push({ id: c.targetId, name: `未知目标: ${c.targetId}`, type: '' });
+                }
+              }
+
+              return targets;
             })()}
             inventory={state.inventory}
             isInTransit={!!state.transitState}

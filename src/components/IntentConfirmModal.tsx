@@ -1,18 +1,24 @@
 import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, Check, ChevronRight, Minimize2 } from 'lucide-react';
-import type { ConfuseData, ConfuseCandidate, IntentResult, IntentType, NodeData, InventoryItem } from '../types/game';
+import type { ConfuseData, ConfuseCandidate, IntentResult, IntentType, InventoryItem } from '../types/game';
 import { INTENT_LABELS, DIRECTION_LABELS } from '../types/game';
 
 // ── Types ──
 
 type Phase = 'intent' | 'details' | 'confirm';
 
+export interface MoveTargetOption {
+  id: string | null;
+  name: string;
+  type: string;
+}
+
 interface IntentConfirmModalProps {
   confuse: ConfuseData;
   defaultIntent: IntentResult;
-  /** Connected nodes for move direction/target selection */
-  connectedNodes: NodeData[];
+  /** Unified move target options (nodes, houses, outdoor, etc.) */
+  moveTargets: MoveTargetOption[];
   /** Current inventory for use_item selection */
   inventory: InventoryItem[];
   /** Whether currently in transit */
@@ -23,12 +29,13 @@ interface IntentConfirmModalProps {
 
 // ── Helpers ──
 
-/** Build a confidence map: intent → max confidence among candidates */
+/** Build a confidence map: label → summed confidence (capped at 1) */
 function buildConfidenceMap(candidates: ConfuseCandidate[]): Map<string, number> {
   const map = new Map<string, number>();
   for (const c of candidates) {
-    const existing = map.get(c.intent) ?? 0;
-    map.set(c.intent, Math.max(existing, c.confidence));
+    const label = INTENT_LABELS[c.intent] || c.intent;
+    const existing = map.get(label) ?? 0;
+    map.set(label, Math.min(1, existing + c.confidence));
   }
   return map;
 }
@@ -61,7 +68,7 @@ function ConfidenceBadge({ confidence }: { confidence: number }) {
 export function IntentConfirmModal({
   confuse,
   defaultIntent,
-  connectedNodes,
+  moveTargets,
   inventory,
   isInTransit,
   onConfirm,
@@ -145,7 +152,8 @@ export function IntentConfirmModal({
     <div className="space-y-2">
       {intentOptions.map(intent => {
         const isSelected = intent === selectedIntent;
-        const confidence = confidenceMap.get(intent) ?? 0;
+        const label = INTENT_LABELS[intent] || intent;
+        const confidence = confidenceMap.get(label) ?? 0;
         return (
           <button
             key={intent}
@@ -200,25 +208,13 @@ export function IntentConfirmModal({
           <div>
             <p className="text-xs text-zinc-400 mb-2 font-medium">目标地点</p>
             <div className="space-y-2 max-h-48 overflow-y-auto">
-              {/* null target = exit building */}
-              <button
-                onClick={() => setSelectedTargetId(null)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${
-                  selectedTargetId === null
-                    ? 'bg-amber-500/10 border-amber-500/50 text-amber-100'
-                    : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-300 hover:bg-zinc-800'
-                }`}
-              >
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${selectedTargetId === null ? 'bg-amber-400' : 'bg-zinc-600'}`} />
-                <span>离开当前位置</span>
-              </button>
-              {connectedNodes.map(node => {
-                const isSelected = node.id === selectedTargetId;
-                const confidence = getTargetConfidence(confuse.type, 'move', node.id);
+              {moveTargets.map(target => {
+                const isSelected = target.id === selectedTargetId;
+                const confidence = target.id ? getTargetConfidence(confuse.type, 'move', target.id) : 0;
                 return (
                   <button
-                    key={node.id}
-                    onClick={() => setSelectedTargetId(node.id)}
+                    key={target.id ?? '__null'}
+                    onClick={() => setSelectedTargetId(target.id)}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${
                       isSelected
                         ? 'bg-amber-500/10 border-amber-500/50 text-amber-100'
@@ -226,8 +222,8 @@ export function IntentConfirmModal({
                     }`}
                   >
                     <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isSelected ? 'bg-amber-400' : 'bg-zinc-600'}`} />
-                    <span>{node.name}</span>
-                    <span className="text-[10px] text-zinc-500">{node.type}</span>
+                    <span>{target.name}</span>
+                    {target.type && <span className="text-[10px] text-zinc-500">{target.type}</span>}
                     <ConfidenceBadge confidence={confidence} />
                   </button>
                 );
@@ -275,7 +271,7 @@ export function IntentConfirmModal({
 
   const renderConfirmPhase = () => {
     const intentLabel = INTENT_LABELS[selectedIntent] ?? selectedIntent;
-    const targetNode = connectedNodes.find(n => n.id === selectedTargetId);
+    const targetOption = moveTargets.find(t => t.id === selectedTargetId);
     const selectedItem = inventory.find(i => i.id === selectedItemId);
 
     return (
@@ -296,7 +292,7 @@ export function IntentConfirmModal({
               )}
               <div className="flex items-center gap-2">
                 <span className="text-xs text-zinc-500">目标</span>
-                <span className="text-zinc-200">{targetNode?.name ?? '离开当前位置'}</span>
+                <span className="text-zinc-200">{targetOption?.name ?? '离开当前位置'}</span>
               </div>
             </>
           )}
