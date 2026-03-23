@@ -64,8 +64,10 @@ export async function runQuestChainGeneration(
   }
 
   try {
+    const recentHistory = state.history.slice(-4); // 最近两轮对话
     const chainResult = await generateQuestChain(
-      state.worldview, state.worldData, state.currentNodeId, state.language
+      state.worldview, state.worldData, state.currentNodeId, state.language,
+      state.worldviewUpdates, recentHistory,
     );
 
     const questStages: QuestStage[] = chainResult.stages.map((s, i) => ({

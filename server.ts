@@ -156,6 +156,7 @@ async function startServer() {
       const { createXai } = await import('@ai-sdk/xai');
       const { generateImage } = await import('ai');
       const xai = createXai({ apiKey });
+      console.log('\n[image prompt]', prompt);
       const { image } = await generateImage({
         model: xai.image(model),
         prompt,

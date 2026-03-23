@@ -3,7 +3,7 @@
  */
 
 import { findNode, findHouse, getVisibleHouses, applyProgressAndReveals } from '../../lib/pipeline';
-import { INVENTORY_CAPACITY, type GameState } from '../../types/game';
+import { CharacterProfile, INVENTORY_CAPACITY, type GameState } from '../../types/game';
 import type { PipelineResult } from '../../lib/pipeline';
 import { getLastSceneVisuals } from './helpers';
 import { type NarrativeFacts } from '../../lib/narrativeRegistry';
@@ -98,8 +98,8 @@ export function buildThemeInstruction(state: GameState, resolution: PipelineResu
 }
 
 // ── 角色设定字符串 ──
-function buildCharacterRoleString(state: GameState): string {
-  const cp = state.companionProfile;
+function buildCharacterRoleString(profile: CharacterProfile): string {
+  const cp = profile;
   return [
     `Name: ${cp.name}`, `Gender: ${cp.gender}`, `Age: ${cp.age}`,
     `Orientation: ${cp.orientation}`,
@@ -187,7 +187,8 @@ export function buildStoryPrompt(input: StoryPromptInput): string {
   const locationContext = buildLocationContext(state, resolution, visionContext);
   const progressLabel = buildProgressLabel(state, resolution);
   const themeInstruction = facts.themeInstruction;
-  const characterRoleString = buildCharacterRoleString(state);
+  const characterRoleString = buildCharacterRoleString(state.companionProfile );
+  const playerRoleString = buildCharacterRoleString(state.playerProfile);
   const inventoryAndQuestContext = buildInventoryAndQuestContext(state);
   const narrativeInstruction = facts.narrativeInstruction;
   const itemDropInstruction = facts.itemDropInstruction;
@@ -214,6 +215,7 @@ const systemPrompt = buildSystemPrompt({
     state,
     resolution,
     characterRoleString,
+    playerRoleString,
     locationContext,
     progressLabel,
     inventoryAndQuestContext,

@@ -3,7 +3,7 @@
  */
 
 import * as modelService from './modelService';
-import type { WorldData, CharacterProfile, SafetyLevel, QuestStage, QuestCompletionCeremony, ChatMessage } from '../types/game';
+import type { WorldData, CharacterProfile, SafetyLevel, QuestStage, QuestCompletionCeremony, ChatMessage, WorldviewUpdate } from '../types/game';
 import { cleanJsonText } from './jsonRecovery';
 import { handleError } from '../lib/errorPolicy';
 import { buildQuestCeremonyPrompt } from './questCeremonyPrompt';
@@ -15,7 +15,9 @@ export async function generateQuestChain(
   worldview: string,
   worldData: WorldData,
   currentNodeId: string,
-  language: 'zh' | 'en' = 'zh'
+  language: 'zh' | 'en' = 'zh',
+  worldviewUpdates: WorldviewUpdate[] = [],
+  recentHistory: ChatMessage[] = [],
 ): Promise<{ stages: Array<{ description: string; requiredItems: { name: string; id: string }[] }>, targetLocations: { nodeId: string; houseId: string; locationName: string }[] }> {
   const langInstruction = language === 'zh' ? 'All text MUST be in Chinese.' : 'All content MUST be in English.';
 
@@ -55,11 +57,21 @@ export async function generateQuestChain(
     `Stage ${i + 1}: ${t.locationName} (${t.locationType}, danger: ${t.safety})`
   ).join('\n');
 
+  const worldviewUpdatesSection = worldviewUpdates.length > 0
+    ? `\nWorld Changes So Far:\n${worldviewUpdates.map((u, i) => `[${i + 1}] ${u.brief}`).join('\n')}`
+    : '';
+
+  const recentConversation = recentHistory.length > 0
+    ? `\nRecent Conversation (for plot context):\n${recentHistory.map(m => `${m.role}: ${m.text}`).join('\n')}`
+    : '';
+
   const prompt = `You are a quest designer for an RPG text adventure.
 
-Worldview: "${worldview}"
+Worldview: "${worldview}"${worldviewUpdatesSection}${recentConversation}
 
 The player needs a quest chain with ${targetLocations.length} stages. For each stage, the player must travel to a specific location and use the correct quest item there.
+
+IMPORTANT: The quest chain MUST be closely related to the current story progression shown in the world changes and recent conversation. Do NOT generate generic quests — tie the objectives tightly to the evolving narrative.
 
 Target Locations (pre-assigned):
 ${locationDesc}
